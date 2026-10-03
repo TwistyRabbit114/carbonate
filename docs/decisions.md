@@ -7,6 +7,29 @@ Format: date · decision · why · who · what changes in the Task 3 report.
 
 ---
 
+## D-006 — How the MFA steps authenticate, and a new secret
+
+**3 Oct 2026 · Owner: C**
+
+- Login returns a five-minute MFA token for Director and Accounts. `mfa/verify` takes it in the body,
+  as the plan says. `mfa/enrol` and `mfa/confirm` take it as the **bearer token**, behind an `MfaPending`
+  policy, so the only anonymous endpoints stay the five the plan lists. The MFA token is refused
+  everywhere else, including by the deny-by-default policy.
+- TOTP seeds are encrypted at rest with AES-256-GCM. The key is a new setting, `Auth:MfaEncryptionKey`
+  (base64, 32 bytes). Locally it goes in user-secrets; in Azure it goes in Key Vault with the JWT key.
+- A role or password change will revoke the user's refresh tokens (the Users module calls `RevokeAllForUserAsync`) instead of comparing a stored stamp,
+  because `REFRESH_TOKEN` has no stamp column. The next refresh fails, as the plan requires.
+- Replay of a used TOTP code inside its 30-second window is not blocked; the rate limit and lockout
+  are the control.
+
+**Why.** Keeps the anonymous surface small and avoids a schema change.
+
+**Trade-off.** Two ways of passing the MFA token, which B needs to know when building the login screens.
+
+**Task 3 report.** Describe the sign-in flow as built, and list TOTP replay protection as not built.
+
+---
+
 ## D-005 — Schema v1 additions and database-level guards
 
 **3 Oct 2026 · Owner: C**

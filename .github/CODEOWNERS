@@ -1,38 +1,41 @@
 # Review routing from the project plan, section 2.
-# The team is three people for Task 2 - there is no role A.
-# Replace the remaining placeholders with real GitHub usernames before the first PR,
-# otherwise GitHub silently ignores those rules.
 #
-#   @member-b        Christiaan ten Velden - UI/UX, Front-End, acting team lead
-#   @member-c        Ethan Algeo - Back-End & Data/Security
-#   @TwistyRabbit114 Ulrich Bezuidenhout - DevOps / Cloud / Architecture
+# The team is three people for Task 2. Jack Evans (@jackhenryevans) is in hospital and
+# out for Task 2; his work was redistributed on 3 Oct 2026. He keeps repository access
+# but is deliberately not listed as a reviewer here, because a CODEOWNERS entry for
+# someone unavailable blocks pull requests.
+#
+#   @ST10434131              Christiaan ten Velden - B, UI/UX & Front-End, acting team lead
+#   @ST10444972-Ethan-Algeo  Ethan Algeo - C, Back-End & Data/Security
+#   @TwistyRabbit114         Ulrich Bezuidenhout - D, DevOps / Cloud / Architecture
 
-# Default: anyone on the team can review.
-*                                            @member-b @member-c @TwistyRabbit114
+# Default: anyone on the active team can review.
+*                                             @ST10434131 @ST10444972-Ethan-Algeo @TwistyRabbit114
 
 # C approves anything touching auth, permissions, money fields or the schema.
-/api/src/Carbonate.Api/Platform/Auth/         @member-c
-/api/src/Carbonate.Application/Platform/      @member-c
-/api/src/Carbonate.Infrastructure/Migrations/ @member-c
-/api/src/Carbonate.Application/Masking/       @member-c
+/api/src/Carbonate.Api/Platform/Auth/          @ST10444972-Ethan-Algeo
+/api/src/Carbonate.Application/Platform/       @ST10444972-Ethan-Algeo
+/api/src/Carbonate.Infrastructure/Migrations/  @ST10444972-Ethan-Algeo
+/api/src/Carbonate.Application/Masking/        @ST10444972-Ethan-Algeo
 
 # D approves anything touching the pipeline or infrastructure.
-/.github/                                     @TwistyRabbit114
-/docker-compose.yml                           @TwistyRabbit114
-/infra/                                       @TwistyRabbit114
+/.github/                                      @TwistyRabbit114
+/docker-compose.yml                            @TwistyRabbit114
+/infra/                                        @TwistyRabbit114
 
-# Module owners.
-/api/src/**/Features/Lifecycle/               @TwistyRabbit114
-/api/src/**/Features/Stock/                   @TwistyRabbit114
-/api/src/**/Features/Incidents/               @TwistyRabbit114
-/api/src/**/Features/Calendar/                @TwistyRabbit114
-/api/src/**/Platform/Files/                   @TwistyRabbit114
-/api/src/**/Features/Events/                  @member-c
-/api/src/**/Features/Commercial/              @member-c
-/api/src/**/Platform/Users/                   @member-c
-/api/src/**/Features/Venues/                  @member-b
-/api/src/**/Features/Boards/                  @member-b
-/web/                                         @member-b
+# Module owners (project plan section 2).
+/api/src/**/Features/Lifecycle/                @TwistyRabbit114
+/api/src/**/Features/Stock/                    @TwistyRabbit114
+/api/src/**/Features/Incidents/                @TwistyRabbit114
+/api/src/**/Features/Calendar/                 @TwistyRabbit114
+/api/src/**/Platform/Files/                    @TwistyRabbit114
+/api/src/**/Features/Events/                   @ST10444972-Ethan-Algeo
+/api/src/**/Features/Commercial/               @ST10444972-Ethan-Algeo
+/api/src/**/Platform/Users/                    @ST10444972-Ethan-Algeo
+/api/src/**/Platform/Audit/                    @ST10444972-Ethan-Algeo
+/api/src/**/Features/Venues/                   @ST10434131
+/api/src/**/Features/Boards/                   @ST10434131
+/web/                                          @ST10434131
 
 # The contract: changing a published DTO shape needs the consumer's review.
-/docs/api/openapi.json                        @member-b @member-c
+/docs/api/openapi.json                         @ST10434131 @ST10444972-Ethan-Algeo

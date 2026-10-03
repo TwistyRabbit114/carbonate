@@ -1,8 +1,14 @@
+import { createBrowserRouter } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
+import { Providers } from './app/Providers';
+import { routes } from './app/router';
+
+const router = createBrowserRouter(routes);
+
 export function App() {
   return (
-    <main>
-      <h1>Carbonate</h1>
-      <p>Event coordination for Carbon Events and Carbon Logistics Management.</p>
-    </main>
+    <Providers>
+      <RouterProvider router={router} />
+    </Providers>
   );
 }

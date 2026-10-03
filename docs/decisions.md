@@ -7,6 +7,35 @@ Format: date · decision · why · who · what changes in the Task 3 report.
 
 ---
 
+## D-005 — Schema v1 additions and database-level guards
+
+**3 Oct 2026 · Owner: C**
+
+Schema v1 follows the plan's data model, with these additions and choices:
+
+- `EVENT.IsActive` added so a Director's delete is a soft delete (FR-09). `EVENT.VenueId` is nullable
+  because the demo `Enquired` event has no venue; the API still requires a venue on create (FR-01).
+- `CreatedAt` added to `QUOTE`, `INVOICE` and `TASK_CARD`, which had no timestamp, so the clustered
+  index can sit on a timestamp as the plan asks. Small lookup tables keep a clustered GUID key.
+- The audit table is insert-only through an `INSTEAD OF UPDATE, DELETE` trigger, so it holds whichever
+  principal connects, not only the app identity. Monthly partitioning and the 24-month purge are not
+  built; a purge job would have to disable the trigger deliberately.
+- Dynamic Data Masking is applied to seven `$cost` columns by raw SQL in the migration. A later
+  migration that alters one of those columns must drop and re-add the mask.
+- Check constraints repeat the API's rules where the database can express them: event code allowlist,
+  event window, board type, incident subject, JSON column validity, and order-list approver differing
+  from its generator (FR-30).
+
+**Why.** Marks for the database are for constraints and integrity, and the plan wants the database to
+be a second line of defence behind the services.
+
+**Trade-off.** Constraints duplicate some service validation, so a rule change touches two places.
+
+**Task 3 report.** Describe DDM as protection against direct database access, not between app roles,
+and state that partitioning and the retention purge were not built.
+
+---
+
 ## D-004 — Publish profiles instead of OIDC federated credentials
 
 **3 Oct 2026 · Owner: D**

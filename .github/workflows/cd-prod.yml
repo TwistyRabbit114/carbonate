@@ -29,6 +29,10 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    # Skips cleanly until the Azure resources exist and the repository variables
+    # are set. The staging and production jobs depend on this one, so all three
+    # skip together.
+    if: vars.AZURE_API_APP_PROD != ''
     steps:
       - uses: actions/checkout@v4
 

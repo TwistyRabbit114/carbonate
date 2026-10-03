@@ -24,6 +24,10 @@ jobs:
   deploy:
     name: Build and deploy to dev
     runs-on: ubuntu-latest
+    # Skips cleanly (grey, not red) until the Azure resources exist and the
+    # repository variable is set. Remove nothing - just set AZURE_API_APP_DEV
+    # under Settings > Secrets and variables > Actions > Variables.
+    if: vars.AZURE_API_APP_DEV != ''
     environment:
       name: dev
       url: ${{ vars.DEV_URL }}

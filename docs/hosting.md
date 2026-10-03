@@ -163,6 +163,33 @@ computes its next due time and sleeps until it, capped at 30 minutes.
 **Targets.** RPO 24 hours, RTO 4 hours (NFR-13/14). Uptime target 99.0%, rising to 99.5% over the
 October–January peak season (NFR-10).
 
+### Restore drill (NFR-13, NFR-14)
+
+A point-in-time restore was performed and timed rather than assumed.
+
+| | |
+|---|---|
+| Date | 3 October 2026 |
+| Source | `carbonate-dev` (Azure SQL, General Purpose serverless) |
+| Restored to | `carbonate-restoretest`, same logical server |
+| Restore point | Approximately 10 minutes prior |
+| **Elapsed time** | **≈ 18 minutes**, from submitting the restore to the success notification |
+| Outcome | Succeeded; restored database verified, then deleted |
+
+**Against the target.** 18 minutes sits comfortably inside the 4-hour RTO (NFR-14), with a wide margin
+for a larger database later.
+
+**What the number tells us.** The database was effectively empty, so almost none of that 18 minutes
+was spent moving data — it is the fixed cost of provisioning a new serverless database and replaying
+the backup chain. Restore time will therefore grow slowly rather than linearly as real event data
+accumulates, and the 4-hour target remains realistic at the projected 1.5 GB per year.
+
+**Operational note.** Because this is the measured floor rather than a worst case, an incident
+response plan should assume roughly 20–30 minutes to a restored database, plus the time to repoint the
+application. That is still well inside target, but it is not instant — so for a bad deployment,
+redeploying the previous artefact is the faster recovery path, and a restore is reserved for actual
+data loss.
+
 ---
 
 ## 5. Known limitations
@@ -184,7 +211,7 @@ Stated deliberately — these are conscious trade-offs, not oversights.
 ## 6. Outstanding before submission
 
 - [x] Application Insights availability test configured against `/health` (`carbonate-dev-health`)
-- [ ] One timed point-in-time restore performed and the result recorded (NFR-13/14)
+- [x] One timed point-in-time restore performed and the result recorded (NFR-13/14) — 18 minutes, section 4
 - [ ] Actual monthly cost read from Cost Management and the figures above replaced with real numbers
 - [ ] Consolidate Application Insights — creating the two Web Apps auto-provisioned a component each
       (`carbonate-api-dev`, `carbonate-api-prod`) alongside the one we created deliberately

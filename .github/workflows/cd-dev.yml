@@ -1,7 +1,12 @@
 name: CD dev
 
-# Merge to dev deploys the dev environment, then smoke-tests it.
-# Azure auth is OIDC federated credentials - no publish profiles, no secrets in the repo.
+# Merge to dev builds the SPA into the API's wwwroot, deploys the single unit to the
+# dev App Service, then smoke-tests /health.
+#
+# Deployment uses an App Service publish profile stored as an encrypted GitHub secret.
+# The project plan specifies OIDC federated credentials, but the ADvTECH tenant denies
+# students access to Microsoft Entra ID, so app registrations cannot be created.
+# See docs/decisions.md D-004.
 
 on:
   push:
@@ -10,7 +15,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write          # required for azure/login OIDC
 
 concurrency:
   group: cd-dev
@@ -25,8 +29,7 @@ jobs:
     name: Build and deploy to dev
     runs-on: ubuntu-latest
     # Skips cleanly (grey, not red) until the Azure resources exist and the
-    # repository variable is set. Remove nothing - just set AZURE_API_APP_DEV
-    # under Settings > Secrets and variables > Actions > Variables.
+    # repository variable AZURE_API_APP_DEV is set.
     if: vars.AZURE_API_APP_DEV != ''
     environment:
       name: dev
@@ -45,11 +48,14 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: web/package-lock.json
+        continue-on-error: true
 
-      # The SPA is served from the API's wwwroot (hosting option 3), so it is built
-      # first and copied into the publish output. One deploy unit, same origin,
+      # The SPA is served from the API's wwwroot (hosting option 3 in the plan), so it
+      # is built first and copied into the publish output. One deploy unit, same origin,
       # no CORS, and the SameSite=Strict refresh cookie works.
+      # Skipped while web/ does not exist yet.
       - name: Build SPA
+        if: hashFiles('web/package.json') != ''
         working-directory: web
         run: |
           npm ci
@@ -59,21 +65,16 @@ jobs:
         run: dotnet publish api/src/Carbonate.Api/Carbonate.Api.csproj -c Release -o publish
 
       - name: Copy SPA into wwwroot
+        if: hashFiles('web/package.json') != ''
         run: |
           mkdir -p publish/wwwroot
           cp -r web/dist/* publish/wwwroot/
-
-      - name: Sign in to Azure
-        uses: azure/login@v3
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy to the dev app
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ vars.AZURE_API_APP_DEV }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_DEV }}
           package: publish
 
       - name: Smoke test
@@ -91,7 +92,3 @@ jobs:
           done
           echo "::error::Health check never returned 200"
           exit 1
-
-      - name: Sign out of Azure
-        if: always()
-        run: az logout || true

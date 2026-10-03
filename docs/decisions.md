@@ -7,6 +7,31 @@ Format: date · decision · why · who · what changes in the Task 3 report.
 
 ---
 
+## D-004 — Publish profiles instead of OIDC federated credentials
+
+**3 Oct 2026 · Owner: D**
+
+GitHub Actions authenticates to Azure using an App Service publish profile stored as an encrypted
+GitHub Actions secret, not OIDC federated credentials.
+
+**Why.** The project plan (§11) specifies OIDC with `azure/login` and no publish profiles. That
+requires creating an Entra ID app registration. The institutional tenant this subscription sits in
+(ADvTECH Ltd.) denies students access to Microsoft Entra ID entirely — the portal returns 401 on the
+App registrations blade — so federated credentials cannot be created. This is an environmental
+constraint, not a design preference.
+
+**Trade-off.** A publish profile is a long-lived credential held in GitHub rather than a short-lived
+federated token, so it is weaker. It is mitigated by: storing it as an encrypted repository secret
+(never in the repo), scoping it to a single App Service rather than the subscription, and the fact
+that it can be regenerated from the portal at any time if exposure is suspected. Secret scanning and
+push protection are on, so an accidental commit of it would be blocked.
+
+**Task 3 report.** Section 8 of the Task 1 document describes the GitHub Actions pipeline. Note the
+authentication method actually used and the tenant restriction that forced it — this is a legitimate
+real-world constraint and worth describing rather than hiding.
+
+---
+
 ## D-003 — No Static Web App; the SPA is served from the API
 
 **3 Oct 2026 · Owner: D**

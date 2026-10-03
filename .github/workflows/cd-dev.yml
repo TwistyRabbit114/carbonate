@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write          # required for azure/login OIDC
 
 concurrency:
   group: cd-dev
@@ -63,6 +62,7 @@ jobs:
           mkdir -p publish/wwwroot
           cp -r web/dist/* publish/wwwroot/
 
+<<<<<<< Updated upstream
       - name: Sign in to Azure
         uses: azure/login@v3
         with:
@@ -70,10 +70,16 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+=======
+      # Publish profile rather than OIDC: the ADvTECH tenant blocks students from
+      # creating Entra app registrations, so federated credentials are unavailable.
+      # See docs/decisions.md D-004.
+>>>>>>> Stashed changes
       - name: Deploy to the dev app
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ vars.AZURE_API_APP_DEV }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_DEV }}
           package: publish
 
       - name: Smoke test
@@ -91,7 +97,3 @@ jobs:
           done
           echo "::error::Health check never returned 200"
           exit 1
-
-      - name: Sign out of Azure
-        if: always()
-        run: az logout || true

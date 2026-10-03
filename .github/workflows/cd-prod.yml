@@ -1,12 +1,14 @@
 name: CD production
 
-# Merge to main builds, deploys, smoke-tests, then waits for manual approval before
-# production. The approval gate is the GitHub environment "production" with a required
-# reviewer - that is the "hands-off deployment with a human gate" the rubric asks for.
+# Merge to main builds, then waits for manual approval before deploying to production.
+# The approval gate is the GitHub environment "production" with a required reviewer.
 #
-# On B1 Basic there are no deployment slots, so "staging" here is a separate App Service
-# on the same plan. In the final week, when the plan is scaled to S1 for the demo, swap
-# to real slots by uncommenting the slot-swap step below.
+# Two deviations from the project plan, both recorded in docs/decisions.md:
+#  - D-002: B1 Basic has no deployment slots, so there is no staging slot and no swap.
+#           Production is a second App Service on the same plan. In the final week the
+#           plan can be scaled to S1 and a real slot swap added.
+#  - D-004: the ADvTECH tenant blocks student app registrations, so deployment uses a
+#           publish profile stored as an encrypted GitHub secret rather than OIDC.
 
 on:
   push:
@@ -15,7 +17,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: cd-prod
@@ -29,9 +30,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    # Skips cleanly until the Azure resources exist and the repository variables
-    # are set. The staging and production jobs depend on this one, so all three
-    # skip together.
+    # Skips cleanly until the Azure resources exist and the variable is set.
     if: vars.AZURE_API_APP_PROD != ''
     steps:
       - uses: actions/checkout@v7
@@ -66,10 +65,11 @@ jobs:
           name: carbonate-app
           path: publish
 
-  staging:
-    name: Deploy to staging and smoke test
+  production:
+    name: Deploy to production
     needs: build
     runs-on: ubuntu-latest
+<<<<<<< Updated upstream
     environment:
       name: staging
       url: ${{ vars.STAGING_URL }}
@@ -109,6 +109,10 @@ jobs:
     runs-on: ubuntu-latest
     # This environment has a required reviewer configured in repo settings, so the
     # job pauses here until a human approves. Nothing reaches production unreviewed.
+=======
+    # This environment has a required reviewer configured in repository settings, so
+    # the job pauses here until a human approves. Nothing reaches production unreviewed.
+>>>>>>> Stashed changes
     environment:
       name: production
       url: ${{ vars.PROD_URL }}
@@ -118,6 +122,7 @@ jobs:
           name: carbonate-app
           path: publish
 
+<<<<<<< Updated upstream
       - uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -125,31 +130,16 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy to production
+=======
+      - name: Deploy
+>>>>>>> Stashed changes
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ vars.AZURE_API_APP_PROD }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PROD }}
           package: publish
 
-      # --- Final-week alternative, once the plan is scaled to S1 ------------------
-      # Replace the step above with a deploy to the "staging" slot followed by a swap,
-      # and demo this live in the presentation.
-      #
-      # - name: Deploy to the staging slot
-      #   uses: azure/webapps-deploy@v3
-      #   with:
-      #     app-name: ${{ vars.AZURE_API_APP_PROD }}
-      #     slot-name: staging
-      #     package: publish
-      #
-      # - name: Swap slots
-      #   run: |
-      #     az webapp deployment slot swap \
-      #       --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-      #       --name ${{ vars.AZURE_API_APP_PROD }} \
-      #       --slot staging --target-slot production
-      # ---------------------------------------------------------------------------
-
-      - name: Smoke test production
+      - name: Smoke test
         run: |
           set -e
           for i in $(seq 1 12); do
@@ -160,7 +150,3 @@ jobs:
           done
           echo "::error::Production health check failed"
           exit 1
-
-      - name: Sign out of Azure
-        if: always()
-        run: az logout || true

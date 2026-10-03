@@ -1,0 +1,162 @@
+name: CD production
+
+# Merge to main builds, deploys, smoke-tests, then waits for manual approval before
+# production. The approval gate is the GitHub environment "production" with a required
+# reviewer - that is the "hands-off deployment with a human gate" the rubric asks for.
+#
+# On B1 Basic there are no deployment slots, so "staging" here is a separate App Service
+# on the same plan. In the final week, when the plan is scaled to S1 for the demo, swap
+# to real slots by uncommenting the slot-swap step below.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: cd-prod
+  cancel-in-progress: false
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '20.x'
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build SPA
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+
+      - name: Publish API
+        run: dotnet publish api/src/Carbonate.Api/Carbonate.Api.csproj -c Release -o publish
+
+      - name: Copy SPA into wwwroot
+        run: |
+          mkdir -p publish/wwwroot
+          cp -r web/dist/* publish/wwwroot/
+
+      - name: Upload artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: carbonate-app
+          path: publish
+
+  staging:
+    name: Deploy to staging and smoke test
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ vars.STAGING_URL }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: carbonate-app
+          path: publish
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to staging
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_API_APP_STAGING }}
+          package: publish
+
+      - name: Smoke test staging
+        run: |
+          set -e
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.STAGING_URL }}/health" || true)
+            if [ "$code" = "200" ]; then echo "Staging healthy."; exit 0; fi
+            echo "Attempt $i returned $code - retrying in 10s"
+            sleep 10
+          done
+          echo "::error::Staging health check failed"
+          exit 1
+
+  production:
+    name: Promote to production
+    needs: staging
+    runs-on: ubuntu-latest
+    # This environment has a required reviewer configured in repo settings, so the
+    # job pauses here until a human approves. Nothing reaches production unreviewed.
+    environment:
+      name: production
+      url: ${{ vars.PROD_URL }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: carbonate-app
+          path: publish
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to production
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_API_APP_PROD }}
+          package: publish
+
+      # --- Final-week alternative, once the plan is scaled to S1 ------------------
+      # Replace the step above with a deploy to the "staging" slot followed by a swap,
+      # and demo this live in the presentation.
+      #
+      # - name: Deploy to the staging slot
+      #   uses: azure/webapps-deploy@v3
+      #   with:
+      #     app-name: ${{ vars.AZURE_API_APP_PROD }}
+      #     slot-name: staging
+      #     package: publish
+      #
+      # - name: Swap slots
+      #   run: |
+      #     az webapp deployment slot swap \
+      #       --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+      #       --name ${{ vars.AZURE_API_APP_PROD }} \
+      #       --slot staging --target-slot production
+      # ---------------------------------------------------------------------------
+
+      - name: Smoke test production
+        run: |
+          set -e
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.PROD_URL }}/health" || true)
+            if [ "$code" = "200" ]; then echo "Production healthy."; exit 0; fi
+            echo "Attempt $i returned $code - retrying in 10s"
+            sleep 10
+          done
+          echo "::error::Production health check failed"
+          exit 1
+
+      - name: Sign out of Azure
+        if: always()
+        run: az logout || true

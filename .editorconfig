@@ -1,0 +1,26 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.{cs,csx}]
+indent_size = 4
+
+# Treat warnings as errors in the layers that hold business rules, matching the CI build.
+[api/src/Carbonate.{Domain,Application}/**.cs]
+dotnet_analyzer_diagnostic.severity = warning
+
+[*.{md,markdown}]
+trim_trailing_whitespace = false   # two trailing spaces are a line break in Markdown
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.{sln,csproj,props,targets}]
+indent_style = space
+indent_size = 2

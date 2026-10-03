@@ -1,0 +1,50 @@
+# .NET
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+*.userprefs
+publish/
+TestResults/
+.vs/
+*.received.*
+
+# Secrets - these must never be committed
+appsettings.*.local.json
+*.pfx
+*.p12
+secrets.json
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+npm-debug.log*
+yarn-error.log*
+
+# Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.shared.json
+*.swp
+.DS_Store
+
+# Coverage and tooling output
+coverage/
+*.coverage
+*.trx
+playwright-report/
+.nyc_output/
+
+# Azure / Terraform, if infra-as-code is added later
+*.tfstate
+*.tfstate.*
+.terraform/

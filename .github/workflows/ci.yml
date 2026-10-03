@@ -1,0 +1,189 @@
+name: CI
+
+# Runs on every pull request into dev or main. All three jobs are required checks
+# (see the branch rulesets). Each job probes for its project files first and skips
+# with a notice if they are not in the repo yet, so CI is green from day one and
+# starts doing real work automatically as the scaffold lands.
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '20.x'
+
+jobs:
+  api:
+    name: API build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Look for the API solution
+        id: probe
+        run: |
+          if [ -f api/Carbonate.sln ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::api/Carbonate.sln not present yet - API job skipped"
+          fi
+
+      - name: Set up .NET
+        if: steps.probe.outputs.exists == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        if: steps.probe.outputs.exists == 'true'
+        run: dotnet restore api/Carbonate.sln
+
+      # Warnings are errors in Domain and Application only (plan section 11), so the
+      # layers holding business rules stay clean without blocking on generated code.
+      - name: Build
+        if: steps.probe.outputs.exists == 'true'
+        run: dotnet build api/Carbonate.sln --no-restore --configuration Release
+
+      - name: Unit tests
+        if: steps.probe.outputs.exists == 'true'
+        run: >
+          dotnet test api/tests/Carbonate.UnitTests/Carbonate.UnitTests.csproj
+          --no-build --configuration Release
+          --logger "trx;LogFileName=unit.trx"
+          --results-directory TestResults
+
+      # Testcontainers needs Docker; it is present on ubuntu-latest runners.
+      - name: Integration tests
+        if: steps.probe.outputs.exists == 'true'
+        run: >
+          dotnet test api/tests/Carbonate.IntegrationTests/Carbonate.IntegrationTests.csproj
+          --no-build --configuration Release
+          --filter "Category!=Masking"
+          --logger "trx;LogFileName=integration.trx"
+          --results-directory TestResults
+
+      - name: Dependency vulnerability scan
+        if: steps.probe.outputs.exists == 'true'
+        run: |
+          dotnet list api/Carbonate.sln package --vulnerable --include-transitive 2>&1 | tee vulnerable.txt
+          if grep -Eq '(Critical|High)' vulnerable.txt; then
+            echo "::error::High or critical vulnerability found in NuGet dependencies"
+            exit 1
+          fi
+          echo "No high or critical NuGet vulnerabilities."
+
+      - name: Publish test results
+        if: always() && steps.probe.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-results
+          path: TestResults/*.trx
+          if-no-files-found: ignore
+
+  web:
+    name: Web build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Look for the SPA
+        id: probe
+        run: |
+          if [ -f web/package.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::web/package.json not present yet - web job skipped"
+          fi
+
+      - name: Set up Node
+        if: steps.probe.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        if: steps.probe.outputs.exists == 'true'
+        working-directory: web
+        run: npm ci
+
+      - name: Lint
+        if: steps.probe.outputs.exists == 'true'
+        working-directory: web
+        run: npm run lint
+
+      - name: Typecheck
+        if: steps.probe.outputs.exists == 'true'
+        working-directory: web
+        run: npm run typecheck
+
+      - name: Test
+        if: steps.probe.outputs.exists == 'true'
+        working-directory: web
+        run: npm run test -- --run
+
+      - name: Build
+        if: steps.probe.outputs.exists == 'true'
+        working-directory: web
+        run: npm run build
+
+      - name: Dependency audit
+        if: steps.probe.outputs.exists == 'true'
+        working-directory: web
+        run: npm audit --audit-level=high
+
+  masking:
+    name: Masking acceptance suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # This is a separate required check because NFR-28 says masking tests gate
+      # production. Keeping it out of the API job means the run summary shows at a
+      # glance whether a financial field leaked.
+      - name: Look for the integration test project
+        id: probe
+        run: |
+          if [ -f api/tests/Carbonate.IntegrationTests/Carbonate.IntegrationTests.csproj ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Integration test project not present yet - masking suite skipped"
+          fi
+
+      - name: Set up .NET
+        if: steps.probe.outputs.exists == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Run masking suite
+        if: steps.probe.outputs.exists == 'true'
+        run: >
+          dotnet test api/tests/Carbonate.IntegrationTests/Carbonate.IntegrationTests.csproj
+          --configuration Release
+          --filter "Category=Masking"
+          --logger "trx;LogFileName=masking.trx"
+          --results-directory TestResults
+
+      - name: Publish masking results
+        if: always() && steps.probe.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: masking-test-results
+          path: TestResults/masking.trx
+          if-no-files-found: ignore

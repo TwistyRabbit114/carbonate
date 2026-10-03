@@ -1,0 +1,30 @@
+# Normalise line endings. Everything is stored in the repository with LF.
+#
+# This matters for CI: the `run:` blocks in the workflow files become shell scripts
+# on the Ubuntu runner, and CRLF line endings there produce errors like
+# "$'\r': command not found". Forcing LF on YAML and shell files prevents that
+# whole class of problem, and stops Windows/macOS teammates producing diffs where
+# every line looks changed.
+
+* text=auto eol=lf
+
+*.sh      text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
+*.cs      text eol=lf
+*.csproj  text eol=lf
+*.sln     text eol=crlf
+*.ts      text eol=lf
+*.tsx     text eol=lf
+
+# Binary files: never touch these.
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.webp    binary
+*.ico     binary
+*.pdf     binary
+*.woff    binary
+*.woff2   binary

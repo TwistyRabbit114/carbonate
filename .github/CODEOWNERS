@@ -1,0 +1,38 @@
+# Review routing from the project plan, section 2.
+# The team is three people for Task 2 - there is no role A.
+# Replace the remaining placeholders with real GitHub usernames before the first PR,
+# otherwise GitHub silently ignores those rules.
+#
+#   @member-b        Christiaan ten Velden - UI/UX, Front-End, acting team lead
+#   @member-c        Ethan Algeo - Back-End & Data/Security
+#   @TwistyRabbit114 Ulrich Bezuidenhout - DevOps / Cloud / Architecture
+
+# Default: anyone on the team can review.
+*                                            @member-b @member-c @TwistyRabbit114
+
+# C approves anything touching auth, permissions, money fields or the schema.
+/api/src/Carbonate.Api/Platform/Auth/         @member-c
+/api/src/Carbonate.Application/Platform/      @member-c
+/api/src/Carbonate.Infrastructure/Migrations/ @member-c
+/api/src/Carbonate.Application/Masking/       @member-c
+
+# D approves anything touching the pipeline or infrastructure.
+/.github/                                     @TwistyRabbit114
+/docker-compose.yml                           @TwistyRabbit114
+/infra/                                       @TwistyRabbit114
+
+# Module owners.
+/api/src/**/Features/Lifecycle/               @TwistyRabbit114
+/api/src/**/Features/Stock/                   @TwistyRabbit114
+/api/src/**/Features/Incidents/               @TwistyRabbit114
+/api/src/**/Features/Calendar/                @TwistyRabbit114
+/api/src/**/Platform/Files/                   @TwistyRabbit114
+/api/src/**/Features/Events/                  @member-c
+/api/src/**/Features/Commercial/              @member-c
+/api/src/**/Platform/Users/                   @member-c
+/api/src/**/Features/Venues/                  @member-b
+/api/src/**/Features/Boards/                  @member-b
+/web/                                         @member-b
+
+# The contract: changing a published DTO shape needs the consumer's review.
+/docs/api/openapi.json                        @member-b @member-c

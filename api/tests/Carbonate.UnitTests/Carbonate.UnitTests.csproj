@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Carbonate.Domain\Carbonate.Domain.csproj" />
     <ProjectReference Include="..\..\src\Carbonate.Application\Carbonate.Application.csproj" />
+    <ProjectReference Include="..\..\src\Carbonate.Infrastructure\Carbonate.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

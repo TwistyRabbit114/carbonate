@@ -42,7 +42,7 @@ jobs:
 
       - name: Set up .NET
         if: steps.probe.outputs.exists == 'true'
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -167,7 +167,7 @@ jobs:
 
       - name: Set up .NET
         if: steps.probe.outputs.exists == 'true'
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 

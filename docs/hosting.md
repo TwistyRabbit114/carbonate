@@ -6,8 +6,6 @@ This document explains what Carbonate runs on and **why each choice was made**, 
 options that were rejected. Short decision records are in `docs/decisions.md`; this is the narrative
 version for the README and the presentation.
 
-> Fill in the bracketed values with your actual resource names before submission.
-
 ---
 
 ## 1. Topology
@@ -19,10 +17,10 @@ Everything lives in one resource group, `rg-carbonate`, in **South Africa North*
 | Compute | `asp-carbonate` | App Service plan, **Basic B1**, Linux | Hosts both API environments |
 | API (dev) | `carbonate-api-dev` | Web App, .NET 10 | Integration environment, deployed from `dev` |
 | API (prod) | `carbonate-api-prod` | Web App, .NET 10 | Production, deployed from `main` behind manual approval |
-| Database | `[sql-carbonate]` / `carbonate-dev` | Azure SQL, General Purpose **serverless**, 0.5–1 vCore, auto-pause 1 h | Relational data |
-| Files | `[stcarbonate####]` | Storage account, Standard LRS, private `uploads` container | Incident photos, documents, card attachments |
-| Secrets | `[kv-carbonate-####]` | Key Vault, Standard, RBAC permission model | JWT signing key, Google refresh token, connection details |
-| Monitoring | `appi-carbonate` | Application Insights | Request traces, failures, availability test |
+| Database | `sql-carbonate` / `carbonate-dev` | Azure SQL, General Purpose **serverless**, 0.5–1 vCore, auto-pause 1 h | Relational data |
+| Files | `stcarbonate` | Storage account, Standard LRS, private `uploads` container | Incident photos, documents, card attachments |
+| Secrets | `kv-carbonate` | Key Vault, Standard, RBAC permission model | JWT signing key, Google refresh token, connection details |
+| Monitoring | `appi-carbonate` | Application Insights | Request traces, failures, availability test `carbonate-dev-health` against `/health` |
 
 The React SPA is **not** separately hosted. It is built in CI and published into the API's `wwwroot`,
 so one deployable unit serves both.
@@ -185,7 +183,10 @@ Stated deliberately — these are conscious trade-offs, not oversights.
 
 ## 6. Outstanding before submission
 
-- [ ] Application Insights availability test configured against `/health`
+- [x] Application Insights availability test configured against `/health` (`carbonate-dev-health`)
 - [ ] One timed point-in-time restore performed and the result recorded (NFR-13/14)
 - [ ] Actual monthly cost read from Cost Management and the figures above replaced with real numbers
-- [ ] Resource names in section 1 filled in
+- [ ] Consolidate Application Insights — creating the two Web Apps auto-provisioned a component each
+      (`carbonate-api-dev`, `carbonate-api-prod`) alongside the one we created deliberately
+      (`appi-carbonate`). Three components for two apps is untidy; point both apps at `appi-carbonate`
+      and remove the duplicates, or keep the per-app ones and remove `appi-carbonate`.

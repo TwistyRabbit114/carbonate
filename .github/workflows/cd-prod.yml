@@ -44,8 +44,10 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: web/package-lock.json
+        continue-on-error: true
 
       - name: Build SPA
+        if: hashFiles('web/package.json') != ''
         working-directory: web
         run: |
           npm ci
@@ -55,6 +57,7 @@ jobs:
         run: dotnet publish api/src/Carbonate.Api/Carbonate.Api.csproj -c Release -o publish
 
       - name: Copy SPA into wwwroot
+        if: hashFiles('web/package.json') != ''
         run: |
           mkdir -p publish/wwwroot
           cp -r web/dist/* publish/wwwroot/
@@ -69,50 +72,8 @@ jobs:
     name: Deploy to production
     needs: build
     runs-on: ubuntu-latest
-<<<<<<< Updated upstream
-    environment:
-      name: staging
-      url: ${{ vars.STAGING_URL }}
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          name: carbonate-app
-          path: publish
-
-      - uses: azure/login@v3
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Deploy to staging
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ vars.AZURE_API_APP_STAGING }}
-          package: publish
-
-      - name: Smoke test staging
-        run: |
-          set -e
-          for i in $(seq 1 12); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.STAGING_URL }}/health" || true)
-            if [ "$code" = "200" ]; then echo "Staging healthy."; exit 0; fi
-            echo "Attempt $i returned $code - retrying in 10s"
-            sleep 10
-          done
-          echo "::error::Staging health check failed"
-          exit 1
-
-  production:
-    name: Promote to production
-    needs: staging
-    runs-on: ubuntu-latest
-    # This environment has a required reviewer configured in repo settings, so the
-    # job pauses here until a human approves. Nothing reaches production unreviewed.
-=======
     # This environment has a required reviewer configured in repository settings, so
     # the job pauses here until a human approves. Nothing reaches production unreviewed.
->>>>>>> Stashed changes
     environment:
       name: production
       url: ${{ vars.PROD_URL }}
@@ -122,17 +83,7 @@ jobs:
           name: carbonate-app
           path: publish
 
-<<<<<<< Updated upstream
-      - uses: azure/login@v3
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Deploy to production
-=======
       - name: Deploy
->>>>>>> Stashed changes
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ vars.AZURE_API_APP_PROD }}

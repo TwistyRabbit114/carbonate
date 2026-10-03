@@ -1,0 +1,109 @@
+@use '@/styles/mixins' as *;
+
+//----------------------------------------------------------\\
+//                              CARD
+//----------------------------------------------------------\\
+
+//the prototype's login card: 360px wide, logo on top
+.page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: var(--space-4);
+}
+
+.card {
+  width: 100%;
+  max-width: 22.5rem;
+  padding: 2.25rem 2.125rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+
+  @include phone {
+    padding: 1.75rem 1.25rem;
+  }
+}
+
+.logo {
+  margin-bottom: 1.375rem;
+}
+
+.heading {
+  font-size: var(--fs-lg);
+  margin-bottom: var(--space-1);
+}
+
+.lead {
+  margin-bottom: 1.125rem;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.alerts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+
+  &:empty {
+    display: none;
+  }
+}
+
+//----------------------------------------------------------\\
+//                              FORMS
+//----------------------------------------------------------\\
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.submit {
+  margin-top: var(--space-2);
+}
+
+//big, spaced digits so the code is easy to check against the phone
+.code {
+  font-size: var(--fs-xl);
+  letter-spacing: 0.3em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.footnote {
+  margin: var(--space-4) 0 0;
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+
+//----------------------------------------------------------\\
+//                              MFA SETUP
+//----------------------------------------------------------\\
+
+.steps {
+  margin: 0 0 var(--space-4);
+  padding-left: 1.25rem;
+
+  li + li {
+    margin-top: var(--space-2);
+  }
+}
+
+.secret {
+  display: block;
+  margin: var(--space-2) 0;
+  padding: var(--space-3);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--fs-md);
+  letter-spacing: 0.08em;
+  text-align: center;
+  word-break: break-all;
+}

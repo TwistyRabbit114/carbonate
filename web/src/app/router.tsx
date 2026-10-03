@@ -1,6 +1,7 @@
 import { lazy, type ReactNode } from 'react';
 import { Navigate, type RouteObject } from 'react-router';
 import { usePermissions } from '@/auth/AuthContext';
+import { AuthLayout } from '@/auth/AuthLayout';
 import type { Permission } from '@/auth/permissions';
 import { RequireAuth } from './guards/RequireAuth';
 import { RequirePermission } from './guards/RequirePermission';
@@ -13,7 +14,12 @@ import { RouteErrorPage } from './pages/RouteErrorPage';
 //                              PAGES
 //----------------------------------------------------------\\
 
-//every screen is its own chunk, so crew never download finance or stock code (NFR-06)
+//every screen is its own chunk, so crew never download finance or stock code (NFR-06).
+//login is split out too, since most visits restore the session and never show it
+const LoginPage = lazy(() => import('@/auth/LoginPage'));
+const MfaVerifyPage = lazy(() => import('@/auth/MfaVerifyPage'));
+const MfaEnrolPage = lazy(() => import('@/auth/MfaEnrolPage'));
+
 const EventsBoardPage = lazy(() => import('@/features/events/EventsBoardPage'));
 const AdminTasksPage = lazy(() => import('@/features/admin-tasks/AdminTasksPage'));
 const StockPage = lazy(() => import('@/features/stock/StockPage'));
@@ -44,6 +50,15 @@ export const routes: RouteObject[] = [
   {
     errorElement: <RouteErrorPage />,
     children: [
+      {
+        path: 'login',
+        element: <AuthLayout />,
+        children: [
+          { index: true, element: <LoginPage /> },
+          { path: 'mfa', element: <MfaVerifyPage /> },
+          { path: 'mfa-setup', element: <MfaEnrolPage /> },
+        ],
+      },
       {
         element: <RequireAuth />,
         children: [

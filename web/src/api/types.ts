@@ -18,3 +18,20 @@ export type MeResponse = {
   roles: RoleName[];
   permissions: Permission[];
 };
+
+//POST /api/auth/login. director and accounts get an mfa step instead of a token
+//TODO(plan): how does login say that mfa still needs enrolling on first login? assumed a flag, confirm with C
+export type LoginResponse =
+  | { accessToken: string; user: UserSummary }
+  | { mfaRequired: true; mfaToken: string; mfaEnrolmentRequired?: boolean };
+
+//POST /api/auth/mfa/verify and /api/auth/mfa/confirm
+export type TokenResponse = {
+  accessToken: string;
+};
+
+//POST /api/auth/mfa/enrol
+//TODO(plan): field name for the otpauth:// uri is assumed, confirm with C
+export type MfaEnrolResponse = {
+  otpauthUri: string;
+};

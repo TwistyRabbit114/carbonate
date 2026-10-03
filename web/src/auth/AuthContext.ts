@@ -11,8 +11,17 @@ export type AuthState =
   | { status: 'signedOut'; reason?: 'expired' | 'loggedOut' }
   | { status: 'signedIn'; me: MeResponse };
 
+//the short-lived token between the password and the mfa code. memory only, a reload
+//drops it and the user starts again, which is what we want
+export type PendingMfa = {
+  mfaToken: string;
+};
+
 export type AuthContextValue = {
   state: AuthState;
+  pendingMfa: PendingMfa | null;
+  beginMfa: (pending: PendingMfa) => void;
+  completeLogin: (accessToken: string) => Promise<MeResponse>;
   logout: () => Promise<void>;
 };
 

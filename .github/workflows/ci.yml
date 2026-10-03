@@ -86,7 +86,7 @@ jobs:
 
       - name: Publish test results
         if: always() && steps.probe.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: api-test-results
           path: TestResults/*.trx
@@ -182,7 +182,7 @@ jobs:
 
       - name: Publish masking results
         if: always() && steps.probe.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: masking-test-results
           path: TestResults/masking.trx

@@ -96,18 +96,26 @@ cd web && npm run test                 # component tests and axe checks
 
 ## Hosting
 
-<!-- D: fill in once the resources exist. This section is marked under "stability and rationale". -->
+Everything runs in one resource group, `rg-carbonate`, in **South Africa North** (NFR-22).
 
 | Service | SKU | Why |
 |---|---|---|
-| App Service plan | B1 Basic | Supports Always On, which the hosted workers need. See `docs/decisions.md` D-002. |
-| App Service × 2 | dev, prod | Apps are billed per plan, so the second environment is free. |
-| Azure SQL | General Purpose serverless, auto-pause 1 h | Idle between events; auto-pause is the cost case. |
-| Blob Storage | Standard LRS | Incident photos, documents, card attachments. |
-| Key Vault | Standard | Connection details, JWT signing key, Google refresh token. |
-| Application Insights | Free tier | Availability test on `/health`, failure alerting. |
+| App Service plan | Basic B1, Linux | Cheapest tier with **Always On**, which the background workers require. Standard S1 would exhaust the student credit before the EXPO. |
+| App Service × 2 | `carbonate-api-dev`, `carbonate-api-prod` | Apps are billed per plan, so the second environment costs nothing. |
+| Azure SQL | General Purpose serverless, 0.5–1 vCore, auto-pause 1 h | Idle most of the time between events; auto-pause is the entire cost case. Entra-only authentication, so no password exists. |
+| Blob Storage | Standard LRS, private `uploads` container | Incident photos, documents, card attachments. Served via short-lived SAS links, never public. |
+| Key Vault | Standard, RBAC permission model | JWT signing key, Google refresh token, connection details. |
+| Application Insights | Free tier | Request traces, failures, availability test on `/health`. |
 
-Full reasoning, including what was rejected and why, is in `docs/decisions.md`.
+The SPA is not separately hosted — it is built in CI and published into the API's `wwwroot`, so one
+deployment unit serves both and the `SameSite=Strict` refresh cookie works without CORS.
+
+Both App Services authenticate to SQL, Blob Storage and Key Vault with a **system-assigned managed
+identity**. There are no credentials in any connection string.
+
+**→ Full rationale, rejected alternatives, cost model and known limitations: [`docs/hosting.md`](docs/hosting.md)**
+
+Decision records for every deviation from Task 1: [`docs/decisions.md`](docs/decisions.md)
 
 **Release policy (NFR-11).** Production deploys Monday–Wednesday, 09:00–15:00 SAST, and never within
 48 hours of a load-in milestone on real client data. During the Task 2 build on demo data this does not

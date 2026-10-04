@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Carbonate.Application\Carbonate.Application.csproj" />
+    <ProjectReference Include="..\Carbonate.Domain\Carbonate.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- FR-31 file storage. Azure.Identity gives the managed identity that signs user-delegation
+         SAS links, so no storage account key exists anywhere (docs/hosting.md). -->
+    <PackageReference Include="Azure.Identity" Version="1.17.1" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.26.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
+    <!-- BackgroundService for EventTransitionWorker (FR-02); Abstractions alone has only IHostedService. -->
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="10.0.12" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
+    <PackageReference Include="Otp.NET" Version="1.4.1" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Carbonate.UnitTests" />
+    <InternalsVisibleTo Include="Carbonate.IntegrationTests" />
+  </ItemGroup>
+
+</Project>

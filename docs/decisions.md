@@ -7,6 +7,141 @@ Format: date · decision · why · who · what changes in the Task 3 report.
 
 ---
 
+## D-008 — The template's event type lives in `DefinitionJson`, not a column
+
+**4 Oct 2026 · Owner: D**
+
+FR-25 picks a template by division, `BoardType='Event'` **and event type**. `CHECKLIST_TEMPLATE` has no
+`EventType` column, so the type is an `eventTypes` array inside `DefinitionJson`. The seeder loads the
+division's active Event templates — a handful of rows — and matches in memory. An empty array means the
+template applies to any type; a template naming other types is never used as a fallback.
+
+**Why.** Adding a column is a schema change C owns, on the day schema v1 merged, for a lookup that
+returns under ten rows. The boring option (§14 rule 4) is to match in memory.
+
+**Trade-off.** The event type is not indexable and not visible in a `SELECT` over the table. If the
+template count ever grows past a handful, the lookup moves into the `WHERE` clause and nothing else
+changes.
+
+**Task 3 report.** Describe the template definition JSON shape (`docs/seed-data.md`) alongside the
+Task 1 §5.3 schemas.
+
+---
+
+## D-007 — Deployment configuration: app settings, Key Vault references and the `UNMASK` grant
+
+**4 Oct 2026 · Owner: D**
+
+How the dev App Service actually reaches its dependencies, recorded because none of it is visible in
+the repository:
+
+- Each App Service holds a **system-assigned managed identity**, which is a contained database user in
+  `carbonate-dev` created `FROM EXTERNAL PROVIDER`, in `db_datareader` and `db_datawriter` only.
+- Those identities are additionally granted **`UNMASK`**. Dynamic Data Masking is protection against
+  someone connecting to the database directly; it is *not* the mechanism that masks `$cost` fields
+  between application roles — `IFinancialMasker` is. Without `UNMASK` the app reads `0.00` for every
+  masked column and a Director would see masked costs, which is the opposite of the intent. This
+  amends D-005.
+- Secrets are **Key Vault references** (`@Microsoft.KeyVault(SecretUri=…/)`), not literal app settings:
+  `Jwt__SigningKey` → `JwtSigningKey`, `Auth__MfaEncryptionKey` → `AuthMfaEncryptionKey`. The trailing
+  slash means the current version, so rotating a secret needs no App Service change.
+- `ConnectionStrings__Sql` uses `Authentication=Active Directory Default`, so the identity is picked up
+  from the platform. There is no password in it because no SQL password exists.
+- `Jwt__Issuer` and `Jwt__Audience` are the environment's own base URL, so a dev token is not valid in
+  production.
+
+**Why record it.** `docs/hosting.md` claims Key Vault holds the JWT signing key. This is the proof, and
+it is what someone rebuilding the environment from scratch needs.
+
+**Trade-off.** Configuration that lives only in the portal is configuration that can drift between dev
+and production. Infrastructure-as-code (Bicep) would fix that and is out of scope at this size; the
+settings table above is the mitigation.
+
+**Migrations are applied by a human, not the app.** The app identity has no DDL rights by design, so
+`dotnet ef database update` runs under the Entra admin account. A deploy never migrates.
+
+**Task 3 report.** Task 1 §7 describes DDM as a masking control. Clarify that it guards direct database
+access and that the application-layer masker is what separates roles.
+
+---
+
+## D-006 — How the MFA steps authenticate, and a new secret
+
+**3 Oct 2026 · Owner: C**
+
+- Login returns a five-minute MFA token for Director and Accounts. `mfa/verify` takes it in the body,
+  as the plan says. `mfa/enrol` and `mfa/confirm` take it as the **bearer token**, behind an `MfaPending`
+  policy, so the only anonymous endpoints stay the five the plan lists. The MFA token is refused
+  everywhere else, including by the deny-by-default policy.
+- TOTP seeds are encrypted at rest with AES-256-GCM. The key is a new setting, `Auth:MfaEncryptionKey`
+  (base64, 32 bytes). Locally it goes in user-secrets; in Azure it goes in Key Vault with the JWT key.
+- A role or password change will revoke the user's refresh tokens (the Users module calls `RevokeAllForUserAsync`) instead of comparing a stored stamp,
+  because `REFRESH_TOKEN` has no stamp column. The next refresh fails, as the plan requires.
+- Replay of a used TOTP code inside its 30-second window is not blocked; the rate limit and lockout
+  are the control.
+
+**Why.** Keeps the anonymous surface small and avoids a schema change.
+
+**Trade-off.** Two ways of passing the MFA token, which B needs to know when building the login screens.
+
+**Task 3 report.** Describe the sign-in flow as built, and list TOTP replay protection as not built.
+
+---
+
+## D-005 — Schema v1 additions and database-level guards
+
+**3 Oct 2026 · Owner: C**
+
+Schema v1 follows the plan's data model, with these additions and choices:
+
+- `EVENT.IsActive` added so a Director's delete is a soft delete (FR-09). `EVENT.VenueId` is nullable
+  because the demo `Enquired` event has no venue; the API still requires a venue on create (FR-01).
+- `CreatedAt` added to `QUOTE`, `INVOICE` and `TASK_CARD`, which had no timestamp, so the clustered
+  index can sit on a timestamp as the plan asks. Small lookup tables keep a clustered GUID key.
+- The audit table is insert-only through an `INSTEAD OF UPDATE, DELETE` trigger, so it holds whichever
+  principal connects, not only the app identity. Monthly partitioning and the 24-month purge are not
+  built; a purge job would have to disable the trigger deliberately.
+- Dynamic Data Masking is applied to seven `$cost` columns by raw SQL in the migration. A later
+  migration that alters one of those columns must drop and re-add the mask.
+- Check constraints repeat the API's rules where the database can express them: event code allowlist,
+  event window, board type, incident subject, JSON column validity, and order-list approver differing
+  from its generator (FR-30).
+
+**Why.** Marks for the database are for constraints and integrity, and the plan wants the database to
+be a second line of defence behind the services.
+
+**Trade-off.** Constraints duplicate some service validation, so a rule change touches two places.
+
+**Task 3 report.** Describe DDM as protection against direct database access, not between app roles,
+and state that partitioning and the retention purge were not built.
+
+---
+
+## D-004 — Publish profiles instead of OIDC federated credentials
+
+**3 Oct 2026 · Owner: D**
+
+GitHub Actions authenticates to Azure using an App Service publish profile stored as an encrypted
+GitHub Actions secret, not OIDC federated credentials.
+
+**Why.** The project plan (§11) specifies OIDC with `azure/login` and no publish profiles. That
+requires creating an Entra ID app registration. The institutional tenant this subscription sits in
+(ADvTECH Ltd.) denies students access to Microsoft Entra ID entirely — the portal returns 401 on the
+App registrations blade — so federated credentials cannot be created. This is an environmental
+constraint, not a design preference.
+
+**Trade-off.** A publish profile is a long-lived credential held in GitHub rather than a short-lived
+federated token, so it is weaker. It is mitigated by: storing it as an encrypted repository secret
+(never in the repo), scoping it to a single App Service rather than the subscription, and the fact
+that it can be regenerated from the portal at any time if exposure is suspected. Secret scanning and
+push protection are on, so an accidental commit of it would be blocked.
+
+**Task 3 report.** Section 8 of the Task 1 document describes the GitHub Actions pipeline. Note the
+authentication method actually used and the tenant restriction that forced it — this is a legitimate
+real-world constraint and worth describing rather than hiding.
+
+---
+
 ## D-003 — No Static Web App; the SPA is served from the API
 
 **3 Oct 2026 · Owner: D**

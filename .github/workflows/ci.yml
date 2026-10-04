@@ -28,7 +28,7 @@ jobs:
     name: API build and test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Look for the API solution
         id: probe
@@ -42,7 +42,7 @@ jobs:
 
       - name: Set up .NET
         if: steps.probe.outputs.exists == 'true'
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -86,7 +86,7 @@ jobs:
 
       - name: Publish test results
         if: always() && steps.probe.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: api-test-results
           path: TestResults/*.trx
@@ -96,7 +96,7 @@ jobs:
     name: Web build and test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Look for the SPA
         id: probe
@@ -150,7 +150,7 @@ jobs:
     name: Masking acceptance suite
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # This is a separate required check because NFR-28 says masking tests gate
       # production. Keeping it out of the API job means the run summary shows at a
@@ -167,7 +167,7 @@ jobs:
 
       - name: Set up .NET
         if: steps.probe.outputs.exists == 'true'
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -182,7 +182,7 @@ jobs:
 
       - name: Publish masking results
         if: always() && steps.probe.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: masking-test-results
           path: TestResults/masking.trx

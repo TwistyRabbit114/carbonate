@@ -14,6 +14,9 @@ indent_size = 4
 # Treat warnings as errors in the layers that hold business rules, matching the CI build.
 [api/src/Carbonate.{Domain,Application}/**.cs]
 dotnet_analyzer_diagnostic.severity = warning
+# The plan's domain names (Event, Permission, RolePermission) trip the cross-language naming rules.
+dotnet_diagnostic.CA1716.severity = none
+dotnet_diagnostic.CA1711.severity = none
 
 [*.{md,markdown}]
 trim_trailing_whitespace = false   # two trailing spaces are a line break in Markdown

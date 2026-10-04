@@ -74,6 +74,8 @@ public class CemDbContext(DbContextOptions<CemDbContext> options) : DbContext(op
         configurationBuilder.Properties<Enum>().HaveConversion<string>().HaveMaxLength(40);
         configurationBuilder.Properties<decimal>().HavePrecision(18, 2);
         configurationBuilder.Properties<string>().HaveMaxLength(200);
+        configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+        configurationBuilder.Properties<DateTime?>().HaveConversion<NullableUtcDateTimeConverter>();
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

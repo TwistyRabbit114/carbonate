@@ -1,5 +1,7 @@
+using Carbonate.Application.Features.Stock;
 using Carbonate.Application.Platform.Audit;
 using Carbonate.Application.Platform.Auth;
+using Carbonate.Infrastructure.Features.Stock;
 using Carbonate.Infrastructure.Persistence;
 using Carbonate.Infrastructure.Platform.Audit;
 using Carbonate.Infrastructure.Platform.Auth;
@@ -34,7 +36,11 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(3);
         });
 
+        // Stock and templates (D, FR-24-30)
+        services.AddScoped<IEventTemplateSeeder, EventTemplateSeeder>();
+
         services.AddScoped<PlatformSeeder>();
+        services.AddScoped<TemplateSeeder>();
         services.AddHostedService<PlatformSeedHostedService>();
 
         return services;

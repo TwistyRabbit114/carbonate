@@ -11,6 +11,13 @@ import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
 import '@/styles/global.scss';
 
+//`npm run dev:mocks` swaps the api for msw in the browser. the condition is fixed at build
+//time, so a production build drops this branch and the mock code with it
+if (import.meta.env.DEV && import.meta.env.MODE === 'mocks') {
+  const { worker } = await import('./test/msw/browser');
+  await worker.start({ onUnhandledRequest: 'bypass' });
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

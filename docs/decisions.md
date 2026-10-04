@@ -7,6 +7,64 @@ Format: date · decision · why · who · what changes in the Task 3 report.
 
 ---
 
+## D-008 — The template's event type lives in `DefinitionJson`, not a column
+
+**4 Oct 2026 · Owner: D**
+
+FR-25 picks a template by division, `BoardType='Event'` **and event type**. `CHECKLIST_TEMPLATE` has no
+`EventType` column, so the type is an `eventTypes` array inside `DefinitionJson`. The seeder loads the
+division's active Event templates — a handful of rows — and matches in memory. An empty array means the
+template applies to any type; a template naming other types is never used as a fallback.
+
+**Why.** Adding a column is a schema change C owns, on the day schema v1 merged, for a lookup that
+returns under ten rows. The boring option (§14 rule 4) is to match in memory.
+
+**Trade-off.** The event type is not indexable and not visible in a `SELECT` over the table. If the
+template count ever grows past a handful, the lookup moves into the `WHERE` clause and nothing else
+changes.
+
+**Task 3 report.** Describe the template definition JSON shape (`docs/seed-data.md`) alongside the
+Task 1 §5.3 schemas.
+
+---
+
+## D-007 — Deployment configuration: app settings, Key Vault references and the `UNMASK` grant
+
+**4 Oct 2026 · Owner: D**
+
+How the dev App Service actually reaches its dependencies, recorded because none of it is visible in
+the repository:
+
+- Each App Service holds a **system-assigned managed identity**, which is a contained database user in
+  `carbonate-dev` created `FROM EXTERNAL PROVIDER`, in `db_datareader` and `db_datawriter` only.
+- Those identities are additionally granted **`UNMASK`**. Dynamic Data Masking is protection against
+  someone connecting to the database directly; it is *not* the mechanism that masks `$cost` fields
+  between application roles — `IFinancialMasker` is. Without `UNMASK` the app reads `0.00` for every
+  masked column and a Director would see masked costs, which is the opposite of the intent. This
+  amends D-005.
+- Secrets are **Key Vault references** (`@Microsoft.KeyVault(SecretUri=…/)`), not literal app settings:
+  `Jwt__SigningKey` → `JwtSigningKey`, `Auth__MfaEncryptionKey` → `AuthMfaEncryptionKey`. The trailing
+  slash means the current version, so rotating a secret needs no App Service change.
+- `ConnectionStrings__Sql` uses `Authentication=Active Directory Default`, so the identity is picked up
+  from the platform. There is no password in it because no SQL password exists.
+- `Jwt__Issuer` and `Jwt__Audience` are the environment's own base URL, so a dev token is not valid in
+  production.
+
+**Why record it.** `docs/hosting.md` claims Key Vault holds the JWT signing key. This is the proof, and
+it is what someone rebuilding the environment from scratch needs.
+
+**Trade-off.** Configuration that lives only in the portal is configuration that can drift between dev
+and production. Infrastructure-as-code (Bicep) would fix that and is out of scope at this size; the
+settings table above is the mitigation.
+
+**Migrations are applied by a human, not the app.** The app identity has no DDL rights by design, so
+`dotnet ef database update` runs under the Entra admin account. A deploy never migrates.
+
+**Task 3 report.** Task 1 §7 describes DDM as a masking control. Clarify that it guards direct database
+access and that the application-layer masker is what separates roles.
+
+---
+
 ## D-006 — How the MFA steps authenticate, and a new secret
 
 **3 Oct 2026 · Owner: C**

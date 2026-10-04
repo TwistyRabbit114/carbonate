@@ -17,7 +17,7 @@ export default function MfaVerifyPage() {
       <title>Enter your code — Carbonate</title>
       <h1 className={styles.heading}>Enter your code</h1>
       <p className={styles.lead}>Open your authenticator app and enter the 6-digit code for Carbonate.</p>
-      <MfaCodeForm endpoint="/auth/mfa/verify" mfaToken={pendingMfa.mfaToken} submitLabel="Verify" />
+      <MfaCodeForm step="verify" mfaToken={pendingMfa.mfaToken} submitLabel="Verify" />
       <p className={styles.footnote}>
         <Link to={backToLogin}>Start again</Link>
       </p>

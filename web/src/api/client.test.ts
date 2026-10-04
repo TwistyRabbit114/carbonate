@@ -1,5 +1,6 @@
 import { delay, http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { signedInSession } from '@/test/fixtures/sessions';
 import { server } from '@/test/msw/server';
 import { apiFetch, refreshSession, setAccessToken, setSessionExpiredHandler } from './client';
 import { ApiError } from './problem';
@@ -24,6 +25,19 @@ describe('apiFetch', () => {
     );
 
     await expect(apiFetch('/me')).resolves.toEqual({ auth: 'Bearer token-1' });
+  });
+
+  it('keeps a bearer header the caller set itself, like the mfa token during setup', async () => {
+    setAccessToken('token-1');
+    server.use(
+      http.post('/api/auth/mfa/enrol', ({ request }) =>
+        HttpResponse.json({ auth: request.headers.get('Authorization') }),
+      ),
+    );
+
+    await expect(
+      apiFetch('/auth/mfa/enrol', { method: 'POST', headers: { Authorization: 'Bearer mfa-1' } }),
+    ).resolves.toEqual({ auth: 'Bearer mfa-1' });
   });
 
   it('serialises json bodies and sets the content type', async () => {
@@ -84,7 +98,7 @@ describe('when the access token has expired', () => {
   it('refreshes once and retries with the new token', async () => {
     setAccessToken('stale');
     server.use(
-      http.post('/api/auth/refresh', () => HttpResponse.json({ accessToken: 'fresh' })),
+      http.post('/api/auth/refresh', () => HttpResponse.json(signedInSession('fresh'))),
       http.get('/api/me', ({ request }) =>
         request.headers.get('Authorization') === 'Bearer fresh'
           ? HttpResponse.json({ ok: true })
@@ -102,7 +116,7 @@ describe('when the access token has expired', () => {
       http.post('/api/auth/refresh', async () => {
         refreshCalls++;
         await delay(20);
-        return HttpResponse.json({ accessToken: 'fresh' });
+        return HttpResponse.json(signedInSession('fresh'));
       }),
       http.get('/api/events/:id', ({ request, params }) =>
         request.headers.get('Authorization') === 'Bearer fresh'
@@ -138,7 +152,7 @@ describe('when the access token has expired', () => {
   });
 
   it("doesn't refresh when login itself answers 401", async () => {
-    const refresh = vi.fn(() => HttpResponse.json({ accessToken: 'x' }));
+    const refresh = vi.fn(() => HttpResponse.json(signedInSession('x')));
     server.use(
       http.post('/api/auth/refresh', refresh),
       http.post('/api/auth/login', () =>

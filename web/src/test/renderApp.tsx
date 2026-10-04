@@ -5,6 +5,7 @@ import { RouterProvider } from 'react-router/dom';
 import type { MeResponse } from '@/api/types';
 import { Providers } from '@/app/Providers';
 import { routes } from '@/app/router';
+import { signedInSession } from './fixtures/sessions';
 import { server } from './msw/server';
 
 type RenderAppOptions = {
@@ -20,7 +21,7 @@ const emptyPage = { items: [], page: 1, pageSize: 200, total: 0 };
 export function renderApp({ me, route = '/', handlers = [] }: RenderAppOptions) {
   server.use(
     http.post('/api/auth/refresh', () =>
-      me ? HttpResponse.json({ accessToken: 'test-token' }) : new HttpResponse(null, { status: 401 }),
+      me ? HttpResponse.json(signedInSession()) : new HttpResponse(null, { status: 401 }),
     ),
     http.get('/api/me', () => (me ? HttpResponse.json(me) : new HttpResponse(null, { status: 401 }))),
     http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })),

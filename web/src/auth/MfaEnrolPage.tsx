@@ -3,7 +3,7 @@ import { Link, Navigate, useSearchParams } from 'react-router';
 import { apiFetch } from '@/api/client';
 import type { MfaEnrolResponse } from '@/api/types';
 import { Alert } from '@/components/Alert';
-import { useAuth } from './AuthContext';
+import { mfaBearer, useAuth } from './AuthContext';
 import { MfaCodeForm } from './MfaCodeForm';
 import { nextQuery } from './redirect';
 import styles from './Auth.module.scss';
@@ -40,7 +40,8 @@ export default function MfaEnrolPage() {
   //especially when they switch to their authenticator app and come back
   const enrolment = useQuery({
     queryKey: ['mfa-enrolment', mfaToken],
-    queryFn: () => apiFetch<MfaEnrolResponse>('/auth/mfa/enrol', { method: 'POST', json: { mfaToken } }),
+    queryFn: () =>
+      apiFetch<MfaEnrolResponse>('/auth/mfa/enrol', { method: 'POST', headers: mfaBearer(mfaToken!) }),
     enabled: mfaToken !== undefined,
     staleTime: Infinity,
     gcTime: 0,
@@ -84,7 +85,10 @@ export default function MfaEnrolPage() {
             </li>
             <li>Enter the 6-digit code the app shows.</li>
           </ol>
-          <MfaCodeForm endpoint="/auth/mfa/confirm" mfaToken={mfaToken} submitLabel="Finish setup" />
+          <MfaCodeForm step="confirm" mfaToken={mfaToken} submitLabel="Finish setup" />
+          <p className={styles.footnote}>
+            <Link to={backToLogin}>Start again</Link>
+          </p>
         </>
       )}
     </>

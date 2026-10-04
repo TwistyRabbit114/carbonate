@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { z } from 'zod';
 import { apiFetch } from '@/api/client';
 import { isApiError } from '@/api/problem';
-import type { LoginResponse } from '@/api/types';
+import type { SessionResponse } from '@/api/types';
 import { Alert } from '@/components/Alert';
 import { Button } from '@/components/Button';
 import { Field } from '@/components/Field';
@@ -29,17 +29,15 @@ type LoginValues = z.infer<typeof loginSchema>;
 //                              ERRORS
 //----------------------------------------------------------\\
 
-//wrong email and wrong password read the same, so the page never confirms an account exists
+//wrong email, wrong password and a locked account all come back as the same 401, so the page
+//never confirms an account exists or that it's locked (NFR-20)
 function describeLoginError(error: unknown) {
   if (!isApiError(error)) return 'Something went wrong. Try again.';
   if (error.status === 0) return "Can't reach Carbonate right now. Check your connection and try again.";
-
-  //TODO(plan): how do lockout and a deactivated account come back from login? assumed 423 or a problem type, confirm with C
-  if (error.status === 423 || error.problem.type?.endsWith('/account-locked')) {
-    return 'Too many attempts. Try again in 15 minutes.';
+  if (error.status === 429) return 'Too many attempts. Wait a minute and try again.';
+  if (error.status === 400 || error.status === 401) {
+    return 'Email or password is incorrect. After too many tries the account locks for 15 minutes.';
   }
-  if (error.status === 429) return 'Too many attempts. Wait a few minutes and try again.';
-  if (error.status === 400 || error.status === 401) return 'Email or password is incorrect.';
   return 'Something went wrong. Try again.';
 }
 
@@ -61,18 +59,18 @@ export default function LoginPage() {
   async function onSubmit(values: LoginValues) {
     setServerError(null);
     try {
-      const result = await apiFetch<LoginResponse>('/auth/login', { method: 'POST', json: values });
+      const session = await apiFetch<SessionResponse>('/auth/login', { method: 'POST', json: values });
 
       //director and accounts need a code first (FR-34), the token for that step stays in memory
-      if ('mfaRequired' in result) {
-        beginMfa({ mfaToken: result.mfaToken });
-        const step = result.mfaEnrolmentRequired ? 'mfa-setup' : 'mfa';
+      if (session.mfaRequired) {
+        beginMfa({ mfaToken: session.mfaToken });
+        const step = session.mfaEnrolmentRequired ? 'mfa-setup' : 'mfa';
         navigate(`/login/${step}${nextQuery(params.get('next'))}`);
         return;
       }
 
       //the layout moves on as soon as the session exists
-      await completeLogin(result.accessToken);
+      await completeLogin(session.accessToken);
     } catch (error) {
       setServerError(describeLoginError(error));
     }

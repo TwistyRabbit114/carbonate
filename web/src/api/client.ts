@@ -1,4 +1,5 @@
 import { ApiError } from './problem';
+import type { SignedInSession } from './types';
 
 //----------------------------------------------------------\\
 //                              TOKEN STORE
@@ -38,8 +39,8 @@ export function refreshSession(): Promise<boolean> {
         setAccessToken(null);
         return false;
       }
-      const body = (await res.json()) as { accessToken: string };
-      setAccessToken(body.accessToken);
+      const session = (await res.json()) as SignedInSession;
+      setAccessToken(session.accessToken);
       return true;
     })
     .catch(() => {
@@ -79,7 +80,8 @@ export async function apiFetch<T>(path: string, request: ApiRequest = {}): Promi
 
 async function send(path: string, { json, headers, ...init }: ApiRequest) {
   const merged = new Headers(headers);
-  if (accessToken) merged.set('Authorization', `Bearer ${accessToken}`);
+  //a caller's own bearer wins, mfa setup sends the mfa token that way before there's a session
+  if (accessToken && !merged.has('Authorization')) merged.set('Authorization', `Bearer ${accessToken}`);
   if (json !== undefined) merged.set('Content-Type', 'application/json');
 
   try {

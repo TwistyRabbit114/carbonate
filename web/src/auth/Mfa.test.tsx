@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import type { MeResponse } from '@/api/types';
 import { axeViolations } from '@/test/axe';
+import { mfaStep, signedInSession } from '@/test/fixtures/sessions';
 import { users } from '@/test/fixtures/users';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
@@ -15,9 +16,7 @@ async function passwordStep(me: MeResponse, enrol = false, route = '/login') {
   const view = renderApp({ me: null, route });
   server.use(
     http.get('/api/me', () => HttpResponse.json(me)),
-    http.post('/api/auth/login', () =>
-      HttpResponse.json({ mfaRequired: true, mfaToken: 'mfa-1', mfaEnrolmentRequired: enrol }),
-    ),
+    http.post('/api/auth/login', () => HttpResponse.json(mfaStep('mfa-1', enrol))),
   );
 
   const user = userEvent.setup();
@@ -35,11 +34,13 @@ async function passwordStep(me: MeResponse, enrol = false, route = '/login') {
 describe('mfa verify', () => {
   it('asks the director for a code, accepts it with a space, then carries on', async () => {
     let sent: unknown;
+    let auth: string | null = 'not called';
     const { router, user } = await passwordStep(users.director, false, '/login?next=%2Fstock');
     server.use(
       http.post('/api/auth/mfa/verify', async ({ request }) => {
         sent = await request.json();
-        return HttpResponse.json({ accessToken: 'token' });
+        auth = request.headers.get('Authorization');
+        return HttpResponse.json(signedInSession('token'));
       }),
     );
 
@@ -50,10 +51,12 @@ describe('mfa verify', () => {
     await user.click(screen.getByRole('button', { name: 'Verify' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/stock'));
+    //verify is the one mfa call that takes the token in the body rather than as the bearer
     expect(sent).toEqual({ mfaToken: 'mfa-1', code: '123456' });
+    expect(auth).toBeNull();
   });
 
-  it('says so when the code is wrong', async () => {
+  it('says so when the code is wrong, and offers a way to start again', async () => {
     const { user } = await passwordStep(users.director);
     server.use(http.post('/api/auth/mfa/verify', () => new HttpResponse(null, { status: 401 })));
 
@@ -61,10 +64,11 @@ describe('mfa verify', () => {
     await user.click(screen.getByRole('button', { name: 'Verify' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent("That code didn't work.");
+    expect(screen.getByRole('link', { name: 'Start again' })).toHaveAttribute('href', '/login');
   });
 
   it('checks the code looks right before sending it', async () => {
-    const verify = vi.fn(() => HttpResponse.json({ accessToken: 'token' }));
+    const verify = vi.fn(() => HttpResponse.json(signedInSession('token')));
     const { user } = await passwordStep(users.director);
     server.use(http.post('/api/auth/mfa/verify', verify));
 
@@ -95,16 +99,26 @@ describe('mfa verify', () => {
 
 describe('mfa setup', () => {
   it('shows the setup key, confirms the first code and lands accounts on finance', async () => {
-    let enrolCalls = 0;
-    const confirm = vi.fn(() => HttpResponse.json({ accessToken: 'token' }));
+    const enrolCalls: Array<{ auth: string | null; body: string }> = [];
+    const confirmCalls: Array<{ auth: string | null; body: unknown }> = [];
     server.use(
-      http.post('/api/auth/mfa/enrol', () => {
-        enrolCalls++;
+      http.post('/api/auth/mfa/enrol', async ({ request }) => {
+        enrolCalls.push({ auth: request.headers.get('Authorization'), body: await request.text() });
         return HttpResponse.json({ otpauthUri: setupUri });
       }),
-      http.post('/api/auth/mfa/confirm', confirm),
+      http.post('/api/auth/mfa/confirm', async ({ request }) => {
+        confirmCalls.push({ auth: request.headers.get('Authorization'), body: await request.json() });
+        return HttpResponse.json(signedInSession('token'));
+      }),
     );
     const { router, user } = await passwordStep(users.accounts, true);
+    const meAuth: Array<string | null> = [];
+    server.use(
+      http.get('/api/me', ({ request }) => {
+        meAuth.push(request.headers.get('Authorization'));
+        return HttpResponse.json(users.accounts);
+      }),
+    );
 
     expect(await screen.findByText('JBSW Y3DP EHPK 3PXP')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /open it in your authenticator app/i })).toHaveAttribute(
@@ -120,8 +134,26 @@ describe('mfa setup', () => {
     await user.click(screen.getByRole('button', { name: 'Finish setup' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/finance'));
-    expect(confirm).toHaveBeenCalledOnce();
-    expect(enrolCalls).toBe(1);
+
+    //enrol and confirm carry the mfa token as the bearer, and only once there's a session
+    //does the real access token take over
+    expect(enrolCalls).toEqual([{ auth: 'Bearer mfa-1', body: '' }]);
+    expect(confirmCalls).toEqual([{ auth: 'Bearer mfa-1', body: { code: '654321' } }]);
+    expect(meAuth).toEqual(['Bearer token']);
+  });
+
+  it('offers a way to start again if the sign-in ran out while setting up the app', async () => {
+    server.use(
+      http.post('/api/auth/mfa/enrol', () => HttpResponse.json({ otpauthUri: setupUri })),
+      http.post('/api/auth/mfa/confirm', () => new HttpResponse(null, { status: 401 })),
+    );
+    const { user } = await passwordStep(users.accounts, true);
+
+    await user.type(await screen.findByLabelText('6-digit code'), '654321');
+    await user.click(screen.getByRole('button', { name: 'Finish setup' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('or start again');
+    expect(screen.getByRole('link', { name: 'Start again' })).toHaveAttribute('href', '/login');
   });
 
   it("refuses a setup link that isn't an otpauth uri", async () => {

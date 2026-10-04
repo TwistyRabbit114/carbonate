@@ -2,6 +2,7 @@ import { delay, http, HttpResponse } from 'msw';
 import type { EventStatus } from '@/api/types';
 import { permissionCheck } from '@/auth/permissions';
 import { demoEvents } from '../fixtures/events';
+import { mfaStep, signedInSession } from '../fixtures/sessions';
 import { users } from '../fixtures/users';
 
 //a stand-in for the api so screens can be built and demoed before the real endpoints exist.
@@ -21,7 +22,7 @@ const accountByEmail = new Map(
 );
 
 //director shows the everyday code step, the bookkeeper shows first-time setup
-const mfaStep: Partial<Record<AccountKey, 'verify' | 'enrol'>> = {
+const mfaAccounts: Partial<Record<AccountKey, 'verify' | 'enrol'>> = {
   director: 'verify',
   accounts: 'enrol',
 };
@@ -48,6 +49,11 @@ function accountFromMfaToken(token: unknown) {
   return isAccount(key) ? key : null;
 }
 
+//mfa enrol and confirm get the mfa token as the bearer, like the real api
+function accountFromMfaBearer(header: string | null) {
+  return accountFromMfaToken(header?.replace(/^Bearer /, ''));
+}
+
 //----------------------------------------------------------\\
 //                              STATE
 //----------------------------------------------------------\\
@@ -67,16 +73,29 @@ export function resetMocks() {
 //                              RESPONSES
 //----------------------------------------------------------\\
 
-function problem(status: number, title: string) {
+function problem(status: number, title: string, detail?: string) {
   return HttpResponse.json(
-    { status, title },
+    { status, title, detail },
     { status, headers: { 'Content-Type': 'application/problem+json' } },
   );
 }
 
+//the api's wording, so the screens are tried against the same answers they'll really get
+const wrongPassword = () =>
+  problem(
+    401,
+    'Sign in required.',
+    'That email and password do not match, or the account is temporarily locked.',
+  );
+const wrongCode = () =>
+  problem(401, 'Sign in required.', 'That code is not right. Check the app and try again.');
+
+//an expired or missing bearer is turned away before the endpoint runs, with no body
+const noBearer = () => new HttpResponse(null, { status: 401 });
+
 function signedIn(key: AccountKey) {
   mockSession = key;
-  return HttpResponse.json({ accessToken: accessTokenFor(key), user: users[key].user });
+  return HttpResponse.json(signedInSession(accessTokenFor(key)));
 }
 
 async function readJson(request: Request) {
@@ -96,21 +115,25 @@ export const authHandlers = [
     await delay();
     const { email, password } = await readJson(request);
     const key = typeof email === 'string' ? accountByEmail.get(email.toLowerCase()) : undefined;
-    if (!key || password !== demoPassword) return problem(401, 'Email or password is incorrect');
+    if (!key || password !== demoPassword) return wrongPassword();
 
-    const step = mfaStep[key];
+    const step = mfaAccounts[key];
     if (!step) return signedIn(key);
-    return HttpResponse.json({
-      mfaRequired: true,
-      mfaToken: mfaTokenFor(key),
-      mfaEnrolmentRequired: step === 'enrol',
-    });
+    return HttpResponse.json(mfaStep(mfaTokenFor(key), step === 'enrol'));
+  }),
+
+  http.post('/api/auth/mfa/verify', async ({ request }) => {
+    await delay();
+    const { mfaToken, code } = await readJson(request);
+    const key = accountFromMfaToken(mfaToken);
+    if (!key) return problem(401, 'Sign in required.', 'Your sign-in timed out. Please start again.');
+    return code === demoMfaCode ? signedIn(key) : wrongCode();
   }),
 
   http.post('/api/auth/mfa/enrol', async ({ request }) => {
     await delay();
-    const key = accountFromMfaToken((await readJson(request)).mfaToken);
-    if (!key) return problem(401, 'Start again');
+    const key = accountFromMfaBearer(request.headers.get('Authorization'));
+    if (!key) return noBearer();
 
     const label = encodeURIComponent(`Carbonate:${users[key].user.email}`);
     return HttpResponse.json({
@@ -118,19 +141,16 @@ export const authHandlers = [
     });
   }),
 
-  ...['/api/auth/mfa/verify', '/api/auth/mfa/confirm'].map((path) =>
-    http.post(path, async ({ request }) => {
-      await delay();
-      const body = await readJson(request);
-      const key = accountFromMfaToken(body.mfaToken);
-      if (!key || body.code !== demoMfaCode) return problem(401, 'Invalid code');
-      return signedIn(key);
-    }),
-  ),
+  http.post('/api/auth/mfa/confirm', async ({ request }) => {
+    await delay();
+    const key = accountFromMfaBearer(request.headers.get('Authorization'));
+    if (!key) return noBearer();
+    return (await readJson(request)).code === demoMfaCode ? signedIn(key) : wrongCode();
+  }),
 
   http.post('/api/auth/refresh', () => {
     if (!mockSession) return new HttpResponse(null, { status: 401 });
-    return HttpResponse.json({ accessToken: accessTokenFor(mockSession) });
+    return HttpResponse.json(signedInSession(accessTokenFor(mockSession)));
   }),
 
   http.post('/api/auth/logout', () => {

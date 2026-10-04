@@ -17,6 +17,11 @@ export type PendingMfa = {
   mfaToken: string;
 };
 
+//mfa enrol and confirm take the mfa token as the bearer token, verify takes it in the body
+export function mfaBearer(mfaToken: string) {
+  return { Authorization: `Bearer ${mfaToken}` };
+}
+
 export type AuthContextValue = {
   state: AuthState;
   pendingMfa: PendingMfa | null;

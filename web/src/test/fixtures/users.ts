@@ -127,7 +127,12 @@ function account(
   permissions: Permission[],
 ) {
   return {
-    user: { userId: `00000000-0000-0000-0000-00000000000${id}`, fullName, email },
+    user: {
+      userId: `00000000-0000-0000-0000-00000000000${id}`,
+      fullName,
+      email,
+      employmentType: role === 'CasualCrew' ? 'Casual' : 'Permanent',
+    },
     roles: [role],
     permissions,
   } satisfies MeResponse;

@@ -20,8 +20,9 @@ public class StockRulesTests
 
         warning.ShouldNotBeNull();
         warning.Code.ShouldBe(StockWarningCodes.Shortfall);
-        warning.Details["expected"].ShouldBe(270m);
-        warning.Details["planned"].ShouldBe(200m);
+        warning.Expected.ShouldBe(270m);
+        warning.Planned.ShouldBe(200m);
+        warning.Message.ShouldNotBeNullOrWhiteSpace();
     }
 
     [Fact]
@@ -77,7 +78,8 @@ public class StockRulesTests
 
         warning.ShouldNotBeNull();
         warning.Code.ShouldBe(StockWarningCodes.LeadTime);
-        warning.Details["leadTimeDays"].ShouldBe(5);
+        warning.LeadTimeDays.ShouldBe(5);
+        warning.RequiredBy.ShouldBe(Today.AddDays(3));
     }
 
     [Fact]

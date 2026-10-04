@@ -7,6 +7,51 @@ Format: date · decision · why · who · what changes in the Task 3 report.
 
 ---
 
+## D-010 — The Google OAuth callback is anonymous, with the user carried in a signed `state`
+
+**4 Oct 2026 · Owner: D**
+
+`GET /api/calendar/oauth/callback` is `[AllowAnonymous]`. The user it belongs to travels in the OAuth
+`state` parameter as a signed token: five-minute expiry, a `purpose` claim of `calendar_oauth`, subject
+= the user id, signed with the existing `Jwt:SigningKey`. The callback validates it and refuses
+anything expired, unsigned, signed by something else, or carrying a different purpose. It never issues
+a session token — connecting a calendar is not a sign-in.
+
+This takes the anonymous endpoint list from four to five.
+
+**Why.** Google redirects the **browser** to the callback, and a browser following a redirect sends no
+`Authorization` header. A permission attribute on that endpoint can never fire, so leaving one there
+would be security theatre: the endpoint would be unreachable, not protected. `state` is the parameter
+OAuth defines for carrying context across the round trip, and signing it is also the CSRF defence
+`state` exists to provide. A bare user id in the query string would let anyone connect their own Google
+account to someone else's Carbonate user.
+
+**Why a signed token rather than a state table.** A row would let us mark a state used, which a token
+cannot. It is also a schema change, and the schema is C's. For a value that lives five minutes, the
+token is the boring option (§14 rule 4).
+
+**Trade-off.** A state is replayable inside its five-minute window. The exposure is bounded: a replay
+needs Google's authorisation code too, and those are single-use, so a second attempt has nothing to
+redeem. If a state table is added later, `ICalendarStateTokens` is the only thing that changes.
+
+**Task 3 report.** Task 1 §7.1 lists the anonymous endpoints. Add the callback and this reasoning —
+it is a good example of a control that had to change shape because of how a protocol actually works.
+
+---
+
+## D-009 — Event board cards are `Open` or `Done`
+
+**4 Oct 2026 · Owner: B**
+
+Recorded here because D's template seeder (FR-25) sets the status on every seeded card. A card is
+`Done` exactly when its column has `IsDoneColumn = true`, otherwise `Open`; the boards service keeps it
+in step on every move, along with `CompletedAt`. Admin boards keep the plan's three columns:
+`Assigned`, `InProgressOrNeedsReview`, `Complete`.
+
+**Task 3 report.** `TASK_CARD.Status` is described without a vocabulary. State both sets.
+
+---
+
 ## D-008 — The template's event type lives in `DefinitionJson`, not a column
 
 **4 Oct 2026 · Owner: D**

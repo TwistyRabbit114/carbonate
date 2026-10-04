@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.Json.Serialization;
 
 namespace Carbonate.Application.Features.Stock;
 
@@ -12,11 +11,22 @@ namespace Carbonate.Application.Features.Stock;
 /// nobody finds out at doors.
 /// </remarks>
 /// <param name="Code">Stable, for the SPA to key off: <c>SHORTFALL</c> or <c>LEAD_TIME</c>.</param>
-public sealed record StockWarning(string Code, string Message)
-{
-    [JsonExtensionData]
-    public Dictionary<string, object?> Details { get; init; } = [];
-}
+/// <param name="Message">
+/// The sentence to show. The server owns the wording so the SPA does not compose it twice — once on
+/// the requirements screen and once on the order list.
+/// </param>
+/// <remarks>
+/// Typed fields rather than a loose bag, to match <c>StockWarningDto</c> in the API contract: a
+/// dictionary becomes <c>Record&lt;string, unknown&gt;</c> in Chris's generated types, which helps
+/// nobody. Only the fields belonging to the warning's own code are set.
+/// </remarks>
+public sealed record StockWarning(
+    string Code,
+    string Message,
+    decimal? Expected = null,
+    decimal? Planned = null,
+    int? LeadTimeDays = null,
+    DateOnly? RequiredBy = null);
 
 public static class StockWarningCodes
 {
@@ -82,10 +92,9 @@ public static class StockRules
 
         return new StockWarning(
             StockWarningCodes.Shortfall,
-            $"Planned {quantityRequired:0.##}, but {packSize} guests are expected to use about {expected:0.##}.")
-        {
-            Details = { ["expected"] = expected, ["planned"] = quantityRequired },
-        };
+            $"Planned {quantityRequired:0.##}, but {packSize} guests are expected to use about {expected:0.##}.",
+            Expected: expected,
+            Planned: quantityRequired);
     }
 
     /// <summary>
@@ -106,17 +115,16 @@ public static class StockRules
             return null;
         }
 
-        // Invariant, not the server's locale: these dates are read by the SPA and by tests, and a
-        // machine-readable value that changes with a culture setting is a bug waiting for a new region.
+        // Invariant in the message, not the server's locale: a date a person reads should not flip
+        // between day-first and month-first depending on where the app happens to be running.
         var arrival = earliestArrival.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         var needed = requiredByDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
         return new StockWarning(
             StockWarningCodes.LeadTime,
             $"The supplier needs {leadTimeDays} days, so an order placed today arrives "
-            + $"{arrival} — after it is needed on {needed}.")
-        {
-            Details = { ["leadTimeDays"] = leadTimeDays, ["requiredBy"] = needed },
-        };
+            + $"{arrival} — after it is needed on {needed}.",
+            LeadTimeDays: leadTimeDays,
+            RequiredBy: requiredByDate);
     }
 }

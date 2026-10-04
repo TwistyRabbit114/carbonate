@@ -57,6 +57,7 @@ public static class DependencyInjection
         // Calendar sync (D, FR-40-42). Outbound only: the worker drains CALENDAR_OUTBOX so no user
         // request ever waits on Google (NFR-12).
         services.AddScoped<ICalendarClient, UnconfiguredCalendarClient>();
+        services.AddSingleton<ICalendarStateTokens, CalendarStateTokens>();
         services.AddHostedService<CalendarSyncWorker>();
 
         // Stock and templates (D, FR-24-30)

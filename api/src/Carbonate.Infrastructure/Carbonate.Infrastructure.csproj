@@ -6,6 +6,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- FR-31 file storage. Azure.Identity gives the managed identity that signs user-delegation
+         SAS links, so no storage account key exists anywhere (docs/hosting.md). -->
+    <PackageReference Include="Azure.Identity" Version="1.17.1" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.26.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

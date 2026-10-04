@@ -128,6 +128,40 @@
 }
 
 //----------------------------------------------------------\\
+//                              DROP TARGETS
+//----------------------------------------------------------\\
+
+//while dragging: dashed green where the card may go, solid green under the pointer, faded where it
+//can't go. each one also says so in words, colour is never the only signal
+.allowed {
+  border: 2px dashed var(--accent);
+}
+
+.over {
+  border: 2px solid var(--accent-strong);
+  background: var(--accent-tint);
+}
+
+.blocked,
+.checking {
+  opacity: 0.55;
+}
+
+.dropHint {
+  margin: 0;
+  padding: var(--space-1) 0.875rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+
+  .allowed &,
+  .over & {
+    color: var(--accent-strong);
+  }
+}
+
+//----------------------------------------------------------\\
 //                              SKELETON
 //----------------------------------------------------------\\
 

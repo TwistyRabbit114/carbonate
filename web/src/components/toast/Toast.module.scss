@@ -1,0 +1,101 @@
+@use '@/styles/mixins' as *;
+
+//bottom right on desktop, top on phones where the tab bar owns the bottom edge
+.region {
+  position: fixed;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(22rem, calc(100vw - 2rem));
+  pointer-events: none;
+
+  @include phone {
+    top: calc(var(--space-3) + env(safe-area-inset-top));
+    right: var(--space-4);
+    bottom: auto;
+    left: var(--space-4);
+    width: auto;
+  }
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) var(--space-3) 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgba(22, 33, 28, 0.12);
+  pointer-events: auto;
+  animation: slide-in 160ms ease-out;
+}
+
+.success {
+  border-color: var(--accent);
+}
+
+.error {
+  border-color: var(--danger);
+  background: var(--danger-tint);
+  color: var(--danger);
+}
+
+.icon {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 0.0625rem;
+
+  .success & {
+    color: var(--accent-strong);
+  }
+}
+
+.message {
+  flex: 1;
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+
+.close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: -0.25rem 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  &:hover {
+    background: rgba(22, 33, 28, 0.06);
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}

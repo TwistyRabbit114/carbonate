@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ComponentPropsWithRef } from 'react';
 import { LoaderCircle } from 'lucide-react';
 import { cx } from '@/lib/cx';
 import styles from './Button.module.scss';
@@ -7,7 +7,8 @@ import styles from './Button.module.scss';
 //                              TYPES
 //----------------------------------------------------------\\
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+//with a ref, so a dialog can put focus on one of its buttons
+type ButtonProps = ComponentPropsWithRef<'button'> & {
   variant?: 'primary' | 'default' | 'ghost' | 'danger';
   busy?: boolean;
   block?: boolean;

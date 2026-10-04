@@ -28,6 +28,10 @@ function openBoard(events: EventListItem[] = demoEvents(), me: MeResponse = user
 
 const column = (name: string) => screen.getByRole('region', { name });
 
+//a card is the list item around its title link
+const card = (scope: ReturnType<typeof within>, name: string) =>
+  within(scope.getByRole('link', { name }).closest('li')!);
+
 //----------------------------------------------------------\\
 //                              COLUMNS
 //----------------------------------------------------------\\
@@ -52,14 +56,13 @@ describe('events board', () => {
     openBoard();
     await screen.findByText('Naidoo Wedding');
 
-    const confirmed = within(column('Confirmed / In Planning'));
-    const naidoo = confirmed.getByRole('link', { name: /Naidoo Wedding/ });
-    expect(within(naidoo).getByText('Confidential')).toBeInTheDocument();
-    expect(within(naidoo).getByText('180 guests · Wedding')).toBeInTheDocument();
+    const naidoo = card(within(column('Confirmed / In Planning')), 'Naidoo Wedding');
+    expect(naidoo.getByText('Confidential')).toBeInTheDocument();
+    expect(naidoo.getByText('180 guests · Wedding')).toBeInTheDocument();
 
-    const live = within(column('In Progress')).getByRole('link', { name: /Riverlight Festival/ });
-    expect(within(live).getByText('Live now · Riverside Grounds')).toBeInTheDocument();
-    expect(within(live).getByText(/^2\s500 guests · Festival$/)).toBeInTheDocument();
+    const live = card(within(column('In Progress')), 'Riverlight Festival');
+    expect(live.getByText('Live now · Riverside Grounds')).toBeInTheDocument();
+    expect(live.getByText(/^2\s500 guests · Festival$/)).toBeInTheDocument();
 
     //the actual pack size wins once it's known
     expect(within(column('Finished')).getByText('86 guests · Corporate')).toBeInTheDocument();
@@ -71,7 +74,7 @@ describe('events board', () => {
 
     const titles = within(column('Confirmed / In Planning'))
       .getAllByRole('link')
-      .map((link) => link.firstElementChild?.firstChild?.textContent);
+      .map((link) => link.textContent);
     expect(titles).toEqual(['Vantage Brand Activation', 'Naidoo Wedding', 'Meridian Year-End Function']);
   });
 
@@ -93,7 +96,7 @@ describe('events board', () => {
   it('links each card to its event', async () => {
     openBoard();
 
-    expect(await screen.findByRole('link', { name: /Naidoo Wedding/ })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: 'Naidoo Wedding' })).toHaveAttribute(
       'href',
       '/events/0e000000-0000-0000-0000-000000000001',
     );

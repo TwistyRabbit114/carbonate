@@ -1,4 +1,5 @@
 import { delay, http, HttpResponse } from 'msw';
+import type { EventStatus } from '@/api/types';
 import { permissionCheck } from '@/auth/permissions';
 import { demoEvents } from '../fixtures/events';
 import { users } from '../fixtures/users';
@@ -163,6 +164,77 @@ export const eventHandlers = [
 
     return HttpResponse.json({ items, page: 1, pageSize: 200, total: items.length });
   }),
+
+  http.get('/api/events/:eventId/allowed-transitions', async ({ request, params }) => {
+    await delay();
+    if (!accountFromBearer(request.headers.get('Authorization')))
+      return new HttpResponse(null, { status: 401 });
+
+    const event = mockEvents.find((candidate) => candidate.eventId === params.eventId);
+    return event ? HttpResponse.json(allowedFrom[event.status]) : problem(404, 'Not found');
+  }),
+
+  http.post('/api/events/:eventId/transitions', async ({ request, params }) => {
+    await delay();
+    const key = accountFromBearer(request.headers.get('Authorization'));
+    if (!key) return new HttpResponse(null, { status: 401 });
+    if (!permissionCheck(users[key].permissions).can('event.transition')) return problem(403, 'Forbidden');
+
+    const index = mockEvents.findIndex((candidate) => candidate.eventId === params.eventId);
+    const event = mockEvents[index];
+    if (!event) return problem(404, 'Not found');
+
+    const { to, rowVersion } = await readJson(request);
+    if (rowVersion !== event.rowVersion) {
+      return HttpResponse.json(
+        {
+          type: '/problems/concurrency-conflict',
+          title: 'Changed by someone else',
+          status: 409,
+          current: event,
+        },
+        { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+      );
+    }
+    if (!allowedFrom[event.status].includes(to as EventStatus)) {
+      return HttpResponse.json(
+        {
+          type: '/problems/invalid-transition',
+          title: 'Invalid transition',
+          status: 409,
+          detail: invalidMoveReason(event.status),
+        },
+        { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+      );
+    }
+
+    const moved = { ...event, status: to as EventStatus, rowVersion: nextRowVersion() };
+    mockEvents[index] = moved;
+    return HttpResponse.json(moved);
+  }),
 ];
+
+//the lifecycle from plan section 8.3. cancelled is only reachable from confirmed / in planning
+const allowedFrom: Record<EventStatus, EventStatus[]> = {
+  Enquired: [],
+  ConfirmedInPlanning: ['InProgress', 'Cancelled'],
+  InProgress: ['Finished'],
+  Finished: [],
+  Cancelled: [],
+};
+
+function invalidMoveReason(from: EventStatus) {
+  if (from === 'Finished' || from === 'Cancelled')
+    return 'Finished and cancelled events stay where they are.';
+  if (from === 'InProgress')
+    return "A live event can only move on to Finished, it can't go back or be cancelled.";
+  return "That stage can't be reached from here.";
+}
+
+let rowVersionCounter = 0;
+function nextRowVersion() {
+  rowVersionCounter++;
+  return btoa(`mock-version-${rowVersionCounter}`);
+}
 
 export const handlers = [...authHandlers, ...eventHandlers];

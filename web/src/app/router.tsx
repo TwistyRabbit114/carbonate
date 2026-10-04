@@ -21,6 +21,8 @@ const MfaVerifyPage = lazy(() => import('@/auth/MfaVerifyPage'));
 const MfaEnrolPage = lazy(() => import('@/auth/MfaEnrolPage'));
 
 const EventsBoardPage = lazy(() => import('@/features/events/EventsBoardPage'));
+const EventFormPage = lazy(() => import('@/features/events/EventFormPage'));
+const EventDetailPage = lazy(() => import('@/features/events/EventDetailPage'));
 const AdminTasksPage = lazy(() => import('@/features/admin-tasks/AdminTasksPage'));
 const StockPage = lazy(() => import('@/features/stock/StockPage'));
 const FinancePage = lazy(() => import('@/features/finance/FinancePage'));
@@ -67,6 +69,8 @@ export const routes: RouteObject[] = [
             children: [
               { index: true, element: <LandingRedirect /> },
               { path: 'events', element: guard(access.events, <EventsBoardPage />) },
+              { path: 'events/new', element: guard(access.newEvent, <EventFormPage />) },
+              { path: 'events/:eventId', element: guard(access.eventDetail, <EventDetailPage />) },
               { path: 'admin-tasks', element: guard(access.adminTasks, <AdminTasksPage />) },
               { path: 'stock', element: guard(access.stock, <StockPage />) },
               { path: 'finance', element: guard(access.finance, <FinancePage />) },

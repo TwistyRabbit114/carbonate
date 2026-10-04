@@ -20,6 +20,9 @@ import type { Permission, PermissionCheck } from '@/auth/permissions';
 //both read from here so they can't drift apart
 export const access = {
   events: ['event.view_all'],
+  newEvent: ['event.create'],
+  //crew reach their own events here too, the api answers 404 for any they aren't assigned to
+  eventDetail: ['event.view_all', 'event.view_assigned'],
   adminTasks: ['admin_task.view'],
   stock: ['stock.view'],
   finance: ['quote.view', 'invoice.view', 'order.approve'],

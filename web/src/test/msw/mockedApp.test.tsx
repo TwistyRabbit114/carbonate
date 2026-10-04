@@ -2,10 +2,10 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { renderApp } from '../renderApp';
-import { demoMfaCode, demoPassword, handlers, resetMockSession } from './handlers';
+import { demoMfaCode, demoPassword, handlers, resetMocks } from './handlers';
 import { server } from './server';
 
-beforeEach(() => resetMockSession());
+beforeEach(() => resetMocks());
 
 //the same journeys someone gets from `npm run dev:mocks`, through the real screens
 async function logInThroughMocks(email: string) {

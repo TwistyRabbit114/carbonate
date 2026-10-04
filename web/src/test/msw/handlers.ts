@@ -1,4 +1,6 @@
 import { delay, http, HttpResponse } from 'msw';
+import { permissionCheck } from '@/auth/permissions';
+import { demoEvents } from '../fixtures/events';
 import { users } from '../fixtures/users';
 
 //a stand-in for the api so screens can be built and demoed before the real endpoints exist.
@@ -46,15 +48,18 @@ function accountFromMfaToken(token: unknown) {
 }
 
 //----------------------------------------------------------\\
-//                              SESSION
+//                              STATE
 //----------------------------------------------------------\\
 
 //the real api keeps the session in an HttpOnly refresh cookie. msw would save a mocked cookie
 //to localStorage, so the mock holds it in memory instead and a full reload signs you out
 let mockSession: AccountKey | null = null;
+let mockEvents = demoEvents();
 
-export function resetMockSession() {
+//back to signed out with the demo data as it started, tests call this before each run
+export function resetMocks() {
   mockSession = null;
+  mockEvents = demoEvents();
 }
 
 //----------------------------------------------------------\\
@@ -138,4 +143,26 @@ export const authHandlers = [
   }),
 ];
 
-export const handlers = [...authHandlers];
+//----------------------------------------------------------\\
+//                              EVENTS
+//----------------------------------------------------------\\
+
+export const eventHandlers = [
+  //desk roles see every event. crew only see events they're assigned to, and crew
+  //assignments aren't mocked yet, so their list comes back empty for now
+  http.get('/api/events', async ({ request }) => {
+    await delay();
+    const key = accountFromBearer(request.headers.get('Authorization'));
+    if (!key) return new HttpResponse(null, { status: 401 });
+
+    const visible = permissionCheck(users[key].permissions).can('event.view_all') ? mockEvents : [];
+    const boardOnly = new URL(request.url).searchParams.get('view') === 'board';
+    const items = boardOnly
+      ? visible.filter((event) => event.status !== 'Enquired' && event.status !== 'Cancelled')
+      : visible;
+
+    return HttpResponse.json({ items, page: 1, pageSize: 200, total: items.length });
+  }),
+];
+
+export const handlers = [...authHandlers, ...eventHandlers];

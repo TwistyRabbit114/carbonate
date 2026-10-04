@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { users } from '../fixtures/users';
-import { demoMfaCode, demoPassword, handlers, resetMockSession } from './handlers';
+import { demoMfaCode, demoPassword, handlers, resetMocks } from './handlers';
 import { server } from './server';
 
-//the mock session lives in module memory, so each test starts signed out
+//the mock keeps its session and data in module memory, so each test starts fresh
 beforeEach(() => {
-  resetMockSession();
+  resetMocks();
   server.use(...handlers);
 });
 

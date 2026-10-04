@@ -33,6 +33,12 @@
     opacity: 0.6;
   }
 
+  svg {
+    flex-shrink: 0;
+    width: 1.125em;
+    height: 1.125em;
+  }
+
   //44px targets on phones and touch screens (NFR-24)
   @include phone {
     min-height: var(--touch-target);
@@ -82,6 +88,15 @@
 .block {
   display: flex;
   width: 100%;
+}
+
+//LinkButton uses the same look, minus the underline links get on hover
+.link {
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: none;
+  }
 }
 
 .spinner {

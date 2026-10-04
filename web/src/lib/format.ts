@@ -10,6 +10,17 @@ export function formatMoney(value: number) {
 }
 
 //----------------------------------------------------------\\
+//                              COUNTS
+//----------------------------------------------------------\\
+
+const count = new Intl.NumberFormat('en-ZA', { maximumFractionDigits: 0 });
+
+//pack sizes and quantities, grouped the same way as money: "2 500"
+export function formatCount(value: number) {
+  return count.format(value);
+}
+
+//----------------------------------------------------------\\
 //                              DATES
 //----------------------------------------------------------\\
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatDateOnly, formatDateTime, formatMoney } from './format';
+import { formatCount, formatDate, formatDateOnly, formatDateTime, formatMoney } from './format';
 
 //en-ZA groups thousands with a non-breaking space, swap it so the expectations stay readable
 const plain = (value: string) => value.replace(/\u00a0/g, ' ');
@@ -15,6 +15,13 @@ describe('formatMoney', () => {
 
   it('still shows a real zero rather than treating it as missing', () => {
     expect(plain(formatMoney(0))).toBe('R 0,00');
+  });
+});
+
+describe('formatCount', () => {
+  it('groups thousands the same way as money', () => {
+    expect(plain(formatCount(2500))).toBe('2 500');
+    expect(formatCount(90)).toBe('90');
   });
 });
 

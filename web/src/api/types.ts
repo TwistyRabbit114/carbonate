@@ -35,3 +35,43 @@ export type TokenResponse = {
 export type MfaEnrolResponse = {
   otpauthUri: string;
 };
+
+//----------------------------------------------------------\\
+//                              LISTS
+//----------------------------------------------------------\\
+
+//every list endpoint answers in this shape (plan section 5)
+export type PagedResult<T> = {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+};
+
+//----------------------------------------------------------\\
+//                              EVENTS
+//----------------------------------------------------------\\
+
+export type EventStatus = 'Enquired' | 'ConfirmedInPlanning' | 'InProgress' | 'Finished' | 'Cancelled';
+export type EventType = 'Activation' | 'Corporate' | 'Wedding' | 'Festival' | 'YearEnd' | 'Private';
+export type DivisionCode = 'CE' | 'CLM';
+
+//one row of GET /api/events. no money here: the board doesn't show any, and the event
+//detail is where masked price fields come in
+//TODO(plan): list item field names (venueName, divisionCode) are assumed, confirm with C
+export type EventListItem = {
+  eventId: string;
+  eventCode: string;
+  name: string;
+  status: EventStatus;
+  eventType: EventType;
+  divisionCode: DivisionCode;
+  eventDate: string; //yyyy-MM-dd
+  startsAt: string; //utc instant, the live window that drives automatic stage moves
+  endsAt: string;
+  venueName: string;
+  packSizeEstimated: number;
+  packSizeActual?: number | null;
+  isConfidential: boolean;
+  rowVersion: string;
+};

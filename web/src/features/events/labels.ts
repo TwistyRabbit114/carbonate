@@ -1,4 +1,4 @@
-import type { EventStatus, EventType } from '@/api/types';
+import type { DivisionCode, EventStatus, EventType } from '@/api/types';
 
 //the client's own words for each stage (NFR-05)
 export const stageLabels: Record<EventStatus, string> = {
@@ -16,4 +16,9 @@ export const eventTypeLabels: Record<EventType, string> = {
   Festival: 'Festival',
   YearEnd: 'Year-end',
   Private: 'Private',
+};
+
+export const divisionLabels: Record<DivisionCode, string> = {
+  CE: 'Carbon Events',
+  CLM: 'Carbon Logistics Management',
 };

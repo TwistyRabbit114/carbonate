@@ -1,8 +1,9 @@
-import { screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { delay, http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import type { EventListItem, MeResponse } from '@/api/types';
+import { sastCalendarDate } from '@/lib/format';
 import { axeViolations } from '@/test/axe';
 import { demoEvents } from '@/test/fixtures/events';
 import { users } from '@/test/fixtures/users';
@@ -11,11 +12,15 @@ import { renderApp } from '@/test/renderApp';
 const page = (items: EventListItem[]) => ({ items, page: 1, pageSize: 200, total: items.length });
 
 //opens the board with the given events coming back from GET /api/events
-function openBoard(events: EventListItem[] = demoEvents(), me: MeResponse = users.eventManager) {
+function openBoard(
+  events: EventListItem[] = demoEvents(),
+  me: MeResponse = users.eventManager,
+  route = '/events',
+) {
   const requests: URL[] = [];
   const view = renderApp({
     me,
-    route: '/events',
+    route,
     handlers: [
       http.get('/api/events', ({ request }) => {
         requests.push(new URL(request.url));
@@ -119,6 +124,107 @@ describe('new event button', () => {
     await screen.findByText('Naidoo Wedding');
 
     expect(screen.queryByRole('link', { name: 'New event' })).not.toBeInTheDocument();
+  });
+});
+
+//----------------------------------------------------------\\
+//                              FILTERS
+//----------------------------------------------------------\\
+
+//today and n days on, as cape town calendar dates the way a date input sends them
+const sastDay = (daysFromNow = 0) =>
+  sastCalendarDate(new Date(Date.now() + daysFromNow * 86_400_000).toISOString());
+
+describe('board filters', () => {
+  it('narrows the board by division and keeps the choice in the address', async () => {
+    const { router } = openBoard();
+    await screen.findByText('Naidoo Wedding');
+
+    await userEvent.selectOptions(screen.getByLabelText('Division'), 'CLM · Carbon Logistics Management');
+
+    expect(screen.queryByText('Naidoo Wedding')).not.toBeInTheDocument();
+    expect(within(column('In Progress')).getByText('Riverlight Festival')).toBeInTheDocument();
+    expect(within(column('Confirmed / In Planning')).getByText('0')).toBeInTheDocument();
+    expect(screen.getByText('Showing 1 of 5 events')).toBeInTheDocument();
+    expect(router.state.location.search).toBe('?division=CLM');
+    //replaced, not pushed, so back leaves the board rather than stepping through filters
+    expect(router.state.historyAction).toBe('REPLACE');
+  });
+
+  it('opens a shared link with its filters already applied', async () => {
+    openBoard(demoEvents(), users.eventManager, '/events?type=Corporate');
+
+    expect(await screen.findByText('Meridian Year-End Function')).toBeInTheDocument();
+    expect(screen.getByText('Delacroix Corporate Golf Day')).toBeInTheDocument();
+    expect(screen.queryByText('Naidoo Wedding')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Event type')).toHaveValue('Corporate');
+  });
+
+  it('filters by date, keeping an event that started before the range and is still live', async () => {
+    openBoard(demoEvents(), users.eventManager, `/events?from=${sastDay()}&to=${sastDay(7)}`);
+
+    expect(await screen.findByText('Vantage Brand Activation')).toBeInTheDocument();
+    expect(screen.getByText('Riverlight Festival')).toBeInTheDocument();
+    expect(screen.queryByText('Naidoo Wedding')).not.toBeInTheDocument();
+    expect(screen.queryByText('Delacroix Corporate Golf Day')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('From')).toHaveValue(sastDay());
+  });
+
+  it('puts a picked date in the address', async () => {
+    const { router } = openBoard();
+    await screen.findByText('Naidoo Wedding');
+
+    fireEvent.change(screen.getByLabelText('From'), { target: { value: '2030-01-01' } });
+
+    expect(router.state.location.search).toBe('?from=2030-01-01');
+  });
+
+  it('says when nothing matches, and clears back to the whole board', async () => {
+    const { router } = openBoard(demoEvents(), users.eventManager, '/events?division=CLM&type=Wedding');
+
+    expect(await screen.findByRole('heading', { name: 'No events match these filters' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+
+    expect(await screen.findByText('Naidoo Wedding')).toBeInTheDocument();
+    expect(router.state.location.search).toBe('');
+    //the clear button has gone, so focus lands on the first filter rather than the page body
+    expect(screen.getByLabelText('Division')).toHaveFocus();
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument();
+  });
+
+  it('warns when the dates are the wrong way round', async () => {
+    const { container } = openBoard(
+      demoEvents(),
+      users.eventManager,
+      '/events?from=2026-12-10&to=2026-12-01',
+    );
+
+    expect(await screen.findByText('Pick a date on or after the from date')).toBeInTheDocument();
+    expect(screen.getByLabelText('To')).toHaveAttribute('aria-invalid', 'true');
+    expect(await axeViolations(container)).toEqual([]);
+  });
+
+  it('ignores values in the address it does not recognise', async () => {
+    openBoard(demoEvents(), users.eventManager, '/events?division=XYZ');
+
+    expect(await screen.findByText('Naidoo Wedding')).toBeInTheDocument();
+    expect(screen.getByLabelText('Division')).toHaveValue('');
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument();
+  });
+
+  it('filters the read-only board for accounts too', async () => {
+    openBoard(demoEvents(), users.accounts, '/events?division=CLM');
+
+    expect(await screen.findByText('Riverlight Festival')).toBeInTheDocument();
+    expect(screen.queryByText('Naidoo Wedding')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Drag / })).not.toBeInTheDocument();
+  });
+
+  it('leaves the filters off an empty board, where there is nothing to narrow', async () => {
+    openBoard([]);
+    await screen.findByRole('heading', { name: 'No confirmed events yet' });
+
+    expect(screen.queryByRole('search')).not.toBeInTheDocument();
   });
 });
 

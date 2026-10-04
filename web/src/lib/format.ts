@@ -51,3 +51,14 @@ export const formatDateTime = (iso: string) => dateTimeFormat.format(new Date(is
 //DateOnly values ("2026-11-28") are calendar dates, not instants, so pin them to midday UTC
 //to stop them sliding a day either side of the timezone
 export const formatDateOnly = (value: string) => dateFormat.format(new Date(`${value}T12:00:00Z`));
+
+//----------------------------------------------------------\\
+//                              CALENDAR DATES
+//----------------------------------------------------------\\
+
+//not for display: en-CA happens to give yyyy-mm-dd, which compares as plain text against
+//DateOnly values and date inputs
+const isoDateFormat = new Intl.DateTimeFormat('en-CA', { timeZone });
+
+//the SAST calendar day a UTC instant falls on, "2026-11-28T23:30:00Z" is the 29th in Cape Town
+export const sastCalendarDate = (iso: string) => isoDateFormat.format(new Date(iso));

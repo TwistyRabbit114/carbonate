@@ -32,6 +32,16 @@
     }
   }
 
+  //one-line controls get a set height, chrome pads date inputs a few pixels taller than
+  //selects and text boxes, which shows when they sit side by side
+  :where(input, select) {
+    height: 2.375rem;
+
+    @include phone {
+      height: var(--touch-target);
+    }
+  }
+
   textarea {
     resize: vertical;
     min-height: 4.5rem;

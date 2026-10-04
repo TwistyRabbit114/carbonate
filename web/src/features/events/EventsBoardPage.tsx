@@ -11,7 +11,8 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { CalendarCheck, EllipsisVertical, GripVertical, Plus } from 'lucide-react';
+import { CalendarCheck, EllipsisVertical, GripVertical, Plus, SearchX } from 'lucide-react';
+import { useSearchParams } from 'react-router';
 import type { EventListItem, EventStatus } from '@/api/types';
 import { usePermissions } from '@/auth/AuthContext';
 import { Badge } from '@/components/Badge';
@@ -24,8 +25,10 @@ import { LinkButton } from '@/components/LinkButton';
 import { PageHead } from '@/components/PageHead';
 import { cx } from '@/lib/cx';
 import { allowedTransitionsQuery, useAllowedTransitions, useEventsBoard, useMoveEvent } from './api';
+import { BoardFilterBar } from './BoardFilterBar';
 import { boardColumns, groupByStage, type BoardStatus } from './board';
 import { EventCard, EventCardOverlay } from './EventCard';
+import { applyBoardFilters, readBoardFilters, writeBoardFilters, type BoardFilters } from './filters';
 import { columnCollision, columnKeyboardCoordinates, dragInstructions, moveAnnouncements } from './moves';
 import { MoveEventDialog } from './MoveEventDialog';
 import cardStyles from './EventCard.module.scss';
@@ -71,12 +74,16 @@ export default function EventsBoardPage() {
 
 type Stages = ReturnType<typeof groupByStage>;
 
+const countOnBoard = (stages: Stages) =>
+  boardColumns.reduce((total, column) => total + stages[column.status].length, 0);
+
 function EventsBoard({ events, canMove }: { events: EventListItem[]; canMove: boolean }) {
-  const stages = groupByStage(events);
-  const onBoard = boardColumns.reduce((total, column) => total + stages[column.status].length, 0);
+  const [params, setParams] = useSearchParams();
+  const filters = readBoardFilters(params);
+  const total = countOnBoard(groupByStage(events));
 
   //says why the board is empty, so nobody goes looking for an enquiry that isn't meant to be here
-  if (onBoard === 0) {
+  if (total === 0) {
     return (
       <EmptyState title="No confirmed events yet" icon={CalendarCheck}>
         <p>
@@ -87,22 +94,42 @@ function EventsBoard({ events, canMove }: { events: EventListItem[]; canMove: bo
     );
   }
 
-  //accounts and anyone else without event.transition get the board with no handles or move menus
-  if (!canMove) {
-    return (
-      <KanbanBoard label="Events by stage">
-        {boardColumns.map((column) => (
-          <StageColumn key={column.status} status={column.status} stages={stages}>
-            {stages[column.status].map((event) => (
-              <EventCard key={event.eventId} event={event} />
-            ))}
-          </StageColumn>
-        ))}
-      </KanbanBoard>
-    );
-  }
+  const visible = applyBoardFilters(events, filters);
+  const stages = groupByStage(visible);
+  const shown = countOnBoard(stages);
 
-  return <MovableBoard events={events} stages={stages} />;
+  //replace rather than push, so the back button leaves the board instead of undoing each filter
+  const changeFilters = (next: BoardFilters) => setParams(writeBoardFilters(next), { replace: true });
+
+  return (
+    <>
+      <BoardFilterBar filters={filters} shown={shown} total={total} onChange={changeFilters} />
+      {shown === 0 ? (
+        <EmptyState title="No events match these filters" icon={SearchX}>
+          <p>Try another division or event type, or widen the dates.</p>
+        </EmptyState>
+      ) : canMove ? (
+        <MovableBoard events={visible} stages={stages} />
+      ) : (
+        <StaticBoard stages={stages} />
+      )}
+    </>
+  );
+}
+
+//accounts and anyone else without event.transition get the board with no handles or move menus
+function StaticBoard({ stages }: { stages: Stages }) {
+  return (
+    <KanbanBoard label="Events by stage">
+      {boardColumns.map((column) => (
+        <StageColumn key={column.status} status={column.status} stages={stages}>
+          {stages[column.status].map((event) => (
+            <EventCard key={event.eventId} event={event} />
+          ))}
+        </StageColumn>
+      ))}
+    </KanbanBoard>
+  );
 }
 
 function StageColumn({

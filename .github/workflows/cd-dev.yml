@@ -77,18 +77,31 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_DEV }}
           package: publish
 
+      # Six minutes, not two. A cold start on B1 is slow on its own, and the startup seeder
+      # waits on a serverless database that may be auto-paused — together that can exceed
+      # two minutes, which failed a deploy that was actually fine (run #21).
       - name: Smoke test
         run: |
           set -e
-          echo "Waiting for the app to come up..."
-          for i in $(seq 1 12); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.DEV_URL }}/health" || true)
-            if [ "$code" = "200" ]; then
-              echo "Health check passed."
-              exit 0
-            fi
-            echo "Attempt $i returned $code - retrying in 10s"
+          echo "Waiting for ${{ vars.DEV_URL }}/health ..."
+          for i in $(seq 1 36); do
+            code=$(curl -s -m 20 -o /dev/null -w "%{http_code}" "${{ vars.DEV_URL }}/health" || echo "000")
+            case "$code" in
+              200)
+                echo "Health check passed after $(( i * 10 ))s."
+                exit 0
+                ;;
+              000|403|502|503)
+                # Still starting, or the platform is still swapping the site over.
+                echo "Attempt $i: $code (starting) - retrying in 10s"
+                ;;
+              *)
+                # A real response from a running app that is unhealthy. Still retried, in case
+                # it is the first request losing a race with the seeder, but called out.
+                echo "Attempt $i: $code (app responded but is not healthy) - retrying in 10s"
+                ;;
+            esac
             sleep 10
           done
-          echo "::error::Health check never returned 200"
+          echo "::error::/health never returned 200 within six minutes"
           exit 1

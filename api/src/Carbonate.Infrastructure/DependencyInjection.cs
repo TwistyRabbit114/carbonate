@@ -1,9 +1,12 @@
 using Azure.Identity;
 using Azure.Storage.Blobs;
+using Carbonate.Application.Features.Lifecycle;
 using Carbonate.Application.Features.Stock;
 using Carbonate.Application.Platform.Audit;
 using Carbonate.Application.Platform.Auth;
 using Carbonate.Application.Platform.Files;
+using Carbonate.Domain.Lifecycle;
+using Carbonate.Infrastructure.Features.Lifecycle;
 using Carbonate.Infrastructure.Features.Stock;
 using Carbonate.Infrastructure.Persistence;
 using Carbonate.Infrastructure.Platform.Audit;
@@ -40,6 +43,14 @@ public static class DependencyInjection
             client.BaseAddress = new Uri("https://api.pwnedpasswords.com/");
             client.Timeout = TimeSpan.FromSeconds(3);
         });
+
+        // Event lifecycle (D, FR-02). The observers are resolved as a set, so adding one is a
+        // registration here and nothing else - the state machine references none of them.
+        services.AddScoped<IEventLifecycleService, EventLifecycleService>();
+        services.AddScoped<IEventStateObserver, AuditObserver>();
+        services.AddScoped<IEventStateObserver, CalendarSyncObserver>();
+        services.AddScoped<IEventStateObserver, NotificationObserver>();
+        services.AddHostedService<EventTransitionWorker>();
 
         // Stock and templates (D, FR-24-30)
         services.AddScoped<IEventTemplateSeeder, EventTemplateSeeder>();

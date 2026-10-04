@@ -28,6 +28,30 @@ public class SchemaTests(SqlServerFixture sql) : IClassFixture<SqlServerFixture>
         Assert.Equal(1, await context.AuditEntries.CountAsync(a => a.Action == "event.create"));
     }
 
+    [Fact]
+    public async Task Times_come_back_as_utc_so_the_json_carries_a_Z()
+    {
+        var entityId = Guid.NewGuid().ToString();
+        await using (var write = sql.CreateContext())
+        {
+            write.AuditEntries.Add(new AuditEntry
+            {
+                Action = "time.check",
+                EntityName = "Event",
+                EntityId = entityId,
+                OccurredAt = DateTime.UtcNow,
+            });
+            await write.SaveChangesAsync();
+        }
+
+        await using var read = sql.CreateContext();
+        var entry = await read.AuditEntries.AsNoTracking().SingleAsync(a => a.EntityId == entityId);
+
+        Assert.Equal(DateTimeKind.Utc, entry.OccurredAt.Kind);
+        Assert.EndsWith("Z", System.Text.Json.JsonSerializer.Deserialize<string>(
+            System.Text.Json.JsonSerializer.Serialize(entry.OccurredAt))!);
+    }
+
     [Theory]
     [InlineData("AB1")]
     [InlineData("TOO-LONG-EVENT-CODE-OVER-20")]

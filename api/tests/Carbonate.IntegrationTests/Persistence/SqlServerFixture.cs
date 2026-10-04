@@ -1,28 +1,31 @@
 using Carbonate.Infrastructure.Persistence;
+using Carbonate.IntegrationTests.Support;
 using Microsoft.EntityFrameworkCore;
-using Testcontainers.MsSql;
 
 namespace Carbonate.IntegrationTests.Persistence;
 
-/// <summary>A real SQL Server with every migration applied, shared by the tests in a class.</summary>
+/// <summary>
+/// A real SQL Server database with every migration applied, shared by the tests in a class. The
+/// server is shared across the whole run (see <see cref="SharedSqlServer"/>); the database is this fixture's own.
+/// </summary>
 public class SqlServerFixture : IAsyncLifetime
 {
-    private readonly MsSqlContainer _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest").Build();
+    private string _connectionString = "";
 
     public CemDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<CemDbContext>()
-            .UseSqlServer(_container.GetConnectionString())
+            .UseSqlServer(_connectionString)
             .Options;
         return new CemDbContext(options);
     }
 
     public async Task InitializeAsync()
     {
-        await _container.StartAsync();
+        _connectionString = await SharedSqlServer.CreateDatabaseAsync();
         await using var context = CreateContext();
         await context.Database.MigrateAsync();
     }
 
-    public async Task DisposeAsync() => await _container.DisposeAsync();
+    public Task DisposeAsync() => Task.CompletedTask;
 }

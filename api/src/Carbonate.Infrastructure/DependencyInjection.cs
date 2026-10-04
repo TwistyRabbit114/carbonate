@@ -2,12 +2,14 @@ using Azure.Identity;
 using Azure.Storage.Blobs;
 using Carbonate.Application.Features.Lifecycle;
 using Carbonate.Application.Features.Stock;
+using Carbonate.Application.Features.Venues;
 using Carbonate.Application.Platform.Audit;
 using Carbonate.Application.Platform.Auth;
 using Carbonate.Application.Platform.Files;
 using Carbonate.Domain.Lifecycle;
 using Carbonate.Infrastructure.Features.Lifecycle;
 using Carbonate.Infrastructure.Features.Stock;
+using Carbonate.Infrastructure.Features.Venues;
 using Carbonate.Infrastructure.Persistence;
 using Carbonate.Infrastructure.Platform.Audit;
 using Carbonate.Infrastructure.Platform.Auth;
@@ -54,6 +56,9 @@ public static class DependencyInjection
 
         // Stock and templates (D, FR-24-30)
         services.AddScoped<IEventTemplateSeeder, EventTemplateSeeder>();
+
+        //venues and site visits (B, FR-32, FR-33)
+        services.AddScoped<IVenueRepository, VenueRepository>();
 
         // Files (D, FR-31; FR-06 and FR-22 use it too)
         services.Configure<FileStorageOptions>(configuration.GetSection(FileStorageOptions.Section));

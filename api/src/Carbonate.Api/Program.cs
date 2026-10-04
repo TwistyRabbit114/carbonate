@@ -51,6 +51,7 @@ builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = 
 });
 builder.Services.AddExceptionHandler<ProblemExceptionHandler>();
 
+builder.Services.AddCarbonateOpenApi();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
@@ -124,6 +125,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.UseCarbonateOpenApi();
 
 // Flat 200, no dependency checks: the availability test hits this every five minutes and a
 // database query here would stop the serverless database auto-pausing (decisions D-001).

@@ -14,6 +14,9 @@ public class ApiFactory : WebApplicationFactory<Program>
 {
     public int LoginPermitPerMinute { get; init; } = 1000;
 
+    /// <summary>The probe controllers exist only in tests, so the contract tests leave them out.</summary>
+    public bool IncludeProbes { get; init; } = true;
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
@@ -25,9 +28,12 @@ public class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:Sql", "Server=localhost;Database=unused;TrustServerCertificate=True");
         builder.UseSetting("RateLimiting:LoginPermitPerMinute", LoginPermitPerMinute.ToString());
 
-        builder.ConfigureServices(services => services
-            .AddControllers()
-            .AddApplicationPart(typeof(ApiFactory).Assembly));
+        if (IncludeProbes)
+        {
+            builder.ConfigureServices(services => services
+                .AddControllers()
+                .AddApplicationPart(typeof(ApiFactory).Assembly));
+        }
     }
 
     /// <summary>A client carrying a real access token for a user holding exactly these permissions.</summary>

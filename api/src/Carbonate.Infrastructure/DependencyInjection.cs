@@ -75,6 +75,7 @@ public static class DependencyInjection
 
         services.AddScoped<PlatformSeeder>();
         services.AddScoped<TemplateSeeder>();
+        services.AddScoped<DemoDataSeeder>();
         services.AddHostedService<PlatformSeedHostedService>();
 
         return services;

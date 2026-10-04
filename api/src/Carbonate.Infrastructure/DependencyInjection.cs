@@ -1,11 +1,13 @@
 using Azure.Identity;
 using Azure.Storage.Blobs;
+using Carbonate.Application.Features.Calendar;
 using Carbonate.Application.Features.Lifecycle;
 using Carbonate.Application.Features.Stock;
 using Carbonate.Application.Platform.Audit;
 using Carbonate.Application.Platform.Auth;
 using Carbonate.Application.Platform.Files;
 using Carbonate.Domain.Lifecycle;
+using Carbonate.Infrastructure.Features.Calendar;
 using Carbonate.Infrastructure.Features.Lifecycle;
 using Carbonate.Infrastructure.Features.Stock;
 using Carbonate.Infrastructure.Persistence;
@@ -51,6 +53,12 @@ public static class DependencyInjection
         services.AddScoped<IEventStateObserver, CalendarSyncObserver>();
         services.AddScoped<IEventStateObserver, NotificationObserver>();
         services.AddHostedService<EventTransitionWorker>();
+
+        // Calendar sync (D, FR-40-42). Outbound only: the worker drains CALENDAR_OUTBOX so no user
+        // request ever waits on Google (NFR-12).
+        services.AddScoped<ICalendarClient, UnconfiguredCalendarClient>();
+        services.AddSingleton<ICalendarStateTokens, CalendarStateTokens>();
+        services.AddHostedService<CalendarSyncWorker>();
 
         // Stock and templates (D, FR-24-30)
         services.AddScoped<IEventTemplateSeeder, EventTemplateSeeder>();

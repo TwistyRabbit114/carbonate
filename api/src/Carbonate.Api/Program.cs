@@ -87,7 +87,8 @@ builder.Services.AddRateLimiter(options =>
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         RateLimitPartition.GetFixedWindowLimiter(ClientKey(context), _ => new FixedWindowRateLimiterOptions
         {
-            PermitLimit = 100,
+            PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>()
+                .GetValue("RateLimiting:GlobalPermitPerMinute", 100),
             Window = TimeSpan.FromMinutes(1),
         }));
     // Sign-in and code checks are the brute-force targets, so they get a much tighter limit.

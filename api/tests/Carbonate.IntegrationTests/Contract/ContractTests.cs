@@ -90,7 +90,7 @@ public class ContractTests : IClassFixture<ContractTests.ContractFactory>
     {
         var client = _factory.CreateClientWith(["Director"], RolePermissionMatrix.PermissionsFor(RoleNames.Director));
 
-        var response = await client.GetAsync("/api/events");
+        var response = await client.GetAsync("/api/venues");
 
         Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();

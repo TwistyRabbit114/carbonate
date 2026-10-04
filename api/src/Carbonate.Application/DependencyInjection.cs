@@ -1,3 +1,4 @@
+using Carbonate.Application.Features.Events;
 using Carbonate.Application.Masking;
 using Carbonate.Application.Platform.Auth;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,6 +11,7 @@ public static class DependencyInjection
     {
         services.AddSingleton<IFinancialMasker, FinancialMasker>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IEventService, EventService>();
         services.AddScoped<PasswordPolicy>();
 
         return services;

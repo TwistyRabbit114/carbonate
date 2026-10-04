@@ -1,6 +1,8 @@
 using Azure.Identity;
 using Azure.Storage.Blobs;
 using Carbonate.Application.Features.Calendar;
+using Carbonate.Application.Common;
+using Carbonate.Application.Features.Events;
 using Carbonate.Application.Features.Lifecycle;
 using Carbonate.Application.Features.Stock;
 using Carbonate.Application.Platform.Audit;
@@ -8,6 +10,7 @@ using Carbonate.Application.Platform.Auth;
 using Carbonate.Application.Platform.Files;
 using Carbonate.Domain.Lifecycle;
 using Carbonate.Infrastructure.Features.Calendar;
+using Carbonate.Infrastructure.Features.Events;
 using Carbonate.Infrastructure.Features.Lifecycle;
 using Carbonate.Infrastructure.Features.Stock;
 using Carbonate.Infrastructure.Persistence;
@@ -34,6 +37,8 @@ public static class DependencyInjection
         services.AddSingleton(TimeProvider.System);
 
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IEventRepository, EventRepository>();
+        services.AddScoped<ITransactionRunner, TransactionRunner>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddSingleton<ITokenService, TokenService>();

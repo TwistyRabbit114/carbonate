@@ -1,0 +1,24 @@
+.group {
+  margin-bottom: var(--space-6);
+}
+
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  margin: 0 0 var(--space-2);
+  font-size: var(--fs-md);
+}
+
+.when {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 400;
+}
+
+.empty {
+  color: var(--muted);
+}

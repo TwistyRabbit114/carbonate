@@ -1,18 +1,23 @@
 import type { Announcements } from '@dnd-kit/core';
-import type { PlacedTask } from './rules';
+import type { TaskCard } from '@/api/types';
+
+//shared by the admin board and the event task boards
 
 export const taskDragInstructions =
-  'To move this task with the keyboard, press space to pick it up, use the arrow keys to choose a column, then press space to drop it. Press escape to cancel.';
+  'To move this card with the keyboard, press space to pick it up, use the arrow keys to choose a column, then press space to drop it. Press escape to cancel.';
 
-//what a screen reader hears during a drag, in task subjects and column names rather than ids
+//a card with the name of the column it's in now
+export type CardInColumn = { card: TaskCard; columnName: string };
+
+//what a screen reader hears during a drag, in card subjects and column names rather than ids
 export function taskAnnouncements(
-  findTask: (id: string) => PlacedTask | undefined,
+  findCard: (id: string) => CardInColumn | undefined,
   columnName: (columnId: string) => string,
 ): Announcements {
-  const subject = (id: string | number) => findTask(String(id))?.card.subject ?? 'The task';
-  const home = (id: string | number) => findTask(String(id))?.columnName ?? 'its column';
+  const subject = (id: string | number) => findCard(String(id))?.card.subject ?? 'The card';
+  const home = (id: string | number) => findCard(String(id))?.columnName ?? 'its column';
   const moved = (id: string | number, overId: string | number) =>
-    overId !== findTask(String(id))?.card.columnId;
+    overId !== findCard(String(id))?.card.columnId;
 
   return {
     onDragStart: ({ active }) => `Picked up ${subject(active.id)}, currently in ${home(active.id)}.`,

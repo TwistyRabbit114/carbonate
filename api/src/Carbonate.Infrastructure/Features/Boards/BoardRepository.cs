@@ -70,7 +70,14 @@ internal sealed class BoardRepository(CemDbContext db, TimeProvider clock) : IBo
     //same card can't silently overwrite each other (NFR-15)
     public async Task<bool> TrySaveCardAsync(TaskCard card, byte[] expectedRowVersion, CancellationToken ct)
     {
-        db.Entry(card).Property(c => c.RowVersion).OriginalValue = expectedRowVersion;
+        var entry = db.Entry(card);
+        //a change of assignees only writes TASK_ASSIGNMENT rows, which would skip the check and leave the
+        //card on its old version. marking the card changed means the update, and so the check, always runs
+        if (entry.State == EntityState.Unchanged)
+        {
+            entry.State = EntityState.Modified;
+        }
+        entry.Property(c => c.RowVersion).OriginalValue = expectedRowVersion;
         try
         {
             await db.SaveChangesAsync(ct);

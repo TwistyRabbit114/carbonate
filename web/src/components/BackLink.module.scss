@@ -1,0 +1,14 @@
+//takes the eyebrow's colour and size, so it reads as part of the label above the title. lined up on
+//the text's baseline, so words after the link (" · To do") sit level with it
+.back {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  color: inherit;
+}
+
+.icon {
+  align-self: center;
+  width: 0.875rem;
+  height: 0.875rem;
+}

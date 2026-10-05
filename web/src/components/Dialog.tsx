@@ -1,25 +1,27 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { cx } from '@/lib/cx';
 import styles from './Dialog.module.scss';
 
 type DialogProps = {
   open: boolean;
   title: string;
   onClose: () => void;
+  wide?: boolean; //for forms with a description to write
   children: ReactNode;
 };
 
 //native <dialog> opened with showModal, so focus is trapped inside and esc closes it.
 //it only exists in the page while open
-export function Dialog({ open, title, onClose, children }: DialogProps) {
+export function Dialog({ open, title, onClose, wide = false, children }: DialogProps) {
   if (!open) return null;
   return (
-    <OpenDialog title={title} onClose={onClose}>
+    <OpenDialog title={title} onClose={onClose} wide={wide}>
       {children}
     </OpenDialog>
   );
 }
 
-function OpenDialog({ title, onClose, children }: Omit<DialogProps, 'open'>) {
+function OpenDialog({ title, onClose, wide, children }: Omit<DialogProps, 'open'>) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -39,7 +41,12 @@ function OpenDialog({ title, onClose, children }: Omit<DialogProps, 'open'>) {
   }, [opener]);
 
   return (
-    <dialog ref={ref} className={styles.dialog} aria-labelledby={titleId} onClose={onClose}>
+    <dialog
+      ref={ref}
+      className={cx(styles.dialog, wide && styles.wide)}
+      aria-labelledby={titleId}
+      onClose={onClose}
+    >
       <h2 id={titleId} className={styles.title}>
         {title}
       </h2>

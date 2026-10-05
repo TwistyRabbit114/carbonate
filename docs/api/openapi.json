@@ -7828,7 +7828,8 @@
       },
       "AssigneesRequest": {
         "required": [
-          "userIds"
+          "userIds",
+          "rowVersion"
         ],
         "type": "object",
         "properties": {
@@ -7841,6 +7842,12 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          "rowVersion": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

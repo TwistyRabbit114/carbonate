@@ -1,0 +1,35 @@
+//returned notes sit above everything, they're the first thing the assignee needs to read
+.returned {
+  margin-bottom: var(--space-4);
+}
+
+.returnedBy {
+  margin-bottom: var(--space-1);
+}
+
+//typed as plain text, so keep the line breaks the manager put in
+.notes {
+  margin: 0;
+  font-weight: 400;
+  white-space: pre-line;
+}
+
+.lead {
+  margin-bottom: var(--space-3);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.muted {
+  color: var(--muted);
+}

@@ -295,6 +295,7 @@ public sealed class BoardService(
         }
 
         var card = await boards.LoadCardForEditAsync(cardId, ct) ?? throw ProblemException.NotFound();
+        var expected = await RequireRowVersionAsync(card, request.RowVersion, ct);
         var before = card.Assignments.Select(a => a.UserId).Order().ToList();
 
         //anyone dropped is deleted with the save, anyone new gets their own row; people kept keep theirs
@@ -304,7 +305,11 @@ public sealed class BoardService(
         {
             boards.AddAssignment(new TaskAssignment { CardId = cardId, UserId = userId, AssignedAt = now });
         }
-        await boards.SaveChangesAsync(ct);
+
+        if (!await boards.TrySaveCardAsync(card, expected, ct))
+        {
+            throw await ConflictAsync(cardId, ct);
+        }
 
         await audit.RecordAsync("card.assignees_changed", nameof(TaskCard), cardId.ToString(),
             new { UserIds = before }, new { UserIds = assignees.Order().ToList() }, currentUser.UserId, ct);

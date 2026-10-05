@@ -18,6 +18,7 @@ public class LastDirectorTests(DatabaseApiFixture fixture) : IClassFixture<Datab
     [Fact]
     public async Task A_change_that_would_leave_no_active_Director_is_refused_and_undone()
     {
+        await RetireAllDirectorsAsync();
         var first = await _scenario.UserAsync(RoleNames.Director);
         var second = await _scenario.UserAsync(RoleNames.Director);
         var byFirst = _scenario.ClientFor(first, RoleNames.Director);
@@ -41,12 +42,7 @@ public class LastDirectorTests(DatabaseApiFixture fixture) : IClassFixture<Datab
     [Fact]
     public async Task Removing_the_Director_role_from_the_last_Director_is_refused_and_undone()
     {
-        // Reset to exactly one active Director.
-        await _scenario.WithDbAsync(async db =>
-        {
-            await db.Users.Where(u => u.UserRoles.Any(r => r.Role.Name == RoleNames.Director))
-                .ExecuteUpdateAsync(s => s.SetProperty(u => u.IsActive, false));
-        });
+        await RetireAllDirectorsAsync();
         var only = await _scenario.UserAsync(RoleNames.Director);
         var ops = await _scenario.UserAsync(RoleNames.Director, RoleNames.OperationsManager);
         await _scenario.WithDbAsync(db => db.Users.Where(u => u.UserId == ops.UserId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsActive, false)));
@@ -58,6 +54,11 @@ public class LastDirectorTests(DatabaseApiFixture fixture) : IClassFixture<Datab
         var roles = await _scenario.WithDbAsync(db => db.UserRoles.Where(r => r.UserId == only.UserId).Select(r => r.Role.Name).ToListAsync());
         Assert.Equal([RoleNames.Director], roles);
     }
+
+    /// <summary>The two tests share a database, so each starts with no active Director left over from the other.</summary>
+    private Task RetireAllDirectorsAsync() => _scenario.WithDbAsync(db =>
+        db.Users.Where(u => u.UserRoles.Any(r => r.Role.Name == RoleNames.Director))
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.IsActive, false)));
 
     private Task<int> ActiveDirectorsAsync() => _scenario.WithDbAsync(db =>
         db.Users.CountAsync(u => u.IsActive && u.UserRoles.Any(r => r.Role.Name == RoleNames.Director)));

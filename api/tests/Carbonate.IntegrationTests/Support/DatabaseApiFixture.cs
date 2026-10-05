@@ -101,7 +101,7 @@ public sealed class Scenario(DbApiFactory factory)
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<CemDbContext>();
 
-        var client = new Client { Name = $"Client {Guid.NewGuid():N}"[..20] };
+        var client = new Client { Name = $"Client {Guid.NewGuid():N}"[..20], PaymentTermsDays = 30 };
         var venue = new Venue { Name = $"Venue {Guid.NewGuid():N}"[..20], Address = "1 Test Street, Cape Town" };
         db.Add(client);
         db.Add(venue);

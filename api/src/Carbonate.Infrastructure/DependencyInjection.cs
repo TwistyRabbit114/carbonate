@@ -11,6 +11,7 @@ using Carbonate.Application.Platform.Auth;
 using Carbonate.Application.Platform.Files;
 using Carbonate.Domain.Lifecycle;
 using Carbonate.Infrastructure.Features.Calendar;
+using Carbonate.Infrastructure.Features.Commercial;
 using Carbonate.Infrastructure.Features.Events;
 using Carbonate.Infrastructure.Features.Lifecycle;
 using Carbonate.Infrastructure.Features.Stock;
@@ -41,6 +42,7 @@ public static class DependencyInjection
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IEventRepository, EventRepository>();
+        services.AddScoped<ICommercialRepository, CommercialRepository>();
         services.AddScoped<ITransactionRunner, TransactionRunner>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IAuditService, AuditService>();

@@ -102,9 +102,9 @@ export const sastDateTimeInput = (iso: string) =>
 //and back again. SAST is UTC+2 all year with no daylight saving, so the offset is fixed
 export const fromSastDateTimeInput = (value: string) => new Date(`${value}:00+02:00`).toISOString();
 
-//----------------------------------------------------------\
+//----------------------------------------------------------\\
 //                              TIMES
-//----------------------------------------------------------\
+//----------------------------------------------------------\\
 
 //the SAST clock time of an instant: "15:30"
 export const formatTime = (iso: string) => clockFormat.format(new Date(iso));

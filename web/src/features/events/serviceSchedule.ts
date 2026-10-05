@@ -2,9 +2,9 @@
 //schema. it arrives as plain json, so it's checked here before anything renders it, and a
 //schedule that doesn't fit is treated as missing rather than half shown
 
-//----------------------------------------------------------\
+//----------------------------------------------------------\\
 //                              TYPES
-//----------------------------------------------------------\
+//----------------------------------------------------------\\
 
 export const expectedLoads = ['low', 'moderate', 'peak', 'table-service'] as const;
 export type ExpectedLoad = (typeof expectedLoads)[number];
@@ -33,9 +33,9 @@ export const loadLabels: Record<ExpectedLoad, string> = {
   'table-service': 'Table service',
 };
 
-//----------------------------------------------------------\
+//----------------------------------------------------------\\
 //                              READING
-//----------------------------------------------------------\
+//----------------------------------------------------------\\
 
 const clock = /^\d{2}:\d{2}(:\d{2})?$/;
 

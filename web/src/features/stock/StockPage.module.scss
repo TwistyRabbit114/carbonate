@@ -1,0 +1,143 @@
+@use '@/styles/mixins' as *;
+
+//shared by the stock and orders screens
+
+//----------------------------------------------------------\\
+//                              TABLE BITS
+//----------------------------------------------------------\\
+
+.hidden {
+  @include visually-hidden;
+}
+
+.sub {
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+//shortfall and lead-time warnings, in words with the warning colour behind them
+.warnings {
+  margin: 0;
+  padding-left: var(--space-4);
+  color: var(--warning);
+  font-weight: 600;
+  font-size: var(--fs-xs);
+}
+
+.alert {
+  margin-bottom: var(--space-4);
+}
+
+.note {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.hint {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+//----------------------------------------------------------\\
+//                              EVENT PICKER
+//----------------------------------------------------------\\
+
+.picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+
+  > :first-child {
+    flex: 0 1 24rem;
+  }
+}
+
+.pickerNote {
+  margin: 0 0 var(--space-2);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+//----------------------------------------------------------\\
+//                              EDITING
+//----------------------------------------------------------\\
+
+//boxes inside table cells, the same look as every other input
+.cellField {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.quantity {
+  width: 6rem;
+}
+
+.cellInput {
+  min-height: 2.375rem;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+
+  &[aria-invalid='true'] {
+    border-color: var(--danger);
+  }
+
+  @include phone {
+    min-height: var(--touch-target);
+    font-size: var(--fs-md);
+  }
+}
+
+.cellError {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--danger);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.editorFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+
+  > :first-child {
+    flex: 0 1 20rem;
+  }
+}
+
+.editorButtons {
+  display: flex;
+  gap: var(--space-2);
+}
+
+//----------------------------------------------------------\\
+//                              GENERATED LISTS
+//----------------------------------------------------------\\
+
+.madeLists {
+  margin: 0 0 var(--space-4);
+  padding-left: var(--space-4);
+
+  li {
+    margin-bottom: var(--space-1);
+  }
+}

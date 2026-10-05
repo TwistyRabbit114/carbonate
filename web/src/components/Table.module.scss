@@ -1,0 +1,65 @@
+@use '@/styles/mixins' as *;
+
+//----------------------------------------------------------\\
+//                              TABLE
+//----------------------------------------------------------\\
+
+.scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 0.625rem 0.875rem;
+    border-bottom: 1px solid var(--line);
+    font-size: var(--fs-sm);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    background: var(--paper);
+    color: var(--muted);
+    font-size: var(--fs-2xs);
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  //a row header names the record, so it reads like a cell rather than a column head
+  tbody th {
+    background: none;
+    color: var(--ink);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: normal;
+  }
+
+  .number {
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.caption {
+  @include visually-hidden;
+}

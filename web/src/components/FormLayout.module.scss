@@ -1,0 +1,93 @@
+@use '@/styles/mixins' as *;
+
+//the layout every form dialog and settings form shares: a lead line, room for an alert, and the
+//fields two to a row, one to a row on phones
+
+//----------------------------------------------------------\\
+//                              LAYOUT
+//----------------------------------------------------------\\
+
+.lead {
+  margin-bottom: var(--space-4);
+  color: var(--muted);
+}
+
+.alert {
+  margin-bottom: var(--space-4);
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-3);
+
+  @include phone {
+    grid-template-columns: 1fr;
+  }
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+//buttons under a panel's details, outside a dialog
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+//----------------------------------------------------------\\
+//                              CHECKBOXES
+//----------------------------------------------------------\\
+
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+//the label is the target, so it's big enough to hit on a phone (NFR-24)
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+  cursor: pointer;
+
+  input {
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    accent-color: var(--accent-strong);
+  }
+}
+
+//a hint or error under a row of checkboxes takes a line of its own
+.hint,
+.error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--fs-xs);
+}
+
+.hint {
+  color: var(--muted);
+}
+
+.error {
+  color: var(--danger);
+  font-weight: 600;
+}

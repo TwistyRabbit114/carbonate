@@ -1,34 +1,20 @@
-import type { EventDetail, Quote } from '@/api/types';
+import type { EventDetail } from '@/api/types';
 import { usePermissions } from '@/auth/AuthContext';
 import { Badge } from '@/components/Badge';
 import { FieldList, FieldRow } from '@/components/FieldList';
+import { LinkButton } from '@/components/LinkButton';
 import { Panel } from '@/components/Panel';
 import { formatMoney } from '@/lib/format';
 import { currentQuote, useEventQuotes } from './api';
+import { outsideBand, percent, quoteStatusLabels } from './labels';
 import styles from './CostingPanel.module.scss';
 
-//----------------------------------------------------------\
-//                              LABELS
-//----------------------------------------------------------\
-
-const quoteStatusLabels: Record<Quote['status'], string> = {
-  Draft: 'Draft',
-  PendingApproval: 'Waiting for the Director',
-  Approved: 'Approved',
-  Issued: 'Sent to the client',
-  Accepted: 'Accepted by the client',
-  Superseded: 'Replaced by a newer version',
-};
-
-const percent = (value: number) => `${Math.round(value * 10) / 10}%`;
-
-//----------------------------------------------------------\
+//----------------------------------------------------------\\
 //                              PANEL
-//----------------------------------------------------------\
+//----------------------------------------------------------\\
 
 //money for the event (FR-11, FR-14). every figure here is a field the api leaves out for roles
 //without it, so a role that can't see prices gets no panel at all, not an empty one (NFR-17)
-//TODO(plan): link to the costing once the quote screen is built
 export function CostingPanel({ event }: { event: EventDetail }) {
   //quote.view decides whether to ask at all, the api decides what comes back
   const quotes = useEventQuotes(event.eventId, usePermissions().can('quote.view'));
@@ -40,14 +26,13 @@ export function CostingPanel({ event }: { event: EventDetail }) {
 
   const band = quote?.targetMarginBand;
   const margin = quote?.marginPercent;
-  const outsideBand =
-    margin != null &&
-    ((band?.targetMinPct != null && margin < band.targetMinPct) ||
-      (band?.targetMaxPct != null && margin > band.targetMaxPct));
   const showsCost = quote?.internalCostTotal != null || margin != null;
 
   return (
-    <Panel title="Costing">
+    <Panel
+      title="Costing"
+      actions={quote && <LinkButton to={`/quotes/${quote.quoteId}`}>Open costing</LinkButton>}
+    >
       <FieldList>
         {hasBudget && (
           <FieldRow label="Budget">
@@ -85,7 +70,7 @@ export function CostingPanel({ event }: { event: EventDetail }) {
                     · target {percent(band.targetMinPct)} to {percent(band.targetMaxPct)}
                   </span>
                 )}{' '}
-                {outsideBand && <Badge tone="warning">Outside target</Badge>}
+                {outsideBand(quote) && <Badge tone="warning">Outside target</Badge>}
               </FieldRow>
             )}
           </FieldList>

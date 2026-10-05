@@ -7,31 +7,54 @@ import type {
   EventDetail,
   EventListItem,
   EventStatus,
-  Incident,
-  IncidentType,
   Milestone,
   TaskCard,
   UserRef,
 } from '@/api/types';
-import { permissionCheck, type Permission } from '@/auth/permissions';
-import { demoAdminBoard } from '../fixtures/adminTasks';
-import { demoBudgets, demoClients, demoDivisions, demoQuotes } from '../fixtures/commercial';
+import { demoClients, demoDivisions } from '../fixtures/commercial';
 import { demoEventBoard } from '../fixtures/eventBoards';
-import { demoCrew, demoMilestones, eventDetailFor } from '../fixtures/eventDetails';
-import { demoEvents } from '../fixtures/events';
+import { demoMilestones } from '../fixtures/eventDetails';
 import { mfaStep, signedInSession } from '../fixtures/sessions';
-import { demoEquipment, demoIncidents, demoStockItems, demoStockRequirements } from '../fixtures/stock';
-import { userList, users } from '../fixtures/users';
-import { demoSiteVisits, demoVenues } from '../fixtures/venues';
+import { users } from '../fixtures/users';
+import { financeHandlers } from './financeHandlers';
+import {
+  accessTokenFor,
+  accountFromBearer,
+  accountFromMfaBearer,
+  accountFromMfaToken,
+  caller,
+  canOpenEvent,
+  canSeeEvent,
+  eventFor,
+  invalid,
+  mfaTokenFor,
+  mock,
+  nextRowVersion,
+  orNull,
+  personRefFor,
+  problem,
+  readJson,
+  seesAll,
+  trimmed,
+  unauthorised,
+  visibleEvent,
+  without,
+  type AccountKey,
+  type Caller,
+} from './mockCore';
+import { settingsHandlers } from './settingsHandlers';
+import { stockHandlers } from './stockHandlers';
+import { venueHandlers } from './venueHandlers';
 
 //a stand-in for the api so screens can be built and demoed before the real endpoints exist.
-//loaded by `npm run dev:mocks` only, and never part of the production build
+//loaded by `npm run dev:mocks` only, and never part of the production build. the shared data and
+//helpers are in mockCore, and each area beyond events and cards has a file of its own
+
+export { accessTokenFor, resetMocks, type AccountKey } from './mockCore';
 
 //----------------------------------------------------------\\
 //                              DEMO ACCOUNTS
 //----------------------------------------------------------\\
-
-export type AccountKey = keyof typeof users;
 
 export const demoPassword = 'demo';
 export const demoMfaCode = '123456';
@@ -45,82 +68,6 @@ const mfaAccounts: Partial<Record<AccountKey, 'verify' | 'enrol'>> = {
   director: 'verify',
   accounts: 'enrol',
 };
-
-//----------------------------------------------------------\\
-//                              TOKENS
-//----------------------------------------------------------\\
-
-//mock tokens just name the account, there is nothing secret in them
-export const accessTokenFor = (key: AccountKey) => `mock-access-${key}`;
-const mfaTokenFor = (key: AccountKey) => `mock-mfa-${key}`;
-
-function isAccount(value: string | undefined): value is AccountKey {
-  return value !== undefined && value in users;
-}
-
-function accountFromBearer(header: string | null) {
-  const key = header?.replace(/^Bearer mock-access-/, '');
-  return isAccount(key) ? key : null;
-}
-
-function accountFromMfaToken(token: unknown) {
-  const key = typeof token === 'string' ? token.replace(/^mock-mfa-/, '') : undefined;
-  return isAccount(key) ? key : null;
-}
-
-//mfa enrol and confirm get the mfa token as the bearer, like the real api
-function accountFromMfaBearer(header: string | null) {
-  return accountFromMfaToken(header?.replace(/^Bearer /, ''));
-}
-
-//----------------------------------------------------------\\
-//                              STATE
-//----------------------------------------------------------\\
-
-//the real api keeps the session in an HttpOnly refresh cookie. msw would save a mocked cookie
-//to localStorage, so the mock holds it in memory instead and a full reload signs you out
-let mockSession: AccountKey | null = null;
-let mockEvents = demoEventDetails();
-let mockMilestones = mockEvents.flatMap(demoMilestones);
-let mockAdminBoard = demoAdminBoard();
-let mockEventBoards = mockEvents.map(demoEventBoard);
-let mockCrew = mockEvents.flatMap(demoCrew);
-let mockIncidents = mockEvents.flatMap(demoIncidents);
-
-//the full records, budgets included. each response leaves out what the caller can't see
-function demoEventDetails(): EventDetail[] {
-  return demoEvents().map((event) => ({
-    ...eventDetailFor(event),
-    budgetAmount: demoBudgets[event.eventCode] ?? null,
-  }));
-}
-
-//back to signed out with the demo data as it started, tests call this before each run
-export function resetMocks() {
-  mockSession = null;
-  mockEvents = demoEventDetails();
-  mockMilestones = mockEvents.flatMap(demoMilestones);
-  mockAdminBoard = demoAdminBoard();
-  mockEventBoards = mockEvents.map(demoEventBoard);
-  mockCrew = mockEvents.flatMap(demoCrew);
-  mockIncidents = mockEvents.flatMap(demoIncidents);
-}
-
-//----------------------------------------------------------\\
-//                              RESPONSES
-//----------------------------------------------------------\\
-
-function problem(status: number, title: string, detail?: string, extra: object = {}) {
-  return HttpResponse.json(
-    { status, title, detail, ...extra },
-    { status, headers: { 'Content-Type': 'application/problem+json' } },
-  );
-}
-
-const invalid = (errors: Record<string, string[]>) =>
-  problem(400, 'One or more validation errors occurred.', undefined, { errors });
-
-const unauthorised = () => new HttpResponse(null, { status: 401 });
 
 //the api's wording, so the screens are tried against the same answers they'll really get
 const wrongPassword = () =>
@@ -136,16 +83,8 @@ const wrongCode = () =>
 const noBearer = () => new HttpResponse(null, { status: 401 });
 
 function signedIn(key: AccountKey) {
-  mockSession = key;
+  mock.session = key;
   return HttpResponse.json(signedInSession(accessTokenFor(key)));
-}
-
-async function readJson(request: Request) {
-  try {
-    return (await request.json()) as Record<string, unknown>;
-  } catch {
-    return {};
-  }
 }
 
 //----------------------------------------------------------\\
@@ -191,12 +130,12 @@ export const authHandlers = [
   }),
 
   http.post('/api/auth/refresh', () => {
-    if (!mockSession) return new HttpResponse(null, { status: 401 });
-    return HttpResponse.json(signedInSession(accessTokenFor(mockSession)));
+    if (!mock.session) return new HttpResponse(null, { status: 401 });
+    return HttpResponse.json(signedInSession(accessTokenFor(mock.session)));
   }),
 
   http.post('/api/auth/logout', () => {
-    mockSession = null;
+    mock.session = null;
     return new HttpResponse(null, { status: 204 });
   }),
 
@@ -207,55 +146,8 @@ export const authHandlers = [
 ];
 
 //----------------------------------------------------------\\
-//                              WHO IS ASKING
+//                              EVENT HELPERS
 //----------------------------------------------------------\\
-
-type Caller = { key: AccountKey; me: UserRef; can: (code: Permission) => boolean };
-
-function caller(request: Request): Caller | null {
-  const key = accountFromBearer(request.headers.get('Authorization'));
-  if (!key) return null;
-  const check = permissionCheck(users[key].permissions);
-  return {
-    key,
-    me: personRefFor(users[key].user.userId)!,
-    can: (code: Permission) => check.can(code),
-  };
-}
-
-function personRefFor(userId: string): UserRef | undefined {
-  const account = Object.values(users).find((candidate) => candidate.user.userId === userId);
-  return account && { userId, fullName: account.user.fullName };
-}
-
-//desk roles see every event, crew only the ones they're crewed on (plan section 7.2). anything
-//else is a 404, never a 403, so a hidden event doesn't give itself away
-const seesAll = (who: Caller) => who.can('event.view_all');
-const onCrew = (eventId: string, userId: string) =>
-  mockCrew.some((shift) => shift.eventId === eventId && shift.userId === userId);
-const canSeeEvent = (who: Caller, eventId: string) => seesAll(who) || onCrew(eventId, who.me.userId);
-
-//someone who can open the event, so a card can go to them
-function canOpenEvent(eventId: string, userId: string) {
-  const account = Object.values(users).find((candidate) => candidate.user.userId === userId);
-  return Boolean(account && (permissionCheck(account.permissions).can('event.view_all') || onCrew(eventId, userId)));
-}
-
-//a masked field is left out of the json altogether, not sent as null (plan section 7.3)
-function without<T extends object, K extends keyof T>(value: T, key: K) {
-  return Object.fromEntries(Object.entries(value).filter(([name]) => name !== key)) as Omit<T, K>;
-}
-
-//a retired event is gone for everyone, the api keeps the row but stops returning it (FR-09)
-function visibleEvent(who: Caller, eventId: unknown) {
-  const event = mockEvents.find((candidate) => candidate.eventId === eventId && candidate.isActive);
-  return event && canSeeEvent(who, event.eventId) ? event : undefined;
-}
-
-//the budget is $price: left out, not nulled, for a role without it (plan section 7.3)
-function eventFor(who: Caller, event: EventDetail): EventDetail {
-  return who.can('finance.view_client_price') ? event : without(event, 'budgetAmount');
-}
 
 const listItemOf = (event: EventDetail): EventListItem => ({
   eventId: event.eventId,
@@ -275,10 +167,15 @@ const listItemOf = (event: EventDetail): EventListItem => ({
 });
 
 const staleEvent = (who: Caller, event: EventDetail) =>
-  problem(409, 'Someone else changed this event.', 'Reload the event to see their changes, then make yours again.', {
-    type: '/problems/concurrency-conflict',
-    current: eventFor(who, event),
-  });
+  problem(
+    409,
+    'Someone else changed this event.',
+    'Reload the event to see their changes, then make yours again.',
+    {
+      type: '/problems/concurrency-conflict',
+      current: eventFor(who, event),
+    },
+  );
 
 //----------------------------------------------------------\\
 //                              EVENTS
@@ -290,10 +187,12 @@ export const eventHandlers = [
     const who = caller(request);
     if (!who) return unauthorised();
 
-    const visible = mockEvents.filter((event) => event.isActive && canSeeEvent(who, event.eventId));
+    const visible = mock.events.filter((event) => event.isActive && canSeeEvent(who, event.eventId));
     const boardOnly = new URL(request.url).searchParams.get('board') === 'true';
     const items = (
-      boardOnly ? visible.filter((event) => event.status !== 'Enquired' && event.status !== 'Cancelled') : visible
+      boardOnly
+        ? visible.filter((event) => event.status !== 'Enquired' && event.status !== 'Cancelled')
+        : visible
     ).map(listItemOf);
 
     return HttpResponse.json({ items, page: 1, pageSize: 200, total: items.length });
@@ -329,9 +228,9 @@ export const eventHandlers = [
       headcountConfirmed: null,
       rowVersion: nextRowVersion(),
     };
-    mockEvents = [...mockEvents, event];
-    mockMilestones = [...mockMilestones, ...demoMilestones(event)];
-    mockEventBoards = [...mockEventBoards, demoEventBoard(event)];
+    mock.events = [...mock.events, event];
+    mock.milestones = [...mock.milestones, ...demoMilestones(event)];
+    mock.eventBoards = [...mock.eventBoards, demoEventBoard(event)];
     return HttpResponse.json(eventFor(who, event), { status: 201 });
   }),
 
@@ -351,7 +250,7 @@ export const eventHandlers = [
     //someone who can't see the budget can neither change nor erase it
     const budgetAmount = who.can('finance.view_client_price') ? checked.budgetAmount : event.budgetAmount;
     const updated = { ...event, ...checked, budgetAmount, rowVersion: nextRowVersion() };
-    mockEvents = mockEvents.map((candidate) => (candidate.eventId === event.eventId ? updated : candidate));
+    mock.events = mock.events.map((candidate) => (candidate.eventId === event.eventId ? updated : candidate));
     return HttpResponse.json(eventFor(who, updated));
   }),
 
@@ -363,7 +262,7 @@ export const eventHandlers = [
 
     const event = visibleEvent(who, params.eventId);
     if (!event) return problem(404, 'Not found');
-    mockEvents = mockEvents.map((candidate) =>
+    mock.events = mock.events.map((candidate) =>
       candidate.eventId === event.eventId ? { ...candidate, isActive: false } : candidate,
     );
     return new HttpResponse(null, { status: 204 });
@@ -375,7 +274,7 @@ export const eventHandlers = [
     if (!who) return unauthorised();
     const event = visibleEvent(who, params.eventId);
     if (!event) return problem(404, 'Not found');
-    return HttpResponse.json(mockMilestones.filter((milestone) => milestone.eventId === event.eventId));
+    return HttpResponse.json(mock.milestones.filter((milestone) => milestone.eventId === event.eventId));
   }),
 
   //the chain is one line, recce to reconciliation, so moving one moves everything after it by the
@@ -388,7 +287,7 @@ export const eventHandlers = [
 
     const event = visibleEvent(who, params.eventId);
     if (!event) return problem(404, 'Not found');
-    const chain = mockMilestones.filter((milestone) => milestone.eventId === event.eventId);
+    const chain = mock.milestones.filter((milestone) => milestone.eventId === event.eventId);
     const index = chain.findIndex((milestone) => milestone.milestoneId === params.milestoneId);
     const target = chain[index];
     if (!target) return problem(404, 'Not found', 'That milestone was not found on this event.');
@@ -396,7 +295,8 @@ export const eventHandlers = [
     const body = await readJson(request);
     const newStart = typeof body.newStart === 'string' ? new Date(body.newStart).getTime() : NaN;
     const newEnd = typeof body.newEnd === 'string' ? new Date(body.newEnd).getTime() : NaN;
-    if (Number.isNaN(newStart) || Number.isNaN(newEnd)) return invalid({ newStart: ['Choose the new start.'] });
+    if (Number.isNaN(newStart) || Number.isNaN(newEnd))
+      return invalid({ newStart: ['Choose the new start.'] });
     if (newEnd < newStart) return invalid({ newEnd: ['A milestone cannot end before it starts.'] });
     if (body.rowVersion !== event.rowVersion) return staleEvent(who, event);
 
@@ -409,14 +309,22 @@ export const eventHandlers = [
     const by = (iso: string) => new Date(new Date(iso).getTime() + shift).toISOString();
     const moved: Milestone[] = moving.map((milestone) =>
       milestone === target
-        ? { ...milestone, scheduledStart: new Date(newStart).toISOString(), scheduledEnd: new Date(newEnd).toISOString() }
-        : { ...milestone, scheduledStart: by(milestone.scheduledStart), scheduledEnd: by(milestone.scheduledEnd) },
+        ? {
+            ...milestone,
+            scheduledStart: new Date(newStart).toISOString(),
+            scheduledEnd: new Date(newEnd).toISOString(),
+          }
+        : {
+            ...milestone,
+            scheduledStart: by(milestone.scheduledStart),
+            scheduledEnd: by(milestone.scheduledEnd),
+          },
     );
-    mockMilestones = mockMilestones.map(
+    mock.milestones = mock.milestones.map(
       (milestone) => moved.find((change) => change.milestoneId === milestone.milestoneId) ?? milestone,
     );
     const rowVersion = nextRowVersion();
-    mockEvents = mockEvents.map((candidate) =>
+    mock.events = mock.events.map((candidate) =>
       candidate.eventId === event.eventId ? { ...candidate, rowVersion } : candidate,
     );
     return HttpResponse.json({ milestones: moved, rowVersion });
@@ -430,7 +338,7 @@ export const eventHandlers = [
     const event = visibleEvent(who, params.eventId);
     if (!event) return problem(404, 'Not found');
     return HttpResponse.json(
-      mockCrew.filter((shift) => shift.eventId === event.eventId).map((shift) => shiftFor(who, shift)),
+      mock.crew.filter((shift) => shift.eventId === event.eventId).map((shift) => shiftFor(who, shift)),
     );
   }),
 
@@ -451,7 +359,8 @@ export const eventHandlers = [
     const errors: Record<string, string[]> = {};
     if (!person) errors.userId = ['That person does not exist or is not active.'];
     if (!crewRole) errors.crewRole = ["'Crew Role' must not be empty."];
-    if (!shiftStart || !shiftEnd || shiftEnd <= shiftStart) errors.shiftEnd = ['The shift must end after it starts.'];
+    if (!shiftStart || !shiftEnd || shiftEnd <= shiftStart)
+      errors.shiftEnd = ['The shift must end after it starts.'];
     if (Object.keys(errors).length > 0) return invalid(errors);
     if (body.hourlyRate != null && !who.can('finance.view_staff_cost')) {
       return problem(403, 'Forbidden', 'Only the Director and Accounts can set an hourly rate.');
@@ -468,7 +377,7 @@ export const eventHandlers = [
       confirmed: false,
       hourlyRate: typeof body.hourlyRate === 'number' ? body.hourlyRate : null,
     };
-    mockCrew = [...mockCrew, shift];
+    mock.crew = [...mock.crew, shift];
     return HttpResponse.json(shiftFor(who, shift), { status: 201 });
   }),
 
@@ -479,11 +388,11 @@ export const eventHandlers = [
     if (!who.can('crew.assign')) return problem(403, 'Forbidden');
 
     const event = visibleEvent(who, params.eventId);
-    const shift = mockCrew.find(
+    const shift = mock.crew.find(
       (candidate) => candidate.assignmentId === params.assignmentId && candidate.eventId === event?.eventId,
     );
     if (!event || !shift) return problem(404, 'Not found');
-    mockCrew = mockCrew.filter((candidate) => candidate !== shift);
+    mock.crew = mock.crew.filter((candidate) => candidate !== shift);
     return new HttpResponse(null, { status: 204 });
   }),
 
@@ -494,7 +403,11 @@ export const eventHandlers = [
 
     const event = visibleEvent(who, params.eventId);
     if (!event) return problem(404, 'Not found');
-    return HttpResponse.json({ eventId: event.eventId, current: event.status, allowed: allowedFrom[event.status] });
+    return HttpResponse.json({
+      eventId: event.eventId,
+      current: event.status,
+      allowed: allowedFrom[event.status],
+    });
   }),
 
   http.post('/api/events/:eventId/transitions', async ({ request, params }) => {
@@ -515,7 +428,7 @@ export const eventHandlers = [
     }
 
     const moved = { ...event, status: to as EventStatus, rowVersion: nextRowVersion() };
-    mockEvents = mockEvents.map((candidate) => (candidate.eventId === event.eventId ? moved : candidate));
+    mock.events = mock.events.map((candidate) => (candidate.eventId === event.eventId ? moved : candidate));
     return HttpResponse.json(eventFor(who, moved));
   }),
 
@@ -550,7 +463,9 @@ export const eventHandlers = [
     }
 
     const confirmed = { ...event, status: 'ConfirmedInPlanning' as const, rowVersion: nextRowVersion() };
-    mockEvents = mockEvents.map((candidate) => (candidate.eventId === event.eventId ? confirmed : candidate));
+    mock.events = mock.events.map((candidate) =>
+      candidate.eventId === event.eventId ? confirmed : candidate,
+    );
     return HttpResponse.json(
       {
         confirmationId: crypto.randomUUID(),
@@ -567,16 +482,6 @@ export const eventHandlers = [
       },
       { status: 201 },
     );
-  }),
-
-  //only finance roles hold quote.view, and all three money tiers come with it
-  http.get('/api/events/:eventId/quotes', async ({ request, params }) => {
-    await delay();
-    const who = caller(request);
-    if (!who) return unauthorised();
-    if (!who.can('quote.view')) return problem(403, 'Forbidden');
-    const event = visibleEvent(who, params.eventId);
-    return event ? HttpResponse.json(demoQuotes(event)) : problem(404, 'Not found');
   }),
 
   //TODO(plan): the event form needs these two and the contract has neither. asked of C, mocked
@@ -615,15 +520,11 @@ function invalidMoveReason(from: EventStatus) {
   return "That stage can't be reached from here.";
 }
 
-let rowVersionCounter = 0;
-function nextRowVersion() {
-  rowVersionCounter++;
-  return btoa(`mock-version-${rowVersionCounter}`);
-}
-
 //staff rates go only to director and accounts, or to the person the shift belongs to
 function shiftFor(who: Caller, shift: CrewAssignment): CrewAssignment {
-  return who.can('finance.view_staff_cost') || shift.userId === who.me.userId ? shift : without(shift, 'hourlyRate');
+  return who.can('finance.view_staff_cost') || shift.userId === who.me.userId
+    ? shift
+    : without(shift, 'hourlyRate');
 }
 
 //----------------------------------------------------------\\
@@ -644,19 +545,23 @@ type CheckedEvent = Omit<
 >;
 
 //the api's validators and reference checks, with its wording
-function checkEvent(who: Caller, body: Record<string, unknown>, exceptEventId: string | null): CheckedEvent | Response {
+function checkEvent(
+  who: Caller,
+  body: Record<string, unknown>,
+  exceptEventId: string | null,
+): CheckedEvent | Response {
   const errors: Record<string, string[]> = {};
   const code = trimmed(body.eventCode);
   const name = trimmed(body.name);
   const client = demoClients().find((candidate) => candidate.clientId === body.clientId);
-  const venue = demoVenues().find((candidate) => candidate.venueId === body.venueId);
+  const venue = mock.venues.find((candidate) => candidate.venueId === body.venueId && candidate.isActive);
   const division = demoDivisions().find((candidate) => candidate.divisionId === body.divisionId);
   const startsAt = typeof body.startsAt === 'string' ? body.startsAt : '';
   const endsAt = typeof body.endsAt === 'string' ? body.endsAt : '';
   const whole = (value: unknown) => (typeof value === 'number' && Number.isInteger(value) ? value : NaN);
 
   if (!/^[A-Za-z0-9-]{4,20}$/.test(code)) errors.eventCode = ['Use letters, numbers and hyphens only.'];
-  else if (mockEvents.some((event) => event.eventCode === code && event.eventId !== exceptEventId)) {
+  else if (mock.events.some((event) => event.eventCode === code && event.eventId !== exceptEventId)) {
     errors.eventCode = ['That event code is already in use.'];
   }
   if (!name) errors.name = ["'Name' must not be empty."];
@@ -700,155 +605,6 @@ function checkEvent(who: Caller, body: Record<string, unknown>, exceptEventId: s
 }
 
 //----------------------------------------------------------\\
-//                              VENUES AND SITE VISITS
-//----------------------------------------------------------\\
-
-export const venueHandlers = [
-  http.get('/api/venues', async ({ request }) => {
-    await delay();
-    const who = caller(request);
-    if (!who) return unauthorised();
-    if (!seesAll(who)) return problem(403, 'Forbidden');
-
-    const q = (new URL(request.url).searchParams.get('q') ?? '').trim().toLowerCase();
-    const items = demoVenues().filter(
-      (venue) => venue.name.toLowerCase().includes(q) || venue.address.toLowerCase().includes(q),
-    );
-    return HttpResponse.json({ items, page: 1, pageSize: 50, total: items.length });
-  }),
-
-  //crew get a venue only through an event they're on (US-23)
-  http.get('/api/venues/:venueId', async ({ request, params }) => {
-    await delay();
-    const who = caller(request);
-    if (!who) return unauthorised();
-    const venue = demoVenues().find((candidate) => candidate.venueId === params.venueId);
-    const reachable =
-      venue &&
-      (seesAll(who) ||
-        mockEvents.some((event) => event.venueId === venue.venueId && visibleEvent(who, event.eventId)));
-    return reachable ? HttpResponse.json(venue) : problem(404, 'Not found');
-  }),
-
-  http.get('/api/events/:eventId/site-visits', async ({ request, params }) => {
-    await delay();
-    const who = caller(request);
-    if (!who) return unauthorised();
-    const event = visibleEvent(who, params.eventId);
-    return event ? HttpResponse.json(demoSiteVisits(event)) : problem(404, 'Not found');
-  }),
-];
-
-//----------------------------------------------------------\\
-//                              STOCK AND INCIDENTS
-//----------------------------------------------------------\\
-
-const incidentTypes: IncidentType[] = ['Breakage', 'EquipmentFailure', 'StockShortfall'];
-
-//replacement cost is $cost
-function incidentFor(who: Caller, incident: Incident): Incident {
-  return who.can('finance.view_internal_cost') ? incident : without(incident, 'replacementCost');
-}
-
-export const stockHandlers = [
-  //D's api takes stock.plan to read these, so crew and accounts get a 403
-  http.get('/api/events/:eventId/stock-requirements', async ({ request, params }) => {
-    await delay();
-    const who = caller(request);
-    if (!who) return unauthorised();
-    if (!who.can('stock.plan')) return problem(403, 'Forbidden');
-    const event = visibleEvent(who, params.eventId);
-    return event ? HttpResponse.json(demoStockRequirements(event)) : problem(404, 'Not found');
-  }),
-
-  http.get('/api/stock/items', async ({ request }) => {
-    await delay();
-    const who = caller(request);
-    if (!who) return unauthorised();
-    if (!who.can('stock.view')) return problem(403, 'Forbidden');
-
-    const q = (new URL(request.url).searchParams.get('q') ?? '').trim().toLowerCase();
-    const items = demoStockItems().filter(
-      (item) => item.name.toLowerCase().includes(q) || item.sku.toLowerCase().includes(q),
-    );
-    return HttpResponse.json({ items, page: 1, pageSize: 50, total: items.length });
-  }),
-
-  http.get('/api/equipment', async ({ request }) => {
-    await delay();
-    const who = caller(request);
-    if (!who) return unauthorised();
-    return who.can('stock.view') ? HttpResponse.json(demoEquipment()) : problem(403, 'Forbidden');
-  }),
-
-  //desk roles see every report, a crew lead those on their events, casual crew only their own
-  http.get('/api/events/:eventId/incidents', async ({ request, params }) => {
-    await delay();
-    const who = caller(request);
-    if (!who) return unauthorised();
-    if (!who.can('incident.view')) return problem(403, 'Forbidden');
-    const event = visibleEvent(who, params.eventId);
-    if (!event) return problem(404, 'Not found');
-
-    const ownOnly = !seesAll(who) && !who.can('stock.view');
-    const items = mockIncidents
-      .filter((incident) => incident.eventId === event.eventId)
-      .filter((incident) => !ownOnly || incident.reportedByUserId === who.me.userId)
-      .map((incident) => incidentFor(who, incident));
-    return HttpResponse.json(items);
-  }),
-
-  http.post('/api/events/:eventId/incidents', async ({ request, params }) => {
-    await delay(600);
-    const who = caller(request);
-    if (!who) return unauthorised();
-    if (!who.can('incident.create')) return problem(403, 'Forbidden');
-    const event = visibleEvent(who, params.eventId);
-    if (!event) return problem(404, 'Not found');
-
-    const form = await request.formData();
-    const text = (key: string) => {
-      const value = form.get(key);
-      return typeof value === 'string' ? value.trim() : '';
-    };
-    const incidentType = text('IncidentType') as IncidentType;
-    const asset = demoEquipment().find((candidate) => candidate.assetId === text('AssetId'));
-    const item = demoStockItems().find((candidate) => candidate.stockItemId === text('StockItemId'));
-    const quantity = text('Quantity') ? Number(text('Quantity')) : null;
-    const photo = form.get('Photo');
-
-    const errors: Record<string, string[]> = {};
-    if (!incidentTypes.includes(incidentType)) errors.incidentType = ['Choose what kind of problem it was.'];
-    if (!asset && !item) errors.assetId = ['Choose the equipment or the stock item this happened to.'];
-    if (quantity !== null && !(Number.isInteger(quantity) && quantity >= 1)) {
-      errors.quantity = ['A quantity must be more than zero.'];
-    }
-    if (!text('Description')) errors.description = ['Say what happened.'];
-    if (photo instanceof File && photo.size > 10 * 1024 * 1024) errors.file = ['Photos can be up to 10 MB.'];
-    if (Object.keys(errors).length > 0) return invalid(errors);
-
-    const incident: Incident = {
-      incidentId: crypto.randomUUID(),
-      eventId: event.eventId,
-      assetId: asset?.assetId ?? null,
-      stockItemId: item?.stockItemId ?? asset?.stockItemId ?? null,
-      subjectName: asset ? `${asset.stockItemName} ${asset.serialNumber}` : item!.name,
-      reportedByUserId: who.me.userId,
-      reportedByName: who.me.fullName,
-      incidentType,
-      quantity,
-      reportedAt: new Date().toISOString(),
-      description: text('Description'),
-      resolutionNotes: null,
-      replacementCost: null,
-      photoUrl: null,
-    };
-    mockIncidents = [...mockIncidents, incident];
-    return HttpResponse.json(incidentFor(who, incident), { status: 201 });
-  }),
-];
-
-//----------------------------------------------------------\\
 //                              CARDS
 //----------------------------------------------------------\\
 
@@ -862,12 +618,13 @@ function statusIn(board: Board, column: BoardColumn): CardStatus {
   return column.isDoneColumn ? 'Done' : 'Open';
 }
 
-const isAssignee = (card: TaskCard, userId: string) => card.assignees.some((person) => person.userId === userId);
+const isAssignee = (card: TaskCard, userId: string) =>
+  card.assignees.some((person) => person.userId === userId);
 
 type FoundCard = { board: Board; column: BoardColumn; card: TaskCard };
 
 function findCard(cardId: unknown): FoundCard | null {
-  for (const board of [mockAdminBoard, ...mockEventBoards]) {
+  for (const board of [mock.adminBoard, ...mock.eventBoards]) {
     for (const column of board.columns) {
       const card = column.cards.find((candidate) => candidate.cardId === cardId);
       if (card) return { board, column, card };
@@ -937,9 +694,6 @@ const missingVersion = () =>
 const offTheCrew = () =>
   problem(422, 'Business rule', "Add them to the event's crew first, then assign the card.");
 
-const trimmed = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
-const orNull = (value: unknown) => (typeof value === 'string' && value ? value : null);
-
 export const cardHandlers = [
   http.get('/api/boards/admin', async ({ request }) => {
     await delay();
@@ -947,11 +701,11 @@ export const cardHandlers = [
     if (!who) return unauthorised();
     if (!who.can('admin_task.view')) return problem(403, 'Forbidden');
 
-    const columns = mockAdminBoard.columns.map((column) => ({
+    const columns = mock.adminBoard.columns.map((column) => ({
       ...column,
       cards: seesAll(who) ? column.cards : column.cards.filter((card) => isAssignee(card, who.me.userId)),
     }));
-    return HttpResponse.json({ ...mockAdminBoard, columns });
+    return HttpResponse.json({ ...mock.adminBoard, columns });
   }),
 
   //crew get only the cards assigned to them, filtered before anything leaves the api (FR-21)
@@ -962,7 +716,7 @@ export const cardHandlers = [
 
     const event = visibleEvent(who, params.eventId);
     if (!event) return problem(404, 'Not found');
-    const board = mockEventBoards.find((candidate) => candidate.eventId === event.eventId);
+    const board = mock.eventBoards.find((candidate) => candidate.eventId === event.eventId);
     if (!board) return problem(404, 'Not found', 'This event has no task board.');
 
     const columns = board.columns.map((column) => ({
@@ -985,7 +739,9 @@ export const cardHandlers = [
     const who = caller(request);
     if (!who) return unauthorised();
 
-    const board = [mockAdminBoard, ...mockEventBoards].find((candidate) => candidate.boardId === params.boardId);
+    const board = [mock.adminBoard, ...mock.eventBoards].find(
+      (candidate) => candidate.boardId === params.boardId,
+    );
     if (!board || (board.eventId && !canSeeEvent(who, board.eventId))) return problem(404, 'Not found');
 
     const body = await readJson(request);
@@ -995,7 +751,8 @@ export const cardHandlers = [
 
     let column: BoardColumn | undefined;
     if (board.boardType === 'Admin') {
-      if (!who.can('admin_task.assign')) return problem(403, 'Forbidden', "Your role can't hand out admin tasks.");
+      if (!who.can('admin_task.assign'))
+        return problem(403, 'Forbidden', "Your role can't hand out admin tasks.");
       if (assigneeIds.length === 0) return invalid({ assigneeIds: ['Choose who should do this task.'] });
       column = board.columns[0];
     } else {
@@ -1132,24 +889,15 @@ export const cardHandlers = [
     return HttpResponse.json(place(board, card, from, to, at, { completedAt }));
   }),
 
-  http.post('/api/cards/:cardId/complete', async ({ request, params }) => signOff(request, params.cardId, null)),
+  http.post('/api/cards/:cardId/complete', async ({ request, params }) =>
+    signOff(request, params.cardId, null),
+  ),
 
   http.post('/api/cards/:cardId/return', async ({ request, params }) => {
     const body = await readJson(request);
     const notes = typeof body.reviewNotes === 'string' ? body.reviewNotes.trim() : '';
     if (!notes) return invalid({ reviewNotes: ['Say what still needs doing before it comes back.'] });
     return signOff(request, params.cardId, notes, body.rowVersion);
-  }),
-
-  //only director and ops hold user.manage, the same people who hand tasks out
-  http.get('/api/users', async ({ request }) => {
-    await delay();
-    const who = caller(request);
-    if (!who) return unauthorised();
-    if (!who.can('user.manage')) return problem(403, 'Forbidden');
-
-    const items = userList();
-    return HttpResponse.json({ items, page: 1, pageSize: 200, total: items.length });
   }),
 ];
 
@@ -1183,7 +931,9 @@ async function signOff(request: Request, cardId: unknown, notes: string | null, 
   const [assigned, , complete] = board.columns;
   const updated =
     notes === null
-      ? place(board, card, column, complete!, complete!.cards.length, { completedAt: new Date().toISOString() })
+      ? place(board, card, column, complete!, complete!.cards.length, {
+          completedAt: new Date().toISOString(),
+        })
       : place(board, card, column, assigned!, assigned!.cards.length, {
           reviewNotes: notes,
           returnedBy: who.me,
@@ -1193,4 +943,12 @@ async function signOff(request: Request, cardId: unknown, notes: string | null, 
   return HttpResponse.json(updated);
 }
 
-export const handlers = [...authHandlers, ...eventHandlers, ...venueHandlers, ...stockHandlers, ...cardHandlers];
+export const handlers = [
+  ...authHandlers,
+  ...eventHandlers,
+  ...venueHandlers,
+  ...stockHandlers,
+  ...financeHandlers,
+  ...cardHandlers,
+  ...settingsHandlers,
+];

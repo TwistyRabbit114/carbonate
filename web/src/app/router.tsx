@@ -28,7 +28,10 @@ const EventCardDetailPage = lazy(() => import('@/features/event-board/EventCardD
 const AdminTasksPage = lazy(() => import('@/features/admin-tasks/AdminTasksPage'));
 const AdminTaskDetailPage = lazy(() => import('@/features/admin-tasks/AdminTaskDetailPage'));
 const StockPage = lazy(() => import('@/features/stock/StockPage'));
+const CataloguePage = lazy(() => import('@/features/stock/CataloguePage'));
+const OrderListPage = lazy(() => import('@/features/stock/OrderListPage'));
 const FinancePage = lazy(() => import('@/features/finance/FinancePage'));
+const QuotePage = lazy(() => import('@/features/finance/QuotePage'));
 const CalendarPage = lazy(() => import('@/features/calendar/CalendarPage'));
 const SettingsPage = lazy(() => import('@/features/settings/SettingsPage'));
 const MyEventsPage = lazy(() => import('@/features/crew/MyEventsPage'));
@@ -89,7 +92,10 @@ export const routes: RouteObject[] = [
               { path: 'admin-tasks', element: guard(access.adminTasks, <AdminTasksPage />) },
               { path: 'admin-tasks/:cardId', element: guard(access.adminTasks, <AdminTaskDetailPage />) },
               { path: 'stock', element: guard(access.stock, <StockPage />) },
+              { path: 'stock/catalogue', element: guard(access.stock, <CataloguePage />) },
+              { path: 'stock/order-lists/:orderListId', element: guard(access.stock, <OrderListPage />) },
               { path: 'finance', element: guard(access.finance, <FinancePage />) },
+              { path: 'quotes/:quoteId', element: guard(access.quotes, <QuotePage />) },
               { path: 'calendar', element: guard(access.calendar, <CalendarPage />) },
               { path: 'settings', element: guard(access.settings, <SettingsPage />) },
               { path: 'my/events', element: guard(access.myEvents, <MyEventsPage />) },

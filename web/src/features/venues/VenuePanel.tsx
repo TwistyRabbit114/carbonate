@@ -1,4 +1,7 @@
+import { useState } from 'react';
 import type { SiteVisit, Venue } from '@/api/types';
+import { usePermissions } from '@/auth/AuthContext';
+import { Button } from '@/components/Button';
 import { ErrorState } from '@/components/ErrorState';
 import { FieldList, FieldRow } from '@/components/FieldList';
 import { Item, ItemList } from '@/components/ItemList';
@@ -6,6 +9,7 @@ import { Panel } from '@/components/Panel';
 import { formatDateOnly } from '@/lib/format';
 import { useSiteVisits, useVenue } from './api';
 import { mapLink, openingHours } from './places';
+import { SiteVisitDialog } from './SiteVisitDialog';
 import styles from './VenuePanel.module.scss';
 
 //----------------------------------------------------------\\
@@ -31,14 +35,26 @@ type VenuePanelProps = {
 };
 
 //where the event is and how to get in (FR-32), with what the recce found (FR-33). everything
-//here is plain text typed by people, so react escapes it and line breaks are kept
-//TODO(plan): adding and editing recces comes with the site visit screens
+//here is plain text typed by people, so react escapes it and line breaks are kept.
+//venue.edit adds and corrects recces
 export function VenuePanel({ eventId, venueId }: VenuePanelProps) {
   const venue = useVenue(venueId);
   const visits = useSiteVisits(eventId);
+  const canEdit = usePermissions().can('venue.edit');
+  //undefined is closed, null is a new recce
+  const [editing, setEditing] = useState<SiteVisit | null | undefined>(undefined);
 
   return (
-    <Panel title="Venue and recce">
+    <Panel
+      title="Venue and recce"
+      actions={
+        canEdit && (
+          <Button variant="ghost" onClick={() => setEditing(null)}>
+            Add recce
+          </Button>
+        )
+      }
+    >
       {!venueId ? (
         <p>No venue chosen yet.</p>
       ) : venue.isError ? (
@@ -59,9 +75,17 @@ export function VenuePanel({ eventId, venueId }: VenuePanelProps) {
       ) : (
         <ItemList label="Recces">
           {visits.data.map((visit) => (
-            <VisitItem key={visit.siteVisitId} visit={visit} />
+            <VisitItem
+              key={visit.siteVisitId}
+              visit={visit}
+              onEdit={canEdit ? () => setEditing(visit) : undefined}
+            />
           ))}
         </ItemList>
+      )}
+
+      {editing !== undefined && (
+        <SiteVisitDialog eventId={eventId} visit={editing} onClose={() => setEditing(undefined)} />
       )}
     </Panel>
   );
@@ -92,11 +116,25 @@ export function VenueDetails({ venue }: { venue: Venue }) {
   );
 }
 
-function VisitItem({ visit }: { visit: SiteVisit }) {
+function VisitItem({ visit, onEdit }: { visit: SiteVisit; onEdit?: () => void }) {
   const vehicle = [visit.vehicleType, visit.licencePlate].filter(Boolean).join(', ');
 
   return (
-    <Item title={formatDateOnly(visit.visitDate)} meta={`By ${visit.conductedBy.fullName}`}>
+    <Item
+      title={formatDateOnly(visit.visitDate)}
+      meta={`By ${visit.conductedBy.fullName}`}
+      actions={
+        onEdit && (
+          <Button
+            variant="ghost"
+            onClick={onEdit}
+            aria-label={`Edit the recce of ${formatDateOnly(visit.visitDate)}`}
+          >
+            Edit
+          </Button>
+        )
+      }
+    >
       <FieldList>
         <FieldRow label="Vehicle">{vehicle || undefined}</FieldRow>
         <FieldRow label="Driver">{visit.driverName}</FieldRow>

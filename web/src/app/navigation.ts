@@ -27,6 +27,7 @@ export const access = {
   adminTasks: ['admin_task.view'],
   stock: ['stock.view'],
   finance: ['quote.view', 'invoice.view', 'order.approve'],
+  quotes: ['quote.view'],
   calendar: ['calendar.view'],
   settings: ['user.manage', 'audit.view', 'calendar.connect', 'venue.edit'],
   myEvents: ['event.view_assigned'],

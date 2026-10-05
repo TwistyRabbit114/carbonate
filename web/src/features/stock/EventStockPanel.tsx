@@ -1,4 +1,4 @@
-import type { SourceMode, StockRequirement, StockWarning } from '@/api/types';
+import type { StockRequirement } from '@/api/types';
 import { Badge } from '@/components/Badge';
 import { ErrorState } from '@/components/ErrorState';
 import { Item, ItemList } from '@/components/ItemList';
@@ -6,34 +6,12 @@ import { LinkButton } from '@/components/LinkButton';
 import { Panel } from '@/components/Panel';
 import { formatDateOnly } from '@/lib/format';
 import { useStockRequirements } from './api';
+import { describeWarning, formatQuantity, sourceLabels } from './labels';
 import styles from './EventStockPanel.module.scss';
 
-//----------------------------------------------------------\
-//                              WORDING
-//----------------------------------------------------------\
-
-const sourceLabels: Record<SourceMode, string> = {
-  Stock: 'From stock',
-  Order: 'To order',
-  Rent: 'To rent',
-};
-
-const quantity = new Intl.NumberFormat('en-ZA', { maximumFractionDigits: 2 });
-
-//the warnings in plain words (FR-27, FR-29). anything new from the api still gets a line
-function describeWarning(warning: StockWarning, unit: string) {
-  if (warning.code === 'SHORTFALL' && warning.planned != null && warning.expected != null) {
-    return `Below normal use for the pack size: ${quantity.format(warning.planned)} ${unit} planned, about ${quantity.format(warning.expected)} ${unit} expected.`;
-  }
-  if (warning.code === 'LEAD_TIME' && warning.leadTimeDays != null && warning.requiredBy) {
-    return `The supplier needs ${warning.leadTimeDays} days' notice and it's wanted by ${formatDateOnly(warning.requiredBy)}.`;
-  }
-  return 'Check this line before ordering.';
-}
-
-//----------------------------------------------------------\
+//----------------------------------------------------------\\
 //                              PANEL
-//----------------------------------------------------------\
+//----------------------------------------------------------\\
 
 type EventStockPanelProps = {
   eventId: string;
@@ -50,7 +28,10 @@ export function EventStockPanel({ eventId, canPlan }: EventStockPanelProps) {
   );
 
   return (
-    <Panel title="Stock" actions={<LinkButton to="/stock">Open in Stock & Orders</LinkButton>}>
+    <Panel
+      title="Stock"
+      actions={<LinkButton to={`/stock?event=${eventId}`}>Open in Stock & Orders</LinkButton>}
+    >
       {requirements.isError ? (
         <ErrorState message="We couldn't load the stock list." onRetry={() => void requirements.refetch()} />
       ) : requirements.isPending ? (
@@ -73,7 +54,7 @@ function StockLine({ line }: { line: StockRequirement }) {
     <Item
       title={line.stockItemName}
       badge={line.warnings.length > 0 && <Badge tone="warning">Check</Badge>}
-      meta={`${quantity.format(line.quantityRequired)} ${line.unit} · ${sourceLabels[line.sourceMode]} · by ${formatDateOnly(line.requiredByDate)}`}
+      meta={`${formatQuantity(line.quantityRequired)} ${line.unit} · ${sourceLabels[line.sourceMode]} · by ${formatDateOnly(line.requiredByDate)}`}
     >
       {line.warnings.length > 0 && (
         <ul className={styles.warnings}>

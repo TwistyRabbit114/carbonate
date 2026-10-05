@@ -1,0 +1,34 @@
+@use '@/styles/mixins' as *;
+
+//shared by the quotes and invoices screens
+
+//----------------------------------------------------------\\
+//                              TABLE BITS
+//----------------------------------------------------------\\
+
+.hidden {
+  @include visually-hidden;
+}
+
+.sub {
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.warning {
+  display: block;
+  color: var(--warning);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.filters {
+  max-width: 16rem;
+  margin-bottom: var(--space-4);
+}

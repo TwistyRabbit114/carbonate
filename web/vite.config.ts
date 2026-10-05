@@ -24,7 +24,7 @@ export default defineConfig({
     //same-origin in dev too, so the refresh cookie behaves like it will in production.
     //point this at the https port in the api's launchSettings.json
     proxy: {
-      '/api': { target: 'https://localhost:7001', secure: false },
+      '/api': { target: 'https://localhost:7108', secure: false },
     },
   },
   test: {

@@ -2,9 +2,9 @@ import type { CrewAssignment, EventListItem } from '@/api/types';
 
 //how a crew member's events line up: what's next, what's after it, and what's done
 
-//----------------------------------------------------------\
+//----------------------------------------------------------\\
 //                              EVENTS
-//----------------------------------------------------------\
+//----------------------------------------------------------\\
 
 export type CrewSchedule = {
   next: EventListItem | undefined; //live now, or the soonest one coming up
@@ -28,9 +28,9 @@ export function crewSchedule(events: readonly EventListItem[], now = Date.now())
   return { next: ahead[0], upcoming: ahead.slice(1), past };
 }
 
-//----------------------------------------------------------\
+//----------------------------------------------------------\\
 //                              SHIFTS
-//----------------------------------------------------------\
+//----------------------------------------------------------\\
 
 //someone can work more than one shift on an event. the call time is when they're first needed
 export function myFirstShift(crew: readonly CrewAssignment[] | undefined, userId: string) {

@@ -42,7 +42,11 @@ security) and **Ulrich Bezuidenhout** (cloud, pipeline, lifecycle, stock and inc
 
 ## Demo video
 
-Our walkthrough of Carbonate, role by role, as presented for Task 2: **YouTube link to be added**
+Our walkthrough of Carbonate, role by role, as presented for Task 2. Click the picture to watch it on YouTube.
+
+[![Carbonate demo video](https://img.youtube.com/vi/M2amO2uqkUs/hqdefault.jpg)](https://youtu.be/M2amO2uqkUs)
+
+**Watch it here:** <https://youtu.be/M2amO2uqkUs>
 
 ## Live system
 
@@ -243,7 +247,6 @@ bind, but it is the policy at handover.
 - Small PRs into `dev`, one reviewer, green CI
 - Anything touching auth, permissions, a money field or a migration needs C's approval
 - Anything touching `.github/` or infrastructure needs D's approval
-- Full rules in `docs/PROJECT_PLAN.md` section 13
 
 ## Documents
 
@@ -254,5 +257,4 @@ bind, but it is the policy at handover.
 - [`docs/api/openapi.json`](docs/api/openapi.json): the API contract
 - [`docs/attendance.md`](docs/attendance.md): who was at each team meeting, and what we covered
 - [`api/tests/Carbonate.IntegrationTests/Masking`](api/tests/Carbonate.IntegrationTests/Masking): the masking acceptance suite
-- [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md): the build plan and the rules the team worked to
-- Demo video: **YouTube link to be added**
+- Demo video: <https://youtu.be/M2amO2uqkUs>

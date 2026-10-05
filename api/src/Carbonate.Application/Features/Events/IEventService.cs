@@ -21,6 +21,10 @@ public interface IEventService
     Task<CrewAssignmentDto> AssignCrewAsync(Guid eventId, AssignCrewRequest request, CancellationToken ct);
     Task RemoveCrewAsync(Guid eventId, Guid assignmentId, CancellationToken ct);
 
+    Task<PagedResult<ClientOption>> ListClientsAsync(ClientListQuery query, CancellationToken ct);
+    Task<IReadOnlyList<DivisionOption>> ListDivisionsAsync(CancellationToken ct);
+    Task<IReadOnlyList<CrewCandidate>> ListCrewCandidatesAsync(CancellationToken ct);
+
     Task<AllowedTransitionsResponse> GetAllowedTransitionsAsync(Guid eventId, CancellationToken ct);
     Task<EventDetail> TransitionAsync(Guid eventId, TransitionRequest request, CancellationToken ct);
 }

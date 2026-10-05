@@ -221,3 +221,31 @@ public class AllowedTransitionsResponse
     public EventStatus Current { get; set; }
     public IReadOnlyList<EventStatus> Allowed { get; set; } = [];
 }
+
+/// <summary>A client the event form can pick (FR-01).</summary>
+public class ClientOption
+{
+    public Guid ClientId { get; set; }
+    public string Name { get; set; } = "";
+}
+
+public class ClientListQuery : PageQuery
+{
+    /// <summary>Matches the start of the client name.</summary>
+    public string? Q { get; set; }
+}
+
+public class DivisionOption
+{
+    public Guid DivisionId { get; set; }
+    public string Code { get; set; } = "";
+    public string Name { get; set; } = "";
+}
+
+/// <summary>An active person who can be put on an event crew (FR-07). No contact details.</summary>
+public class CrewCandidate
+{
+    public Guid UserId { get; set; }
+    public string FullName { get; set; } = "";
+    public IReadOnlyList<string> Roles { get; set; } = [];
+}

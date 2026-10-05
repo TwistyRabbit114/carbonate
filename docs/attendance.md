@@ -30,7 +30,7 @@ Christiaan, Ethan and Ulrich were at all four team meetings this phase. Christia
 | Wed 23 Sep | 18:00 | Week 1 progress | Discord | Present | Present | Present | Absent (ill) |
 | Sun 27 Sep | 13:00 | Costings with the accountant | Google Meet | Present | Not needed | Not needed | Not needed |
 | Thu 1 Oct | 18:00 | Development push | Discord | Present | Present | Present | Absent (ill) |
-| Mon 5 Oct | 18:30 | User acceptance test with the accountant | Google Meet | Present | Not needed | Not needed | Not needed |
+| Mon 5 Oct | 16:30 | User acceptance test with the accountant | Google Meet | Present | Not needed | Not needed | Not needed |
 | Mon 5 Oct | 19:00 | Final checklist | Discord | Present | Present | Present | Absent (ill) |
 
 Christiaan handled both meetings with the accountant on his own, so the rest of the team wasn't needed at those.

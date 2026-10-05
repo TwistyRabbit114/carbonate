@@ -7,6 +7,29 @@ Format: date · decision · why · who · what changes in the Task 3 report.
 
 ---
 
+## D-014 — The content security policy allows `data:` for fonts
+
+**5 Oct 2026 · Owner: C**
+
+`[Δ]` The policy in plan section 7.5 has no `font-src`, so fonts fall back to `default-src 'self'`. Vite
+inlines small font files into the CSS as `data:` URIs, and a real browser check of the hosted site showed
+four of them blocked. The policy now has `font-src 'self' data:`.
+
+**Why.** A font file cannot run script, so allowing `data:` for fonts only is a small, well-understood
+relaxation. The alternative is to stop Vite inlining (`build.assetsInlineLimit: 0`), which is a front-end
+build change; either is acceptable, and this one did not need a rebuild of the app.
+
+**Trade-off.** `script-src` and `style-src` are untouched and still `'self'` only, with no `unsafe-inline`
+and no `unsafe-eval`.
+
+**Known and left alone.** The validation library probes whether it may use `new Function` at start-up, and
+the policy blocks that probe, which the browser reports to `/api/csp-report`. It is caught inside the
+library and the app works normally. Setting zod's `jitless` option would silence the report.
+
+**Task 3 report.** List this as a deviation from the policy in Task 1 section 7.4 and the plan.
+
+---
+
 ## D-013 — The demo accounts get a documented authenticator secret, and the demo gets money
 
 **5 Oct 2026 · Owner: C (fixing D's demo seeder)**

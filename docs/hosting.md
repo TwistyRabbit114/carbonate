@@ -20,7 +20,9 @@ Everything lives in one resource group, `rg-carbonate`, in **South Africa North*
 | Database | `sql-carbonate` / `carbonate-dev` | Azure SQL, General Purpose **serverless**, 0.5–1 vCore, auto-pause 1 h | Relational data |
 | Files | `stcarbonate` | Storage account, Standard LRS, private `uploads` container | Incident photos, documents, card attachments |
 | Secrets | `kv-carbonate` | Key Vault, Standard, RBAC permission model | JWT signing key, Google refresh token, connection details |
-| Monitoring | `appi-carbonate` | Application Insights | Request traces, failures, availability test `carbonate-dev-health` against `/health` |
+| Monitoring (dev) | `carbonate-api-dev` | Application Insights | Request traces and failures from the dev app |
+| Monitoring (prod) | `carbonate-api-prod` | Application Insights | Request traces and failures from the production app |
+| Monitoring (test) | `appi-carbonate` | Application Insights | Availability test `carbonate-dev-health` against `/health`. Being retired — see section 6 |
 
 The React SPA is **not** separately hosted. It is built in CI and published into the API's `wwwroot`,
 so one deployable unit serves both.
@@ -262,7 +264,19 @@ Stated deliberately — these are conscious trade-offs, not oversights.
 - [x] Actual cost read from Cost Management and the estimates replaced with measured figures
       (5 Oct) — and the finding recorded: the transition worker's 30-minute sleep cap prevents the
       serverless database from auto-pausing, which is where 80% of the spend goes (section 3)
-- [ ] Consolidate Application Insights — creating the two Web Apps auto-provisioned a component each
-      (`carbonate-api-dev`, `carbonate-api-prod`) alongside the one we created deliberately
-      (`appi-carbonate`). Three components for two apps is untidy; point both apps at `appi-carbonate`
-      and remove the duplicates, or keep the per-app ones and remove `appi-carbonate`.
+- [x] Application Insights arrangement settled (5 Oct), **execution deferred to after submission**.
+
+      There are three components: `carbonate-api-dev` and `carbonate-api-prod`, auto-provisioned with
+      the Web Apps, and `appi-carbonate`, created deliberately. Checking the instrumentation keys
+      showed each app reports into its **own** component; `appi-carbonate` holds only the availability
+      test, which is why it is the one appearing on the bill.
+
+      **Decision: keep the per-app components and retire `appi-carbonate`** — the opposite of what this
+      document first proposed. Pointing both environments at one component would put dev and production
+      telemetry in the same bucket, where a failure spike during testing is indistinguishable from a
+      production incident. Separation by environment is worth more than having one fewer resource.
+
+      **Why it is not done yet.** Retiring `appi-carbonate` means recreating the availability test
+      inside `carbonate-api-dev`, and a test with no history is weaker evidence than the one currently
+      running. It is a ten-minute change with nothing depending on it, so it waits until after the
+      submission rather than being done the night before.

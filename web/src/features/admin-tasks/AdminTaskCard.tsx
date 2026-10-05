@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router';
 import type { CardPriority, TaskCard, UserRef } from '@/api/types';
 import { Badge } from '@/components/Badge';
 import { cx } from '@/lib/cx';
@@ -28,7 +29,7 @@ export function AdminTaskCard({ card, stage, me, actions, cardRef, dragging = fa
       tabIndex={-1}
       data-card-id={card.cardId}
     >
-      <AdminTaskCardContent card={card} stage={stage} me={me} />
+      <AdminTaskCardContent card={card} stage={stage} me={me} linked />
       {actions && <div className={styles.actions}>{actions}</div>}
     </li>
   );
@@ -38,7 +39,7 @@ export function AdminTaskCard({ card, stage, me, actions, cardRef, dragging = fa
 export function AdminTaskCardOverlay({ card, stage, me }: Omit<AdminTaskCardProps, 'actions'>) {
   return (
     <div className={cx(styles.card, styles.overlay)}>
-      <AdminTaskCardContent card={card} stage={stage} me={me} />
+      <AdminTaskCardContent card={card} stage={stage} me={me} linked={false} />
     </div>
   );
 }
@@ -53,13 +54,27 @@ const priorityTones: Partial<Record<CardPriority, 'warning' | 'danger'>> = {
   Critical: 'danger',
 };
 
-function AdminTaskCardContent({ card, stage, me }: { card: TaskCard; stage: AdminStage | undefined; me: string }) {
+type ContentProps = {
+  card: TaskCard;
+  stage: AdminStage | undefined;
+  me: string;
+  linked: boolean;
+};
+
+//the subject links to the task's page and stretches over the card, with the buttons on top
+function AdminTaskCardContent({ card, stage, me, linked }: ContentProps) {
   const tone = priorityTones[card.priority];
 
   return (
     <div className={styles.content}>
       <span className={styles.title}>
-        <span>{card.subject}</span>
+        {linked ? (
+          <Link to={`/admin-tasks/${card.cardId}`} className={styles.link}>
+            {card.subject}
+          </Link>
+        ) : (
+          <span>{card.subject}</span>
+        )}
         {tone && <Badge tone={tone}>{card.priority}</Badge>}
         {stage === 'assigned' && card.returnedAt && <Badge tone="warning">Returned</Badge>}
       </span>

@@ -14,6 +14,7 @@ export type DropState = 'checking' | 'allowed' | 'over' | 'blocked';
 type KanbanColumnProps = {
   title: string;
   count: number;
+  limit?: number | null; //work-in-progress limit from the template, display only (FR-23)
   badge?: ReactNode; //e.g. the "Auto" badge on columns the server moves events into
   emptyText?: string;
   startsOpenOnPhone?: boolean;
@@ -38,6 +39,7 @@ const dropHints: Record<DropState, string> = {
 export function KanbanColumn({
   title,
   count,
+  limit,
   badge,
   emptyText = 'Nothing here',
   startsOpenOnPhone = true,
@@ -57,10 +59,14 @@ export function KanbanColumn({
         {title}
       </span>
       {badge}
-      <span className={styles.count}>
-        {count}
-        <span className="visually-hidden"> {count === 1 ? 'item' : 'items'}</span>
-      </span>
+      {limit ? (
+        <WipCount count={count} limit={limit} />
+      ) : (
+        <span className={styles.count}>
+          {count}
+          <span className="visually-hidden"> {count === 1 ? 'item' : 'items'}</span>
+        </span>
+      )}
     </>
   );
 
@@ -106,5 +112,22 @@ export function KanbanColumn({
         )}
       </div>
     </section>
+  );
+}
+
+//"3 / 5" against the limit, in warning colours once it's over. nothing stops a card going in
+function WipCount({ count, limit }: { count: number; limit: number }) {
+  const over = count > limit;
+
+  return (
+    <span className={cx(styles.count, over && styles.over)} title={`Limit of ${limit} at a time`}>
+      <span aria-hidden="true">
+        {count} / {limit}
+      </span>
+      <span className="visually-hidden">
+        {count} {count === 1 ? 'card' : 'cards'}, limit {limit}
+        {over && ', over the limit'}
+      </span>
+    </span>
   );
 }

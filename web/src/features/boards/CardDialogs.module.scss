@@ -1,0 +1,111 @@
+@use '@/styles/mixins' as *;
+
+//----------------------------------------------------------\\
+//                              LAYOUT
+//----------------------------------------------------------\\
+
+.lead {
+  margin-bottom: var(--space-4);
+  color: var(--muted);
+}
+
+.alert {
+  margin-bottom: var(--space-4);
+}
+
+.alertText {
+  margin-bottom: var(--space-2);
+  font-weight: 400;
+}
+
+//two columns for the short fields, everything else spans both. one column on phones
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-3);
+
+  @include phone {
+    grid-template-columns: 1fr;
+  }
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+//----------------------------------------------------------\\
+//                              PEOPLE
+//----------------------------------------------------------\\
+
+.people {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 16rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+//the whole row is the label, so it's a big target on a phone (NFR-24)
+.person {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-target);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+
+  &:has(input:checked) {
+    border-color: var(--accent);
+    background: var(--accent-tint);
+  }
+
+  input {
+    flex-shrink: 0;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    accent-color: var(--accent-strong);
+  }
+}
+
+.name {
+  font-weight: 600;
+}
+
+.detail {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+.hint {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+.error {
+  margin: var(--space-2) 0 0;
+  color: var(--danger);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}

@@ -1,5 +1,4 @@
-import { isApiError } from '@/api/problem';
-import type { BoardColumn, TaskCard } from '@/api/types';
+import type { BoardColumn, CardStatus, TaskCard } from '@/api/types';
 
 //----------------------------------------------------------\\
 //                              STAGES
@@ -13,6 +12,24 @@ const stagesByPosition: readonly AdminStage[] = ['assigned', 'review', 'complete
 export function stageOf(column: BoardColumn): AdminStage | undefined {
   return stagesByPosition[column.position];
 }
+
+//the same stage read off the card's status, for a page that has the card but not its column.
+//an event board card (open or done) has none
+const stagesByStatus: Partial<Record<CardStatus, AdminStage>> = {
+  Assigned: 'assigned',
+  InProgressOrNeedsReview: 'review',
+  Complete: 'complete',
+};
+
+export function stageOfCard(card: TaskCard): AdminStage | undefined {
+  return stagesByStatus[card.status];
+}
+
+export const stageNames: Record<AdminStage, string> = {
+  assigned: 'Assigned',
+  review: 'In Progress / Needs Review',
+  complete: 'Complete',
+};
 
 //----------------------------------------------------------\\
 //                              WHO CAN DO WHAT
@@ -50,22 +67,4 @@ export function actionsFor(
   const signsOff = canReview && card.createdBy.userId === me && !isAssignee;
   if (stage === 'review' && signsOff) return ['complete', 'return'];
   return [];
-}
-
-//----------------------------------------------------------\\
-//                              ERRORS
-//----------------------------------------------------------\\
-
-//plain words for why a step didn't happen. the card is already back where it was when this shows
-export function describeTaskError(error: unknown, subject: string) {
-  if (!isApiError(error)) return `Something went wrong, so nothing changed on ${subject}.`;
-  if (error.status === 0) return `Couldn't reach Carbonate, so nothing changed on ${subject}.`;
-  if (error.status === 409 && error.problem.type?.endsWith('/concurrency-conflict')) {
-    return `Someone else changed ${subject} just now, so nothing changed. The board shows their change.`;
-  }
-  //the api says why: not theirs to sign off, or not at that stage yet
-  if ([403, 409, 422].includes(error.status) && error.problem.detail) return error.problem.detail;
-  if (error.status === 403) return `Your role can't do that on ${subject}.`;
-  if (error.status === 404) return `${subject} isn't on the board any more.`;
-  return `Something went wrong, so nothing changed on ${subject}.`;
 }

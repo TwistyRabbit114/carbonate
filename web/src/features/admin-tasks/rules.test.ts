@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { ApiError } from '@/api/problem';
 import type { TaskCard } from '@/api/types';
 import { demoAdminBoard, personRef } from '@/test/fixtures/adminTasks';
-import { actionsFor, describeTaskError } from './rules';
+import { actionsFor } from './rules';
 
 //----------------------------------------------------------\\
 //                              WHO CAN DO WHAT
@@ -39,34 +38,5 @@ describe('actionsFor', () => {
   it('offers nothing once a task is complete, or on a column it does not recognise', () => {
     expect(actionsFor(card, 'complete', ops, true)).toEqual([]);
     expect(actionsFor(card, undefined, thabo, true)).toEqual([]);
-  });
-});
-
-//----------------------------------------------------------\\
-//                              ERRORS
-//----------------------------------------------------------\\
-
-describe('describeTaskError', () => {
-  const subject = 'Update PPE stock list';
-
-  it('explains a concurrency conflict in plain words', () => {
-    const error = new ApiError({ status: 409, type: '/problems/concurrency-conflict' });
-    expect(describeTaskError(error, subject)).toMatch(/^Someone else changed Update PPE stock list/);
-  });
-
-  it("passes on the api's reason for a refusal", () => {
-    const notYours = 'Only the manager who handed out this task can complete or return it.';
-    expect(describeTaskError(new ApiError({ status: 403, detail: notYours }), subject)).toBe(notYours);
-    expect(describeTaskError(new ApiError({ status: 409, detail: 'Not yet.' }), subject)).toBe('Not yet.');
-  });
-
-  it('covers a refusal with no reason, a vanished card and no connection', () => {
-    expect(describeTaskError(new ApiError({ status: 403 }), subject)).toBe(
-      "Your role can't do that on Update PPE stock list.",
-    );
-    expect(describeTaskError(new ApiError({ status: 404 }), subject)).toBe(
-      "Update PPE stock list isn't on the board any more.",
-    );
-    expect(describeTaskError(ApiError.network(), subject)).toMatch(/^Couldn't reach Carbonate/);
   });
 });

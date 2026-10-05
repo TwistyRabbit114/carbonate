@@ -71,6 +71,13 @@
   color: var(--muted);
   font-size: var(--fs-2xs);
   font-weight: 700;
+  white-space: nowrap;
+}
+
+//past the column's work-in-progress limit (FR-23). the numbers say so too, not just the colour
+.over {
+  background: var(--warning-tint);
+  color: var(--warning);
 }
 
 //the phone-only fold toggle fills the whole heading so it's an easy target

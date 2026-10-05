@@ -1,0 +1,98 @@
+@use '@/styles/mixins' as *;
+
+//----------------------------------------------------------\\
+//                              LAYOUT
+//----------------------------------------------------------\\
+
+.lead {
+  margin-bottom: var(--space-4);
+  color: var(--muted);
+}
+
+.alert {
+  margin-bottom: var(--space-4);
+}
+
+.alertText {
+  margin-bottom: var(--space-2);
+  font-weight: 400;
+}
+
+//two columns for the short fields, everything else spans both. one column on phones
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-3);
+
+  @include phone {
+    grid-template-columns: 1fr;
+  }
+}
+
+//----------------------------------------------------------\\
+//                              CHOICES
+//----------------------------------------------------------\\
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  border: none;
+}
+
+.legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+//the whole pill is the label, so it's a big target on a phone (NFR-24)
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+
+  &:has(input:checked) {
+    border-color: var(--accent);
+    background: var(--accent-tint);
+    font-weight: 600;
+  }
+
+  input {
+    margin: 0;
+    accent-color: var(--accent-strong);
+  }
+}
+
+//----------------------------------------------------------\\
+//                              RESULT
+//----------------------------------------------------------\\
+
+.moved {
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: var(--space-2) 0;
+    border-bottom: 1px dashed var(--line);
+    font-size: var(--fs-sm);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+}
+
+.was {
+  color: var(--muted);
+}

@@ -23,6 +23,15 @@
   }
 }
 
+//room for the formatting toolbar and two fields side by side. phones keep the full-width sheet
+.wide {
+  width: min(36rem, calc(100vw - 2rem));
+
+  @include phone {
+    width: 100%;
+  }
+}
+
 .title {
   margin-bottom: var(--space-3);
   font-size: var(--fs-lg);

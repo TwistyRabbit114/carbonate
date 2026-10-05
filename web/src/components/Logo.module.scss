@@ -1,0 +1,20 @@
+//zero specificity, so a page can set the name's size and colour on the class it passes in
+:where(.lockup) {
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  width: fit-content;
+  color: var(--ink);
+  font-size: var(--fs-lg);
+}
+
+.mark {
+  flex-shrink: 0;
+}
+
+.name {
+  font-family: var(--font-head);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}

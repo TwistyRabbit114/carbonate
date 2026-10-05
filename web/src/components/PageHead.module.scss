@@ -1,0 +1,21 @@
+@use '@/styles/mixins' as *;
+
+.head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: 1.375rem;
+}
+
+.eyebrow {
+  @include eyebrow;
+  margin: 0 0 var(--space-1);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

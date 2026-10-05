@@ -1,0 +1,62 @@
+@use '@/styles/mixins' as *;
+
+//----------------------------------------------------------\\
+//                              BAR
+//----------------------------------------------------------\\
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+//each filter takes a share of the row, but never stretches wide enough to read as a form
+.controls {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+
+  > * {
+    flex: 1 1 10rem;
+    max-width: 13rem;
+  }
+
+  //two by two on phones, so every control stays full size at 360px
+  @include phone {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+
+    > * {
+      max-width: none;
+    }
+  }
+}
+
+//----------------------------------------------------------\\
+//                              SUMMARY
+//----------------------------------------------------------\\
+
+//as tall as the controls, so the row doesn't jump when the clear button appears
+.summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.375rem;
+
+  //with no filters set there's nothing to show, so it takes no room. phones would otherwise get an
+  //empty row under the filters. it stays in the page so the live count is still read out
+  &:not(:has(button)) {
+    @include visually-hidden;
+  }
+}
+
+.count {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}

@@ -1,13 +1,15 @@
 using Carbonate.Application.Common;
 using Carbonate.Application.Features.Boards;
+using Carbonate.Application.Platform.Auth;
 using Carbonate.Domain.Common;
 using Carbonate.Domain.Features.Boards;
+using Carbonate.Domain.Features.Calendar;
 using Carbonate.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Carbonate.Infrastructure.Features.Boards;
 
-internal sealed class BoardRepository(CemDbContext db) : IBoardRepository
+internal sealed class BoardRepository(CemDbContext db, TimeProvider clock) : IBoardRepository
 {
     //----------------------------------------------------------\\
     //                              BOARDS
@@ -64,9 +66,9 @@ internal sealed class BoardRepository(CemDbContext db) : IBoardRepository
             .AsSplitQuery()
             .FirstOrDefaultAsync(b => b.BoardId == boardId, ct);
 
-    //the update only lands if the row still has the version the client saw, so two people moving the
+    //the update only lands if the row still has the version the client saw, so two people changing the
     //same card can't silently overwrite each other (NFR-15)
-    public async Task<bool> TrySaveMoveAsync(TaskCard card, byte[] expectedRowVersion, CancellationToken ct)
+    public async Task<bool> TrySaveCardAsync(TaskCard card, byte[] expectedRowVersion, CancellationToken ct)
     {
         db.Entry(card).Property(c => c.RowVersion).OriginalValue = expectedRowVersion;
         try
@@ -80,6 +82,65 @@ internal sealed class BoardRepository(CemDbContext db) : IBoardRepository
             return false;
         }
     }
+
+    //----------------------------------------------------------\\
+    //                              CREATE AND EDIT
+    //----------------------------------------------------------\\
+
+    public Task<Board?> FindBoardAsync(Guid boardId, CancellationToken ct) =>
+        db.Boards.AsNoTracking().Include(b => b.Columns).FirstOrDefaultAsync(b => b.BoardId == boardId, ct);
+
+    public Task<int> CountCardsAsync(Guid columnId, CancellationToken ct) =>
+        db.TaskCards.CountAsync(c => c.ColumnId == columnId, ct);
+
+    public void Add(TaskCard card) => db.TaskCards.Add(card);
+
+    public Task<TaskCard?> LoadCardForEditAsync(Guid cardId, CancellationToken ct) =>
+        db.TaskCards.Include(c => c.Assignments).FirstOrDefaultAsync(c => c.CardId == cardId, ct);
+
+    public void AddAssignment(TaskAssignment assignment) => db.TaskAssignments.Add(assignment);
+
+    public Task<bool> IsMilestoneOfEventAsync(Guid milestoneId, Guid eventId, CancellationToken ct) =>
+        db.EventMilestones.AnyAsync(m => m.MilestoneId == milestoneId && m.EventId == eventId, ct);
+
+    public async Task<IReadOnlyList<Guid>> MissingOrInactiveUsersAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct)
+    {
+        var active = await db.Users
+            .Where(u => userIds.Contains(u.UserId) && u.IsActive)
+            .Select(u => u.UserId)
+            .ToListAsync(ct);
+        return [.. userIds.Except(active)];
+    }
+
+    //the same rule as event visibility, asked about someone other than the caller
+    public async Task<IReadOnlyList<Guid>> UsersWhoCannotSeeEventAsync(
+        Guid eventId, IReadOnlyCollection<Guid> userIds, CancellationToken ct)
+    {
+        var canSee = await db.Users
+            .Where(u => userIds.Contains(u.UserId)
+                && (u.UserRoles.Any(ur => ur.Role.RolePermissions.Any(rp => rp.Permission.Code == PermissionCodes.EventViewAll))
+                    || db.CrewAssignments.Any(a => a.EventId == eventId && a.UserId == u.UserId)))
+            .Select(u => u.UserId)
+            .ToListAsync(ct);
+        return [.. userIds.Except(canSee)];
+    }
+
+    //the calendar sync worker drains this, and checks for an existing link so an update never duplicates (FR-41)
+    public void QueueCalendarPush(Guid cardId, bool remove)
+    {
+        var now = clock.GetUtcNow().UtcDateTime;
+        db.CalendarOutbox.Add(new CalendarOutbox
+        {
+            SourceEntityType = CalendarSourceType.TaskCard,
+            SourceEntityId = cardId,
+            Operation = remove ? OutboxOperation.Delete : OutboxOperation.Upsert,
+            EnqueuedAt = now,
+            NextAttemptAt = now,
+        });
+    }
+
+    public Task SaveChangesAsync(CancellationToken ct) => db.SaveChangesAsync(ct);
 
     //----------------------------------------------------------\\
     //                              MAPPING

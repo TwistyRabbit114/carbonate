@@ -72,6 +72,21 @@ public sealed class TestData(CemDbContext db)
         return ev;
     }
 
+    public async Task<EventMilestone> MilestoneAsync(Guid eventId, MilestoneType type = MilestoneType.LoadIn)
+    {
+        var start = DateTime.UtcNow.Date.AddDays(30).AddHours(6);
+        var milestone = new EventMilestone
+        {
+            EventId = eventId,
+            MilestoneType = type,
+            ScheduledStart = start,
+            ScheduledEnd = start.AddHours(4),
+        };
+        db.Add(milestone);
+        await db.SaveChangesAsync();
+        return milestone;
+    }
+
     public async Task AssignAsync(Guid eventId, Guid userId)
     {
         var shiftStart = DateTime.UtcNow.Date.AddDays(30).AddHours(12);

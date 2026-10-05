@@ -52,12 +52,41 @@ public record CardDto(
 //position is the card's index in the target column, counted without the card itself
 public record MoveCardRequest(Guid ColumnId, int Position, string? RowVersion);
 
+//----------------------------------------------------------\\
+//                              CREATE AND EDIT
+//----------------------------------------------------------\\
+
+//new cards go to the bottom of their column. admin tasks always start in Assigned, with someone to do them
+public record CreateCardRequest(
+    string? Subject,
+    string? Description, //the one field allowed formatting, cleaned on the way in
+    CardPriority? Priority,
+    DateTimeOffset? DueAt,
+    Guid? MilestoneId,
+    Guid? ColumnId, //event boards only, the first column when left out
+    IReadOnlyList<Guid>? AssigneeIds);
+
+//replaces every editable field, so send them all: one left out is cleared
+public record UpdateCardRequest(
+    string? Subject,
+    string? Description,
+    CardPriority? Priority,
+    DateTimeOffset? DueAt,
+    Guid? MilestoneId,
+    string? RowVersion);
+
+//the full set of people on the card, replacing whoever was there
+public record AssigneesRequest(IReadOnlyList<Guid>? UserIds);
+
 public interface IBoardService
 {
     Task<BoardDto> GetAdminBoardAsync(CancellationToken ct);
     Task<BoardDto> GetEventBoardAsync(Guid eventId, CancellationToken ct);
     Task<CardDto> GetCardAsync(Guid cardId, CancellationToken ct);
     Task<CardDto> MoveCardAsync(Guid cardId, MoveCardRequest request, CancellationToken ct);
+    Task<CardDto> CreateCardAsync(Guid boardId, CreateCardRequest request, CancellationToken ct);
+    Task<CardDto> UpdateCardAsync(Guid cardId, UpdateCardRequest request, CancellationToken ct);
+    Task<CardDto> SetAssigneesAsync(Guid cardId, AssigneesRequest request, CancellationToken ct);
 }
 
 //----------------------------------------------------------\\
@@ -94,8 +123,37 @@ public interface IBoardRepository
     Task<Board?> LoadBoardForMoveAsync(Guid boardId, CancellationToken ct);
 
     /// <summary>
-    /// Saves, checking the moved card still has <paramref name="expectedRowVersion"/>. False when someone
+    /// Saves, checking the card still has <paramref name="expectedRowVersion"/>. False when someone
     /// changed it in the meantime.
     /// </summary>
-    Task<bool> TrySaveMoveAsync(TaskCard card, byte[] expectedRowVersion, CancellationToken ct);
+    Task<bool> TrySaveCardAsync(TaskCard card, byte[] expectedRowVersion, CancellationToken ct);
+
+    /// <summary>The board with its columns, no cards.</summary>
+    Task<Board?> FindBoardAsync(Guid boardId, CancellationToken ct);
+
+    Task<int> CountCardsAsync(Guid columnId, CancellationToken ct);
+    void Add(TaskCard card);
+
+    /// <summary>The card, tracked for changes, with its assignments.</summary>
+    Task<TaskCard?> LoadCardForEditAsync(Guid cardId, CancellationToken ct);
+
+    /// <summary>
+    /// Adds an assignment to a card that's already saved. Ids are made in code, so one added only
+    /// through the card's list would look like an existing row and be updated rather than inserted.
+    /// </summary>
+    void AddAssignment(TaskAssignment assignment);
+
+    Task<bool> IsMilestoneOfEventAsync(Guid milestoneId, Guid eventId, CancellationToken ct);
+
+    /// <summary>Which of these ids aren't active users.</summary>
+    Task<IReadOnlyList<Guid>> MissingOrInactiveUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct);
+
+    /// <summary>Which of these users neither hold <c>event.view_all</c> nor are crewed on the event.</summary>
+    Task<IReadOnlyList<Guid>> UsersWhoCannotSeeEventAsync(Guid eventId, IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct);
+
+    /// <summary>Queues the card's due date for Google Calendar (FR-40), saved with the card.</summary>
+    void QueueCalendarPush(Guid cardId, bool remove);
+
+    Task SaveChangesAsync(CancellationToken ct);
 }

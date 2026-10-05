@@ -38,6 +38,30 @@ public sealed class CardsController(IBoardService boards) : ControllerBase
     [HasPermission(PermissionCodes.EventViewAssigned)]
     public Task<CardDto> Get(Guid cardId, CancellationToken ct) => boards.GetCardAsync(cardId, ct);
 
+    /// <summary>
+    /// Adds a card to the bottom of a column. On the admin board it takes admin_task.assign and always
+    /// starts in Assigned; on an event board it takes task.edit.
+    /// </summary>
+    [HttpPost("~/api/boards/{boardId:guid}/cards")]
+    [HasPermission(PermissionCodes.EventViewAssigned)]
+    public async Task<ActionResult<CardDto>> Create(Guid boardId, CreateCardRequest request, CancellationToken ct)
+    {
+        var card = await boards.CreateCardAsync(boardId, request, ct);
+        return CreatedAtAction(nameof(Get), new { cardId = card.CardId }, card);
+    }
+
+    /// <summary>Replaces the card's editable fields, so send them all. Needs the card's rowVersion.</summary>
+    [HttpPatch("{cardId:guid}")]
+    [HasPermission(PermissionCodes.EventViewAssigned)]
+    public Task<CardDto> Update(Guid cardId, UpdateCardRequest request, CancellationToken ct) =>
+        boards.UpdateCardAsync(cardId, request, ct);
+
+    /// <summary>Replaces who the card is assigned to.</summary>
+    [HttpPut("{cardId:guid}/assignees")]
+    [HasPermission(PermissionCodes.EventViewAssigned)]
+    public Task<CardDto> SetAssignees(Guid cardId, AssigneesRequest request, CancellationToken ct) =>
+        boards.SetAssigneesAsync(cardId, request, ct);
+
     /// <summary>Moves a card to a column and position. A stale rowVersion is a 409 with the current card.</summary>
     [HttpPost("{cardId:guid}/move")]
     [HasPermission(PermissionCodes.EventViewAssigned)]

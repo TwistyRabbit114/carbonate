@@ -3,7 +3,6 @@ using Carbonate.Application.Features.Commercial;
 using Carbonate.Application.Features.Events;
 using Carbonate.Application.Features.Incidents;
 using Carbonate.Application.Features.Stock;
-using Carbonate.Application.Features.Stock;
 using Carbonate.Application.Features.Venues;
 using Carbonate.Application.Masking;
 using Carbonate.Application.Platform.Auth;

@@ -13,7 +13,7 @@ From the confirmed booking to the final invoice, in one place, with money seen o
 ![React](https://img.shields.io/badge/React-TypeScript-3178C6)
 ![Azure](https://img.shields.io/badge/Azure-South%20Africa%20North-0078D4)
 
-[Try it live](#live-system) · [What is built](#what-is-built) · [Security](#security-in-brief) · [Run it locally](#running-it-locally) · [Hosting](#hosting)
+[Demo video](#demo-video) · [Try it live](#live-system) · [What is built](#what-is-built) · [Security](#security-in-brief) · [Run it locally](#running-it-locally) · [Hosting](#hosting)
 
 </div>
 
@@ -39,6 +39,10 @@ screen, and a masking test suite signs in as each role to prove it.
 
 Built for Task 2 by **Christiaan ten Velden** (front end, boards and venues), **Ethan Algeo** (back end, data and
 security) and **Ulrich Bezuidenhout** (cloud, pipeline, lifecycle, stock and incidents).
+
+## Demo video
+
+Our walkthrough of Carbonate, role by role, as presented for Task 2: **YouTube link to be added**
 
 ## Live system
 
@@ -92,6 +96,7 @@ endpoint, screen, tests and status for each, is in [`docs/traceability.md`](docs
 | **Incidents, venues** | Incident reports with an asset link and photo, persistent venue records, site visits |
 | **People and security** | Sign-in with two-step codes for Director and Accounts, six roles with a permission matrix, user administration with safeguards, casual crew accounts that expire after the event, an insert-only audit trail |
 | **Calendar** | Outbound push with retry, de-duplication and redaction is built and tested; the Google connection itself is not (see below) |
+| **Front end** | One app for all six roles. Office roles get a sidebar; crew get a phone layout with a bottom tab bar that works at 360 px. Every card can be moved by drag and drop or from a "Move to…" menu with the keyboard. Every screen has loading, empty and error states, and an edit someone else got to first shows a message with a reload instead of overwriting. Money columns and rows only appear when the API sends them. axe accessibility checks run in the component tests |
 
 **Not built, and why** (also listed in the traceability file): the native calendar view (a Should, front end only),
 card attachments, the intra-day service schedule, event documents and post-event reconciliation (Shoulds), and the
@@ -107,7 +112,11 @@ is not built; object-level access is enforced in the queries instead.
 - **Authorisation:** deny by default. Every endpoint declares the permission it needs, and a test fails if one
   does not. An event you cannot see answers 404, never 403.
 - **Financial masking:** done on the server, on every response, and again as a safety net. Staff hourly rates show
-  only on your own row unless you are the Director or Accounts.
+  only on your own row unless you are the Director or Accounts. The
+  [masking acceptance suite](api/tests/Carbonate.IntegrationTests/Masking/MaskingTests.cs) signs in as each of the six
+  roles, calls every endpoint that carries money, and fails if a money field reaches a role that shouldn't see it,
+  even as an empty value. It also fails if someone adds a money field without adding it to the suite's list. It runs
+  as its own required check in CI, so nothing reaches production if it fails.
 - **Other:** rate limiting, security headers and a strict content security policy, RFC 7807 problem details,
   input validation, and an audit trail the database refuses to alter.
 
@@ -243,4 +252,7 @@ bind, but it is the policy at handover.
 - [`docs/decisions.md`](docs/decisions.md): every deviation from Task 1, with reasoning
 - [`docs/hosting.md`](docs/hosting.md): hosting rationale, cost model and known limitations
 - [`docs/api/openapi.json`](docs/api/openapi.json): the API contract
-- [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md): the build plan and rules the team and its coding assistants worked to
+- [`docs/attendance.md`](docs/attendance.md): who was at each team meeting, and what we covered
+- [`api/tests/Carbonate.IntegrationTests/Masking`](api/tests/Carbonate.IntegrationTests/Masking): the masking acceptance suite
+- [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md): the build plan and the rules the team worked to
+- Demo video: **YouTube link to be added**

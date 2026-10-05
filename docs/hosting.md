@@ -129,22 +129,62 @@ This is a small decision that is easy to get wrong and expensive to get wrong.
 
 ## 3. Cost
 
-Approximate monthly figures for South Africa North:
+### What it actually cost
 
-| Item | Approx. monthly |
+Measured from Cost Management on 5 October, for the `rg-carbonate` resource group. The resources were
+created on 3 October, so this is roughly two days of running, not a month.
+
+| Service | Actual |
 |---|---|
-| App Service plan B1 (hosting both environments) | ~$13 |
-| Azure SQL serverless, mostly auto-paused | ~$5–15 |
-| Blob Storage, Key Vault, Application Insights (free tier) | ~$1 |
-| **Total** | **~$20–30** |
+| SQL Database | $11.57 |
+| Azure Monitor (Application Insights) | $1.86 |
+| Azure App Service | $1.00 |
+| Key Vault | <$0.01 |
+| Storage | <$0.01 |
+| Bandwidth | $0.00 |
+| **Total** | **$14.43** |
 
-Against a $100 Azure for Students credit, that leaves headroom through to the EXPO. A budget alert is
-configured at 50% and 80% of $100.
+By resource, the two databases are $8.65 (dev) and $2.86 (prod); `appi-carbonate` is $1.86 and the
+App Service plan $1.00.
 
-The two settings doing the heavy lifting are **database auto-pause** and **workers that sleep until
-their next due time rather than polling**. A one-minute polling loop in a background service would
-keep the database permanently awake and roughly triple the bill — which is why `EventTransitionWorker`
-computes its next due time and sleeps until it, capped at 30 minutes.
+### What that tells us, and it is not what we predicted
+
+The original estimate in this document was $20–30 a month, on the assumption that the serverless
+database would be paused most of the time. **Two days of real usage cost $14.43, which annualises far
+above that**, and 80% of it is SQL compute.
+
+The cause is our own background worker. `EventTransitionWorker` sleeps until the next event is due,
+**capped at 30 minutes** so that a newly created event is noticed without a restart. Azure SQL
+serverless pauses after **one hour** of no activity. A worker that queries every half hour therefore
+guarantees the database never idles long enough to pause, so we pay for provisioned compute around the
+clock. The cap that makes the feature responsive is the same cap that defeats the cost model.
+
+This was not visible in design or in testing. It only appears on a real bill.
+
+**Options, with the trade-off each carries:**
+
+| Option | Effect | Cost |
+|---|---|---|
+| Raise the worker's sleep cap to several hours | The database can pause between events | An event created or rescheduled while the worker sleeps is not picked up until it wakes |
+| Signal the worker when an event is created or rescheduled | Keeps both responsiveness and pausing | More moving parts than a 15-user system warrants |
+| Stop the dev App Service when not demonstrating | Removes the dev database's share entirely | Manual, and easy to forget before a demo |
+| Apply the free serverless offer to the dev database | Up to 100,000 vCore-seconds free each month | The offer is chosen at database creation; dev predates it, so this means recreating the database |
+
+**What we did for now:** nothing automatic, and said so. With a deadline, changing the worker's timing
+risks the automatic transitions that FR-02 is demonstrated by. The honest position is that the cost
+model assumed a pausing database and the worker prevents it, that the gap is measured rather than
+estimated, and that the fix is a one-line constant once the demonstration is over.
+
+A budget alert is configured at 50% and 80% of the $100 credit, which is what will catch this if it is
+left alone.
+
+### The design point that still holds
+
+Workers that **sleep until their next due time rather than polling** is still right: a one-minute
+polling loop would do the same thing as this, only thirty times more often and with no benefit. The
+lesson is narrower and more useful — a sleep cap is not a free parameter, it is a floor on how often
+the database is touched, and it has to be set against the auto-pause delay rather than independently
+of it.
 
 ---
 
@@ -219,7 +259,9 @@ Stated deliberately — these are conscious trade-offs, not oversights.
 
 - [x] Application Insights availability test configured against `/health` (`carbonate-dev-health`)
 - [x] One timed point-in-time restore performed and the result recorded (NFR-13/14) — 18 minutes, section 4
-- [ ] Actual monthly cost read from Cost Management and the figures above replaced with real numbers
+- [x] Actual cost read from Cost Management and the estimates replaced with measured figures
+      (5 Oct) — and the finding recorded: the transition worker's 30-minute sleep cap prevents the
+      serverless database from auto-pausing, which is where 80% of the spend goes (section 3)
 - [ ] Consolidate Application Insights — creating the two Web Apps auto-provisioned a component each
       (`carbonate-api-dev`, `carbonate-api-prod`) alongside the one we created deliberately
       (`appi-carbonate`). Three components for two apps is untidy; point both apps at `appi-carbonate`

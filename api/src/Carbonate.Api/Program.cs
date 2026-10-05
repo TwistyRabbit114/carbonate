@@ -29,6 +29,11 @@ builder.Services
 
 builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>(includeInternalTypes: true);
 
+//problem details are written with these options, not the mvc ones above, so without this an enum in an
+//extension (a 409's "current" record) would go out as a number
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
 {
     // Replace the framework's RFC link with the app's own problem types, but keep any type a service set.

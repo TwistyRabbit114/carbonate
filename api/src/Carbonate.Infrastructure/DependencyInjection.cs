@@ -1,5 +1,7 @@
 using Azure.Identity;
 using Azure.Storage.Blobs;
+using Carbonate.Application.Common;
+using Carbonate.Application.Features.Boards;
 using Carbonate.Application.Features.Lifecycle;
 using Carbonate.Application.Features.Stock;
 using Carbonate.Application.Features.Venues;
@@ -7,6 +9,8 @@ using Carbonate.Application.Platform.Audit;
 using Carbonate.Application.Platform.Auth;
 using Carbonate.Application.Platform.Files;
 using Carbonate.Domain.Lifecycle;
+using Carbonate.Infrastructure.Common;
+using Carbonate.Infrastructure.Features.Boards;
 using Carbonate.Infrastructure.Features.Lifecycle;
 using Carbonate.Infrastructure.Features.Stock;
 using Carbonate.Infrastructure.Features.Venues;
@@ -56,6 +60,12 @@ public static class DependencyInjection
 
         // Stock and templates (D, FR-24-30)
         services.AddScoped<IEventTemplateSeeder, EventTemplateSeeder>();
+
+        //event visibility, shared by every event-scoped module (plan section 7.2)
+        services.AddScoped<IEventAccess, EventAccess>();
+
+        //boards and cards (B, FR-19 to FR-21)
+        services.AddScoped<IBoardRepository, BoardRepository>();
 
         //venues and site visits (B, FR-32, FR-33)
         services.AddScoped<IVenueRepository, VenueRepository>();

@@ -70,8 +70,6 @@ public record SiteVisitRequest(
     string? HealthSafetyFileRef,
     string? Notes);
 
-public record UserRefDto(Guid UserId, string FullName);
-
 public record SiteVisitDto(
     Guid SiteVisitId,
     Guid EventId,
@@ -109,9 +107,6 @@ public interface IVenueRepository
     Task<Venue?> FindThroughAssignmentAsync(Guid venueId, Guid userId, CancellationToken ct);
 
     void Add(Venue venue);
-
-    /// <summary>True when the event exists, isn't deleted, and the user may see it.</summary>
-    Task<bool> CanSeeEventAsync(Guid eventId, Guid userId, bool viewAll, CancellationToken ct);
 
     Task<IReadOnlyList<SiteVisitWithAuthor>> ListSiteVisitsAsync(Guid eventId, CancellationToken ct);
 

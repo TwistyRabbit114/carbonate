@@ -47,17 +47,6 @@ internal sealed class VenueRepository(CemDbContext db) : IVenueRepository
     public void Add(Venue venue) => db.Venues.Add(venue);
 
     //----------------------------------------------------------\\
-    //                              EVENTS
-    //----------------------------------------------------------\\
-
-    //view_all or a crew assignment, the read rule every event-scoped record inherits (plan section 7.2)
-    //TODO(plan): swap for C's shared event visibility check once there is one, so the rule lives in one place
-    public Task<bool> CanSeeEventAsync(Guid eventId, Guid userId, bool viewAll, CancellationToken ct) =>
-        db.Events.AnyAsync(e => e.EventId == eventId
-            && e.IsActive
-            && (viewAll || e.CrewAssignments.Any(a => a.UserId == userId)), ct);
-
-    //----------------------------------------------------------\\
     //                              SITE VISITS
     //----------------------------------------------------------\\
 

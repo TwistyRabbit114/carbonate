@@ -5,8 +5,11 @@ using Carbonate.Domain.Features.Venues;
 
 namespace Carbonate.Application.Features.Venues;
 
-public sealed class SiteVisitService(IVenueRepository venues, ICurrentUser currentUser, IAuditService audit)
-    : ISiteVisitService
+public sealed class SiteVisitService(
+    IVenueRepository venues,
+    IEventAccess events,
+    ICurrentUser currentUser,
+    IAuditService audit) : ISiteVisitService
 {
     //----------------------------------------------------------\\
     //                              READS
@@ -79,8 +82,7 @@ public sealed class SiteVisitService(IVenueRepository venues, ICurrentUser curre
     //an event the caller can't see, or one that was deleted, reads as not found (plan section 7.2)
     private async Task RequireEventAsync(Guid eventId, CancellationToken ct)
     {
-        var viewAll = currentUser.HasPermission(PermissionCodes.EventViewAll);
-        if (!await venues.CanSeeEventAsync(eventId, currentUser.UserId, viewAll, ct))
+        if (!await events.CanSeeEventAsync(eventId, ct))
         {
             throw ProblemException.NotFound();
         }

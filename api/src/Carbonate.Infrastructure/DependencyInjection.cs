@@ -5,6 +5,7 @@ using Carbonate.Application.Features.Boards;
 using Carbonate.Application.Features.Calendar;
 using Carbonate.Application.Features.Commercial;
 using Carbonate.Application.Features.Events;
+using Carbonate.Application.Features.Incidents;
 using Carbonate.Application.Features.Lifecycle;
 using Carbonate.Application.Features.Stock;
 using Carbonate.Application.Features.Venues;
@@ -18,6 +19,7 @@ using Carbonate.Infrastructure.Features.Boards;
 using Carbonate.Infrastructure.Features.Calendar;
 using Carbonate.Infrastructure.Features.Commercial;
 using Carbonate.Infrastructure.Features.Events;
+using Carbonate.Infrastructure.Features.Incidents;
 using Carbonate.Infrastructure.Features.Lifecycle;
 using Carbonate.Infrastructure.Features.Stock;
 using Carbonate.Infrastructure.Features.Venues;
@@ -105,6 +107,9 @@ public static class DependencyInjection
             return new BlobServiceClient(new Uri(uri), new DefaultAzureCredential());
         });
         services.AddScoped<IFileStorage, BlobFileStorage>();
+
+        // Incidents (D, FR-31)
+        services.AddScoped<IIncidentRepository, IncidentRepository>();
 
         services.AddScoped<PlatformSeeder>();
         services.AddScoped<TemplateSeeder>();

@@ -2,6 +2,7 @@ using Azure.Identity;
 using Azure.Storage.Blobs;
 using Carbonate.Application.Features.Calendar;
 using Carbonate.Application.Common;
+using Carbonate.Application.Features.Commercial;
 using Carbonate.Application.Features.Events;
 using Carbonate.Application.Features.Lifecycle;
 using Carbonate.Application.Features.Stock;
@@ -34,6 +35,8 @@ public static class DependencyInjection
 
         services.Configure<AuthOptions>(configuration.GetSection(AuthOptions.Section));
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.Section));
+        services.Configure<FinanceOptions>(configuration.GetSection(FinanceOptions.Section));
+        services.Configure<QuoteOptions>(configuration.GetSection(QuoteOptions.Section));
         services.AddSingleton(TimeProvider.System);
 
         services.AddScoped<IUserRepository, UserRepository>();

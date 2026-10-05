@@ -13,9 +13,9 @@ namespace Carbonate.IntegrationTests.Commercial;
 /// <summary>
 /// NFR-09: looking up a past costing, and comparing against earlier events, takes under 2 seconds on ten
 /// years of history. Ten years at 60 events a year for one client is far more than the business holds.
+/// It has a database of its own, because 600 extra events would crowd the paged event lists other tests read.
 /// </summary>
-[Collection(DatabaseCollection.Name)]
-public class CostHistoryPerformanceTests(DatabaseApiFixture fixture, ITestOutputHelper output)
+public class CostHistoryPerformanceTests(DatabaseApiFixture fixture, ITestOutputHelper output) : IClassFixture<DatabaseApiFixture>
 {
     private const int YearsOfHistory = 10;
     private const int EventsPerYear = 60;

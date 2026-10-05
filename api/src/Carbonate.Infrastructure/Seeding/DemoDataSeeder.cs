@@ -37,7 +37,6 @@ public sealed class DemoDataSeeder(
     CemDbContext db,
     IEventTemplateSeeder templateSeeder,
     IPasswordService passwords,
-    ITotpService totp,
     ISecretProtector secrets,
     IOptions<FinanceOptions> finance,
     TimeProvider clock,
@@ -62,9 +61,11 @@ public sealed class DemoDataSeeder(
 
         if (await db.Events.AnyAsync(ct))
         {
-            // The world is already there. Fill in the money if it is missing, so a demo seeded before
-            // costings existed can still show what each role sees.
+            // The world is already there. Fill in the money and the crew if they are missing, so a
+            // demo seeded before costings or crew existed can still show what each role sees.
             await EnsureDemoCommercialAsync(ct);
+            await SeedCrewAsync(clock.GetUtcNow().UtcDateTime, ct);
+            await db.SaveChangesAsync(ct);
             logger.LogInformation("Demo data already present; nothing to seed.");
             return;
         }
@@ -87,6 +88,7 @@ public sealed class DemoDataSeeder(
         await db.SaveChangesAsync(ct);
 
         await SeedEventsAsync(now, divisions, users, venues, clients, ct);
+        await SeedCrewAsync(now, ct);
         await SeedAdminCardsAsync(now, users, ct);
 
         await db.SaveChangesAsync(ct);
@@ -645,6 +647,95 @@ public sealed class DemoDataSeeder(
         Add(MilestoneType.LoadOut, ends.AddHours(2), 2, done);
         Add(MilestoneType.Debrief, ends.AddDays(1), 1, done);
         Add(MilestoneType.Reconciliation, ends.AddDays(3), 2, done);
+    }
+
+    // ---- Crew on events -------------------------------------------------------------------
+
+    /// <summary>
+    /// FR-07. Appendix D names Thabo and Priya but never puts them on an event, so "My events" was
+    /// empty for both crew accounts and the crew-scoped visibility rule had nothing to scope.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Priya holds only the casual crew role, so <see cref="Carbonate.Domain.Platform.CrewExpiry"/>
+    /// would deactivate her account once every shift is behind her (FR-36). She is given a shift six
+    /// weeks out as well as the live one on purpose — with only past work, the demo account stops
+    /// being able to sign in a day after the world is seeded.
+    /// </para>
+    /// <para>
+    /// Naidoo is left out deliberately. It is the confidential event, so excluding it gives the
+    /// visibility rules a negative case the demo can prove rather than assert.
+    /// </para>
+    /// </remarks>
+    private async Task SeedCrewAsync(DateTime now, CancellationToken ct)
+    {
+        if (await db.CrewAssignments.AnyAsync(ct))
+        {
+            return;
+        }
+
+        // Looked up rather than passed in, so this also runs against a world that was seeded before
+        // crew existed — the same reason EnsureDemoCommercialAsync backfills money.
+        var crew = await db.Users
+            .Where(u => u.Email == "thabo@carbon.demo" || u.Email == "priya@carbon.demo")
+            .ToDictionaryAsync(u => u.Email, u => u.UserId, ct);
+
+        if (crew.Count < 2)
+        {
+            logger.LogWarning("The demo crew accounts are missing; no crew assignments seeded.");
+            return;
+        }
+
+        var thabo = crew["thabo@carbon.demo"];
+        var priya = crew["priya@carbon.demo"];
+
+        // Rates are $staff-tier money (FR-35): an Event Manager sees them, a Crew Lead does not.
+        // Seeding them is what gives that masking tier something to demonstrate.
+        var specs = new (string Code, Guid UserId, string CrewRole, decimal Rate, bool Confirmed)[]
+        {
+            // Running now, so both crew accounts have something live the moment the demo opens.
+            ("RIV-FEST-26", thabo, "Crew lead", 185.00m, true),
+            ("RIV-FEST-26", priya, "Bar staff", 140.00m, true),
+
+            // Four days out. Also the event carrying the FR-27 and FR-29 stock warnings.
+            ("VAN-ACT-26", thabo, "Crew lead", 185.00m, true),
+
+            // Finished a fortnight ago: past work, so the crew view is not only what is ahead.
+            ("DEL-GOLF-26", thabo, "Crew lead", 185.00m, true),
+
+            // Six weeks out and not yet confirmed, which keeps Priya's account alive and shows the
+            // unconfirmed state.
+            ("MER-YE-26", priya, "Bar staff", 140.00m, false),
+        };
+
+        var codes = specs.Select(s => s.Code).Distinct().ToArray();
+        var events = await db.Events
+            .Where(e => codes.Contains(e.EventCode))
+            .ToDictionaryAsync(e => e.EventCode, ct);
+
+        foreach (var spec in specs)
+        {
+            if (!events.TryGetValue(spec.Code, out var ev))
+            {
+                logger.LogWarning("Demo event {Code} is missing; no crew seeded for it.", spec.Code);
+                continue;
+            }
+
+            db.CrewAssignments.Add(new CrewAssignment
+            {
+                EventId = ev.EventId,
+                UserId = spec.UserId,
+                CrewRole = spec.CrewRole,
+                // Crew are on site from load-in until load-out is finished, which is two hours after
+                // strike plus the two hours load-out itself takes (see AddMilestones).
+                ShiftStart = ev.StartsAt,
+                ShiftEnd = ev.EndsAt.AddHours(4),
+                Confirmed = spec.Confirmed,
+                HourlyRate = spec.Rate,
+            });
+        }
+
+        logger.LogInformation("Seeded {Count} crew assignments as at {Now:u}.", specs.Length, now);
     }
 
     // ---- The admin board ------------------------------------------------------------------

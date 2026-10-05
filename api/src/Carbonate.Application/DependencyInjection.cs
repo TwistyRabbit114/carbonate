@@ -1,6 +1,7 @@
 using Carbonate.Application.Features.Boards;
 using Carbonate.Application.Features.Commercial;
 using Carbonate.Application.Features.Events;
+using Carbonate.Application.Features.Stock;
 using Carbonate.Application.Features.Venues;
 using Carbonate.Application.Masking;
 using Carbonate.Application.Platform.Auth;
@@ -18,6 +19,12 @@ public static class DependencyInjection
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<ICommercialService, CommercialService>();
         services.AddScoped<IUserService, UserService>();
+
+        // Stock, requirements and order lists (D, FR-24-30)
+        services.AddScoped<IStockCatalogueService, StockCatalogueService>();
+        services.AddScoped<IStockRequirementService, StockRequirementService>();
+        services.AddScoped<IOrderListService, OrderListService>();
+
         services.AddScoped<IAuditQueryService, AuditQueryService>();
         services.AddScoped<PasswordPolicy>();
 

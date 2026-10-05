@@ -84,6 +84,7 @@ public static class DependencyInjection
 
         // Stock and templates (D, FR-24-30)
         services.AddScoped<IEventTemplateSeeder, EventTemplateSeeder>();
+        services.AddScoped<IStockRepository, StockRepository>();
 
         //event visibility and description cleaning, shared by every module that needs them (plan sections 7.2, 7.5)
         services.AddScoped<IEventAccess, EventAccess>();

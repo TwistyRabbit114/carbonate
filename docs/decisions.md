@@ -137,6 +137,38 @@ status flow as built.
 
 ---
 
+## D-012 — The transition worker's sleep cap defeats the database auto-pause
+
+**5 Oct 2026 · Owner: D**
+
+Measured, not predicted. Two days of real usage cost **$14.43**, of which **$11.57 is SQL compute** —
+against an estimate of $20–30 for a whole month built on the database being paused most of the time.
+
+**Why.** `EventTransitionWorker` sleeps until the next event is due, capped at 30 minutes so a newly
+created event is noticed without a restart. Azure SQL serverless pauses after an hour of inactivity. A
+query every half hour means the database never reaches an idle hour, so it never pauses, so we pay for
+provisioned compute continuously. The cap that makes FR-02 responsive is the same cap that removes the
+saving the whole hosting choice was based on.
+
+**Why it was not caught earlier.** Nothing about it is visible in code review or in tests. The worker
+is correct, the queries are efficient, the design is the one the plan asked for. It shows up only on a
+bill, which is the first time anyone looks at the interaction between a sleep interval and an
+auto-pause delay.
+
+**Decision: leave it, and document it.** With the submission due, changing the worker's timing risks
+the automatic transitions that FR-02 is demonstrated by — an event becoming due while the worker sleeps
+longer would not move. The options and their trade-offs are written up in `docs/hosting.md` section 3.
+The fix after the demonstration is a one-line constant, or a signal from the event-create path.
+
+**Trade-off accepted.** The project runs over its cost estimate until that change is made. The budget
+alert at 50% and 80% of the $100 credit is what catches it.
+
+**Task 3 report.** Worth a section of its own. The cost argument in Task 1 section 5 rests on
+auto-pause, and this is a concrete case of an implementation detail quietly invalidating an
+architectural assumption — found by looking at the bill rather than the code.
+
+---
+
 ## D-011 — Deploys run from package, and only dev runs as `Development`
 
 **5 Oct 2026 · Owner: D**

@@ -1,9 +1,10 @@
 import { delay, http, HttpResponse } from 'msw';
-import type { EventStatus } from '@/api/types';
-import { permissionCheck } from '@/auth/permissions';
+import type { BoardColumn, CardStatus, EventStatus, TaskCard, UserRef } from '@/api/types';
+import { permissionCheck, type Permission } from '@/auth/permissions';
+import { demoAdminBoard } from '../fixtures/adminTasks';
 import { demoEvents } from '../fixtures/events';
 import { mfaStep, signedInSession } from '../fixtures/sessions';
-import { users } from '../fixtures/users';
+import { userList, users } from '../fixtures/users';
 
 //a stand-in for the api so screens can be built and demoed before the real endpoints exist.
 //loaded by `npm run dev:mocks` only, and never part of the production build
@@ -62,23 +63,30 @@ function accountFromMfaBearer(header: string | null) {
 //to localStorage, so the mock holds it in memory instead and a full reload signs you out
 let mockSession: AccountKey | null = null;
 let mockEvents = demoEvents();
+let mockAdminBoard = demoAdminBoard();
 
 //back to signed out with the demo data as it started, tests call this before each run
 export function resetMocks() {
   mockSession = null;
   mockEvents = demoEvents();
+  mockAdminBoard = demoAdminBoard();
 }
 
 //----------------------------------------------------------\\
 //                              RESPONSES
 //----------------------------------------------------------\\
 
-function problem(status: number, title: string, detail?: string) {
+function problem(status: number, title: string, detail?: string, extra: object = {}) {
   return HttpResponse.json(
-    { status, title, detail },
+    { status, title, detail, ...extra },
     { status, headers: { 'Content-Type': 'application/problem+json' } },
   );
 }
+
+const invalid = (errors: Record<string, string[]>) =>
+  problem(400, 'One or more validation errors occurred.', undefined, { errors });
+
+const unauthorised = () => new HttpResponse(null, { status: 401 });
 
 //the api's wording, so the screens are tried against the same answers they'll really get
 const wrongPassword = () =>
@@ -257,4 +265,203 @@ function nextRowVersion() {
   return btoa(`mock-version-${rowVersionCounter}`);
 }
 
-export const handlers = [...authHandlers, ...eventHandlers];
+//----------------------------------------------------------\\
+//                              ADMIN TASKS
+//----------------------------------------------------------\\
+
+//the api's rules from AdminTaskRules, with its wording, so the board meets the same refusals it
+//will for real. columns go by position: assigned, in progress / needs review, complete (FR-19, FR-20)
+const adminStatusAt: CardStatus[] = ['Assigned', 'InProgressOrNeedsReview', 'Complete'];
+
+function caller(request: Request) {
+  const key = accountFromBearer(request.headers.get('Authorization'));
+  if (!key) return null;
+  const check = permissionCheck(users[key].permissions);
+  return {
+    key,
+    me: personRefFor(users[key].user.userId)!,
+    can: (code: Permission) => check.can(code),
+  };
+}
+
+function personRefFor(userId: string): UserRef | undefined {
+  const account = Object.values(users).find((candidate) => candidate.user.userId === userId);
+  return account && { userId, fullName: account.user.fullName };
+}
+
+const isAssignee = (card: TaskCard, userId: string) => card.assignees.some((person) => person.userId === userId);
+
+//desk roles see every admin task, crew only their own, and anything else is a 404 (FR-21)
+const seesAll = (who: NonNullable<ReturnType<typeof caller>>) => who.can('event.view_all');
+
+function findAdminCard(cardId: unknown) {
+  for (const column of mockAdminBoard.columns) {
+    const card = column.cards.find((candidate) => candidate.cardId === cardId);
+    if (card) return { card, column };
+  }
+  return null;
+}
+
+const renumber = (cards: TaskCard[]) => cards.map((card, index) => ({ ...card, position: index }));
+
+//takes the card out of its column and puts it in another (or the same) at a position, renumbering both
+function place(card: TaskCard, from: BoardColumn, to: BoardColumn, position: number, changes: Partial<TaskCard> = {}) {
+  from.cards = renumber(from.cards.filter((candidate) => candidate.cardId !== card.cardId));
+  const moved: TaskCard = {
+    ...card,
+    ...changes,
+    columnId: to.columnId,
+    status: adminStatusAt[to.position] ?? card.status,
+    rowVersion: nextRowVersion(),
+  };
+  const others = to.cards.filter((candidate) => candidate.cardId !== card.cardId);
+  others.splice(Math.min(Math.max(position, 0), others.length), 0, moved);
+  to.cards = renumber(others);
+  return to.cards.find((candidate) => candidate.cardId === card.cardId)!;
+}
+
+const staleCard = (card: TaskCard) =>
+  problem(409, 'Changed by someone else', undefined, { type: '/problems/concurrency-conflict', current: card });
+
+const invalidMove = (detail: string) =>
+  problem(409, "That move isn't allowed", detail, { type: '/problems/invalid-transition' });
+
+export const adminTaskHandlers = [
+  http.get('/api/boards/admin', async ({ request }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('admin_task.view')) return problem(403, 'Forbidden');
+
+    const columns = mockAdminBoard.columns.map((column) => ({
+      ...column,
+      cards: seesAll(who) ? column.cards : column.cards.filter((card) => isAssignee(card, who.me.userId)),
+    }));
+    return HttpResponse.json({ ...mockAdminBoard, columns });
+  }),
+
+  http.post('/api/boards/:boardId/cards', async ({ request, params }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (params.boardId !== mockAdminBoard.boardId) return problem(404, 'Not found');
+
+    const body = await readJson(request);
+    const subject = typeof body.subject === 'string' ? body.subject.trim() : '';
+    const assigneeIds = Array.isArray(body.assigneeIds) ? (body.assigneeIds as string[]) : [];
+    if (!subject) return invalid({ subject: ['Give the card a subject.'] });
+    if (!who.can('admin_task.assign')) return problem(403, 'Forbidden', "Your role can't hand out admin tasks.");
+    if (assigneeIds.length === 0) return invalid({ assigneeIds: ['An admin task needs someone to do it.'] });
+
+    const assignees = assigneeIds.map(personRefFor);
+    if (assignees.some((person) => !person)) return invalid({ assigneeIds: ["That person isn't an active user."] });
+
+    const column = mockAdminBoard.columns[0]!;
+    const card: TaskCard = {
+      cardId: crypto.randomUUID(),
+      boardId: mockAdminBoard.boardId,
+      columnId: column.columnId,
+      subject,
+      description: typeof body.description === 'string' ? body.description : null,
+      priority: (body.priority as TaskCard['priority']) ?? 'Normal',
+      dueAt: typeof body.dueAt === 'string' ? new Date(body.dueAt).toISOString() : null,
+      position: column.cards.length,
+      status: 'Assigned',
+      milestoneId: null,
+      assignees: assignees as UserRef[],
+      createdBy: who.me,
+      reviewNotes: null,
+      returnedBy: null,
+      returnedAt: null,
+      completedAt: null,
+      attachmentCount: 0,
+      rowVersion: nextRowVersion(),
+    };
+    column.cards = [...column.cards, card];
+    return HttpResponse.json(card, { status: 201 });
+  }),
+
+  //a drag on the admin board only reorders a column or hands a task in
+  http.post('/api/cards/:cardId/move', async ({ request, params }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+
+    const found = findAdminCard(params.cardId);
+    if (!found || (!seesAll(who) && !isAssignee(found.card, who.me.userId))) return problem(404, 'Not found');
+    const { card, column: from } = found;
+
+    const { columnId, position, rowVersion } = await readJson(request);
+    const to = mockAdminBoard.columns.find((column) => column.columnId === columnId);
+    if (!to) return invalid({ columnId: ["That column isn't on this board."] });
+
+    if (to !== from && !(from.position === 0 && to.position === 1)) {
+      return invalidMove('Use Complete or Return to move a task on from review.');
+    }
+    if (to !== from && !isAssignee(card, who.me.userId)) {
+      return problem(403, 'Forbidden', 'Only someone this task is assigned to can hand it in.');
+    }
+    if (rowVersion !== card.rowVersion) return staleCard(card);
+
+    return HttpResponse.json(place(card, from, to, typeof position === 'number' ? position : to.cards.length));
+  }),
+
+  http.post('/api/cards/:cardId/complete', async ({ request, params }) => signOff(request, params.cardId, null)),
+
+  http.post('/api/cards/:cardId/return', async ({ request, params }) => {
+    const body = await readJson(request);
+    const notes = typeof body.reviewNotes === 'string' ? body.reviewNotes.trim() : '';
+    if (!notes) return invalid({ reviewNotes: ['Say what still needs doing before it comes back.'] });
+    return signOff(request, params.cardId, notes, body.rowVersion);
+  }),
+
+  //only director and ops hold user.manage, the same people who hand tasks out
+  http.get('/api/users', async ({ request }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('user.manage')) return problem(403, 'Forbidden');
+
+    const items = userList();
+    return HttpResponse.json({ items, page: 1, pageSize: 200, total: items.length });
+  }),
+];
+
+//complete when notes is null, return otherwise. the return body has already been read for its
+//notes, so its row version is passed in
+async function signOff(request: Request, cardId: unknown, notes: string | null, sentVersion?: unknown) {
+  await delay();
+  const who = caller(request);
+  if (!who) return unauthorised();
+  if (!who.can('admin_task.review')) return problem(403, 'Forbidden');
+
+  const found = findAdminCard(cardId);
+  if (!found) return problem(404, 'Not found');
+  const { card, column } = found;
+  const rowVersion = notes === null ? (await readJson(request)).rowVersion : sentVersion;
+
+  if (card.createdBy.userId !== who.me.userId) {
+    return problem(403, 'Forbidden', 'Only the manager who handed out this task can complete or return it.');
+  }
+  if (isAssignee(card, who.me.userId)) {
+    return problem(403, 'Forbidden', 'A task assigned to you has to be signed off by someone else.');
+  }
+  if (column.position !== 1) {
+    return invalidMove("Only a task that's been handed in for review can be completed or returned.");
+  }
+  if (rowVersion !== card.rowVersion) return staleCard(card);
+
+  const [assigned, , complete] = mockAdminBoard.columns;
+  const updated =
+    notes === null
+      ? place(card, column, complete!, complete!.cards.length, { completedAt: new Date().toISOString() })
+      : place(card, column, assigned!, assigned!.cards.length, {
+          reviewNotes: notes,
+          returnedBy: who.me,
+          returnedAt: new Date().toISOString(),
+          completedAt: null,
+        });
+  return HttpResponse.json(updated);
+}
+
+export const handlers = [...authHandlers, ...eventHandlers, ...adminTaskHandlers];

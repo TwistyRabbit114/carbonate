@@ -21,6 +21,22 @@ export function formatCount(value: number) {
 }
 
 //----------------------------------------------------------\\
+//                              LISTS
+//----------------------------------------------------------\\
+
+const list = new Intl.ListFormat('en-ZA', { type: 'conjunction' });
+
+//names in a sentence: "Thabo N. and Priya R."
+export function formatList(items: readonly string[]) {
+  return list.format(items);
+}
+
+//a full stop at the end, unless it already has one: "assigned to Sarah M." not "Sarah M.."
+export function sentence(text: string) {
+  return /[.!?]$/.test(text) ? text : `${text}.`;
+}
+
+//----------------------------------------------------------\\
 //                              DATES
 //----------------------------------------------------------\\
 

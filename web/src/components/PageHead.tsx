@@ -11,7 +11,7 @@ type PageHeadProps = {
 export function PageHead({ title, eyebrow, actions }: PageHeadProps) {
   return (
     <div className={styles.head}>
-      <title>{`${title} — Carbonate`}</title>
+      <title>{`${title} · Carbonate`}</title>
       <div>
         {eyebrow && <p className={styles.eyebrow}>{eyebrow}</p>}
         <h1>{title}</h1>

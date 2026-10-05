@@ -5,7 +5,7 @@ import { Badge } from '@/components/Badge';
 import { cx } from '@/lib/cx';
 import { formatCount, formatDateOnly } from '@/lib/format';
 import { eventTypeLabels } from './labels';
-import styles from './EventCard.module.scss';
+import styles from '@/components/kanban/KanbanCard.module.scss';
 
 //----------------------------------------------------------\\
 //                              CARD

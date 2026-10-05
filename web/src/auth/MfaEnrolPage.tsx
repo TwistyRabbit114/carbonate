@@ -57,7 +57,7 @@ export default function MfaEnrolPage() {
 
   return (
     <>
-      <title>Set up two-step sign-in — Carbonate</title>
+      <title>Set up two-step sign-in · Carbonate</title>
       <h1 className={styles.heading}>Set up two-step sign-in</h1>
       <p className={styles.lead}>
         Your role needs a code from your phone each time you log in. Setup takes a minute.

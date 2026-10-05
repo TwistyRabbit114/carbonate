@@ -80,7 +80,7 @@ export default function LoginPage() {
 
   return (
     <>
-      <title>Log in — Carbonate</title>
+      <title>Log in · Carbonate</title>
       <h1 className={styles.heading}>Log in</h1>
       <p className={styles.lead}>Use the email address your account was set up with.</p>
 

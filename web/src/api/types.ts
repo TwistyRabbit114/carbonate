@@ -89,3 +89,69 @@ export type EventListItem = {
   isConfidential: boolean;
   rowVersion: string;
 };
+
+//----------------------------------------------------------\\
+//                              BOARDS
+//----------------------------------------------------------\\
+
+export type CardPriority = 'Low' | 'Normal' | 'High' | 'Critical';
+
+//admin tasks follow their column (FR-19), event board cards are open or done (D-009)
+export type CardStatus = 'Assigned' | 'InProgressOrNeedsReview' | 'Complete' | 'Open' | 'Done';
+
+//a person as other records show them
+export type UserRef = {
+  userId: string;
+  fullName: string;
+};
+
+//one card on either board. no money lives on a card
+export type TaskCard = {
+  cardId: string;
+  boardId: string;
+  columnId: string;
+  subject: string;
+  description: string | null; //sanitised html, only ever rendered through SanitisedDescription
+  priority: CardPriority;
+  dueAt: string | null;
+  position: number;
+  status: CardStatus;
+  milestoneId: string | null;
+  assignees: UserRef[];
+  createdBy: UserRef; //on an admin task, the manager who handed it out and signs it off (FR-20)
+  reviewNotes: string | null;
+  returnedBy: UserRef | null;
+  returnedAt: string | null;
+  completedAt: string | null;
+  attachmentCount: number;
+  rowVersion: string;
+};
+
+export type BoardColumn = {
+  columnId: string;
+  name: string;
+  position: number;
+  wipLimit: number | null; //display only (FR-23)
+  isDoneColumn: boolean;
+  cards: TaskCard[];
+};
+
+//GET /api/boards/admin and GET /api/events/{id}/board. crew get only the cards assigned to them
+export type Board = {
+  boardId: string;
+  boardType: 'Event' | 'Admin';
+  eventId: string | null;
+  name: string;
+  columns: BoardColumn[];
+};
+
+//----------------------------------------------------------\\
+//                              USERS
+//----------------------------------------------------------\\
+
+//one row of GET /api/users, which takes user.manage
+//TODO(plan): row shape and the isActive filter are assumed until C's users endpoint lands
+export type UserListItem = UserSummary & {
+  roles: RoleName[];
+  isActive: boolean;
+};

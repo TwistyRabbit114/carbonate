@@ -47,3 +47,8 @@ function OpenDialog({ title, onClose, children }: Omit<DialogProps, 'open'>) {
     </dialog>
   );
 }
+
+//the row of buttons at the bottom, the main action last
+export function DialogFooter({ children }: { children: ReactNode }) {
+  return <div className={styles.footer}>{children}</div>;
+}

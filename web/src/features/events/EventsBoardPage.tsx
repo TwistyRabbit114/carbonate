@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -18,9 +18,11 @@ import { usePermissions } from '@/auth/AuthContext';
 import { Badge } from '@/components/Badge';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
+import { columnCollision, columnKeyboardCoordinates } from '@/components/kanban/dragging';
 import { KanbanBoard } from '@/components/kanban/KanbanBoard';
 import { KanbanColumn, type DropState } from '@/components/kanban/KanbanColumn';
 import { KanbanSkeleton } from '@/components/kanban/KanbanSkeleton';
+import { useFollowFocus } from '@/components/kanban/useFollowFocus';
 import { LinkButton } from '@/components/LinkButton';
 import { PageHead } from '@/components/PageHead';
 import { cx } from '@/lib/cx';
@@ -29,9 +31,9 @@ import { BoardFilterBar } from './BoardFilterBar';
 import { boardColumns, groupByStage, type BoardStatus } from './board';
 import { EventCard, EventCardOverlay } from './EventCard';
 import { applyBoardFilters, readBoardFilters, writeBoardFilters, type BoardFilters } from './filters';
-import { columnCollision, columnKeyboardCoordinates, dragInstructions, moveAnnouncements } from './moves';
+import { dragInstructions, moveAnnouncements } from './moves';
 import { MoveEventDialog } from './MoveEventDialog';
-import cardStyles from './EventCard.module.scss';
+import cardStyles from '@/components/kanban/KanbanCard.module.scss';
 
 //----------------------------------------------------------\\
 //                              PAGE
@@ -176,48 +178,19 @@ function StageColumn({
 //optimistic move, and only columns the server allows light up as targets
 type CardControl = 'handle' | 'menu';
 
-//where keyboard focus should land once a moved card has settled
-type FocusPlan = { eventId: string; selector: string };
-
 function MovableBoard({ events, stages }: { events: EventListItem[]; stages: Stages }) {
   const queryClient = useQueryClient();
   const move = useMoveEvent();
   const [dragging, setDragging] = useState<EventListItem | null>(null);
   const [menuFor, setMenuFor] = useState<EventListItem | null>(null);
-  const [focusPlan, setFocusPlan] = useState<FocusPlan | null>(null);
+  const followFocus = useFollowFocus(events);
   const allowed = useAllowedTransitions(dragging?.eventId ?? null);
-
-  //a moved card is drawn fresh in its new column, which drops keyboard focus on the page body.
-  //put it back on the same button of that card, and again if a rejected move sends it home.
-  //it only ever picks focus up off the body, never takes it from something the user chose
-  useEffect(() => {
-    if (!focusPlan) return;
-    const target = document.querySelector<HTMLElement>(focusPlan.selector);
-    const focusLost = !document.activeElement || document.activeElement === document.body;
-    if (target && focusLost) target.focus();
-  }, [focusPlan, events]);
-
-  //stop following the card once the user clicks or tabs somewhere else
-  useEffect(() => {
-    if (!focusPlan) return;
-    const stop = (event: Event) => {
-      const element = event.target instanceof HTMLElement ? event.target : null;
-      const ours = element?.dataset.eventId === focusPlan.eventId || element?.matches(focusPlan.selector);
-      if (event.type === 'pointerdown' || !ours) setFocusPlan(null);
-    };
-    document.addEventListener('focusin', stop);
-    document.addEventListener('pointerdown', stop);
-    return () => {
-      document.removeEventListener('focusin', stop);
-      document.removeEventListener('pointerdown', stop);
-    };
-  }, [focusPlan]);
 
   function moveEvent(event: EventListItem, to: EventStatus, control: CardControl) {
     //a cancelled card leaves the board for good, so focus goes to the start of the page content
     const selector =
-      to === 'Cancelled' ? '#main' : `[data-event-id="${event.eventId}"][data-control="${control}"]`;
-    setFocusPlan({ eventId: event.eventId, selector });
+      to === 'Cancelled' ? '#main' : `[data-card-id="${event.eventId}"][data-control="${control}"]`;
+    followFocus({ cardId: event.eventId, selector });
     move.mutate({ event, to });
   }
 
@@ -346,7 +319,7 @@ function DraggableEventCard({
             {...attributes}
             {...listeners}
             aria-label={`Drag ${event.name} to another stage`}
-            data-event-id={event.eventId}
+            data-card-id={event.eventId}
             data-control="handle"
             onPointerEnter={reach}
             onFocus={reach}
@@ -357,7 +330,7 @@ function DraggableEventCard({
             type="button"
             className={cardStyles.action}
             aria-label={`Move ${event.name} to…`}
-            data-event-id={event.eventId}
+            data-card-id={event.eventId}
             data-control="menu"
             title="Move to…"
             onClick={() => onOpenMenu(event)}

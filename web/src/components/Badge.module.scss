@@ -19,7 +19,8 @@
   color: var(--muted);
 }
 
-.confidential {
+.confidential,
+.warning {
   background: var(--warning-tint);
   color: var(--warning);
 }

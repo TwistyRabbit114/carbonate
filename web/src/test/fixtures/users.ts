@@ -1,4 +1,4 @@
-import type { MeResponse } from '@/api/types';
+import type { MeResponse, UserListItem } from '@/api/types';
 import { permissionCodes, type Permission } from '@/auth/permissions';
 
 //one demo account per role, names from the prototype and plan appendix d. permission sets
@@ -146,3 +146,8 @@ export const users = {
   crewLead: account(5, 'Thabo N.', 'thabo@example.com', 'CrewLead', crewLead),
   casualCrew: account(6, 'Priya R.', 'priya@example.com', 'CasualCrew', casualCrew),
 };
+
+//the same accounts as rows of GET /api/users
+export function userList(): UserListItem[] {
+  return Object.values(users).map(({ user, roles }) => ({ ...user, roles, isActive: true }));
+}

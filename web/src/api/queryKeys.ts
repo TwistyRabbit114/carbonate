@@ -2,4 +2,6 @@
 export const queryKeys = {
   eventsBoard: ['events', 'board'] as const,
   allowedTransitions: (eventId: string) => ['events', eventId, 'allowed-transitions'] as const,
+  adminBoard: ['boards', 'admin'] as const,
+  activeUsers: ['users', 'active'] as const,
 };

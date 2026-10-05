@@ -6,7 +6,7 @@ import styles from './Centered.module.scss';
 export function RouteErrorPage() {
   return (
     <main className={styles.page}>
-      <title>Something went wrong — Carbonate</title>
+      <title>Something went wrong · Carbonate</title>
       <div className={styles.card} role="alert">
         <Logo size={48} withName className={styles.logo} />
         <h1>Something went wrong</h1>

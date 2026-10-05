@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { EventListItem, EventStatus } from '@/api/types';
 import { Alert } from '@/components/Alert';
 import { Button } from '@/components/Button';
-import { Dialog } from '@/components/Dialog';
+import { ChoiceList } from '@/components/ChoiceList';
+import { Dialog, DialogFooter } from '@/components/Dialog';
 import { useAllowedTransitions } from './api';
 import { stageLabels } from './labels';
 import styles from './MoveEventDialog.module.scss';
@@ -66,16 +67,14 @@ function MoveDialogBody({ event, onClose, onMove }: MoveEventDialogProps & { eve
           )}
 
           {stages.length > 0 && (
-            <ul className={styles.options}>
-              {stages.map((to) => (
-                <li key={to}>
-                  <button type="button" className={styles.option} onClick={() => onMove(event, to)}>
-                    <span className={styles.optionTitle}>Move to {stageLabels[to]}</span>
-                    {moveHints[to] && <span className={styles.optionHint}>{moveHints[to]}</span>}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <ChoiceList
+              choices={stages.map((to) => ({
+                key: to,
+                title: `Move to ${stageLabels[to]}`,
+                hint: moveHints[to],
+                onSelect: () => onMove(event, to),
+              }))}
+            />
           )}
 
           {canCancel && (
@@ -84,9 +83,9 @@ function MoveDialogBody({ event, onClose, onMove }: MoveEventDialogProps & { eve
             </Button>
           )}
 
-          <div className={styles.footer}>
+          <DialogFooter>
             <Button onClick={onClose}>Close</Button>
-          </div>
+          </DialogFooter>
         </>
       )}
     </Dialog>
@@ -106,14 +105,14 @@ function ConfirmCancel({ onKeep, onCancel }: { onKeep: () => void; onCancel: () 
   return (
     <>
       <p>Cancelling takes it off the board for good. A cancelled event can't be reopened.</p>
-      <div className={styles.footer}>
+      <DialogFooter>
         <Button ref={keep} onClick={onKeep}>
           Keep event
         </Button>
         <Button variant="danger" onClick={onCancel}>
           Cancel event
         </Button>
-      </div>
+      </DialogFooter>
     </>
   );
 }

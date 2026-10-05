@@ -12,7 +12,7 @@ export function NotFoundPage() {
 
   return (
     <main className={styles.page}>
-      <title>Not found — Carbonate</title>
+      <title>Not found · Carbonate</title>
       <div className={styles.card}>
         <Logo size={48} withName className={styles.logo} />
         <h1>We couldn't find that</h1>

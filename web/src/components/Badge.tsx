@@ -3,7 +3,7 @@ import { cx } from '@/lib/cx';
 import styles from './Badge.module.scss';
 
 type BadgeProps = {
-  tone?: 'neutral' | 'confidential' | 'auto' | 'danger';
+  tone?: 'neutral' | 'confidential' | 'warning' | 'auto' | 'danger';
   children: ReactNode;
 };
 

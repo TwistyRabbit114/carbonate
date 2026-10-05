@@ -94,9 +94,7 @@ after the status in italics. The status itself is left for its owner to change.
 
 | Gap | Why | Owner |
 |---|---|---|
-| Client and division lookups (FR-01) | `GET /api/clients` and `GET /api/divisions` don't exist yet, so New event and Edit event can't save on the real API. The form asks for `{ clientId, name }` and `{ divisionId, code, name }` | C |
-| The Event Manager can't pick crew (FR-07) | They hold `crew.assign`, but `GET /api/users` needs `user.manage` | C |
-| Raising an invoice from the screens (FR-13) | It needs the event's confirmation id, and no response the screens read carries it | C |
+| Screens not yet wired to three new endpoints (FR-01, FR-07, FR-13) | `GET /api/clients`, `GET /api/divisions`, `GET /api/crew/candidates` and `GET /api/events/{id}/confirmation` are now in the API (#50). New event and Edit event, the crew picker and raising an invoice need to call them | B |
 | Casual Crew can't report an incident (FR-31) | The item and equipment lists need `stock.view`, which Casual Crew doesn't hold | D |
 | No crew on any demo event | The demo data gives Thabo and Priya admin tasks but no crew assignment, so My events is empty for both until someone assigns them | D |
 | Google OAuth connect flow (FR-40) | Needs a Google Cloud project and consent screen, and refresh tokens expire after 7 days in Testing mode. Everything behind it — outbox, deduplication, redaction, signed `state` — is built and tested (D-010) | D |

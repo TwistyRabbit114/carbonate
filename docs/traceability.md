@@ -21,7 +21,7 @@ after the status in italics. The status itself is left for its owner to change.
 
 | ID | Requirement | Owner | API | Screen | Tests | Status |
 |---|---|---|---|---|---|---|
-| FR-01 | Record an event with all booking fields | C | `POST /api/events` | Events board → New event; event page → Edit | `EventsEndpointTests`, `EventFormPage.test.tsx`, `eventForm.test.ts` | **Done** · *B: the form can't save on the real API yet, because it needs `GET /api/clients` and `GET /api/divisions` (C)* |
+| FR-01 | Record an event with all booking fields | C | `POST /api/events` | Events board → New event; event page → Edit | `EventsEndpointTests`, `EventFormPage.test.tsx`, `eventForm.test.ts` | **Done** · *B: the form saves on the real API now that the client and division lookups exist (#50); a run on 5 Oct created an event with its board and stock* |
 | FR-02 | Stages, last two automatic, Cancelled only from ConfirmedInPlanning | **D** | `POST /api/events/{id}/transitions`, `GET /api/events/{id}/allowed-transitions` | Events board, drag between columns | `EventStateMachineTests` (45), `EventTransitionWorkerTests`, `EventsEndpointTests` | **Done** |
 | FR-03 | Enquired events excluded from the events board | C | `GET /api/events?board=true` | Events board | `EventsEndpointTests` | **Done** |
 | FR-04 | Milestones with dependencies and lag; moving one cascades | C | `POST /api/events/{id}/milestones/{id}/reschedule` | Event page → Milestones → Reschedule | `ScheduleCalculatorTests`, `MilestoneChainTests`, `EventDetailPage.test.tsx` | **API only** — cascade built and tested, no screen reschedules a milestone · *B: screen now built* |
@@ -84,9 +84,14 @@ after the status in italics. The status itself is left for its owner to change.
 | NFR-17 | Masked values absent from the response | `MaskingTests`: each of the six roles signs in through the real login and calls every endpoint that carries money. A key the role isn't allowed must be missing from the raw JSON, not sent as null, and the staff rate shows only on your own row. A reflection test fails if a new money field isn't on the suite's list | **Done** |
 | NFR-28 | Masking tests gate production | The suite is tagged `Category=Masking`, which the required "Masking acceptance suite" job in `ci.yml` runs | **Done** |
 | NFR-15 | Never silently overwrite | A 409 shows a "changed by someone else" message with a reload, never a quiet save. The tests are listed under FR-10 | **Done** (screens) |
-| NFR-23 | Usable at 360 px | Crew screens checked at 360 px against the local API with the demo data on 5 Oct: nothing scrolls sideways | **Partial**: not yet tried on a real Android phone |
-| NFR-24 | Contrast 4.5:1, 44 px targets | axe runs in the component tests, but it can't measure contrast or target size there | **Partial**: the manual audit isn't done |
-| NFR-01, 03, 04, 06, 07, 25 | Timed and measured runs | NFR-03 also waits on the clients and divisions lookups, since it times creating an event | **Not run yet** |
+| NFR-23 | Usable at 360 px | Every crew screen and the main office screens at 360 px, and the crew journey in four browser engines at that width: nothing scrolls sideways | **Partial**: not yet tried on a real Android phone |
+| NFR-24 | Contrast 4.5:1, 44 px targets | axe in real Chrome on 27 screens and dialogs, with contrast measured: no WCAG 2.2 AA problems. Everything tappable on the crew screens is at least 44 px | **Done** on the crew screens; a few office links at phone width are smaller (see `docs/nfr-results.md`) |
+| NFR-04 | Main task within 3 steps | Scripted journeys from each role's landing page: 0 to 2 steps | **Done** |
+| NFR-07 | Card move shown in under 300 ms | With a second added to every request, the card moved on screen in 43 to 82 ms | **Done** |
+| NFR-25 | Current and previous Chrome, Safari, Edge, Firefox | Office and crew journeys pass in Chrome 154, Edge 154, Firefox 155 and WebKit 26.6 (Safari's engine) | **Partial**: previous versions not tried |
+| NFR-06 | Under 2 s at 5 Mbps, under 4 s at 1 Mbps | Throttled cold loads of the sign-in page, crew landing and events board | **Partial**: 5 Mbps met; 1 Mbps met only with compression, which the API doesn't do yet (C) |
+| NFR-03 | Event set up in under 5 minutes | A scripted run of New event: 16.7 s to a saved event with its board and stock | **Partial**: a person still to time it |
+| NFR-01 | Untrained user finds events, call times and tasks in 2 minutes | Needs five people who haven't used the app | **Not run** |
 
 ---
 
@@ -94,10 +99,11 @@ after the status in italics. The status itself is left for its owner to change.
 
 | Gap | Why | Owner |
 |---|---|---|
-| Screens not yet wired to three new endpoints (FR-01, FR-07, FR-13) | `GET /api/clients`, `GET /api/divisions`, `GET /api/crew/candidates` and `GET /api/events/{id}/confirmation` are now in the API (#50). New event and Edit event, the crew picker and raising an invoice need to call them | B |
+| Screens not yet wired to two new endpoints (FR-07, FR-13) | `GET /api/crew/candidates` and `GET /api/events/{id}/confirmation` are now in the API (#50). The crew picker still reads the user list, which the Event Manager can't open, and there's no Raise invoice screen yet. New event and Edit event already asked for the client and division lookups in the shape #50 serves, so they work | B |
 | Casual Crew can't report an incident (FR-31) | The item and equipment lists need `stock.view`, which Casual Crew doesn't hold | D |
 | No crew on any demo event | The demo data gives Thabo and Priya admin tasks but no crew assignment, so My events is empty for both until someone assigns them | D |
 | Google OAuth connect flow (FR-40) | Needs a Google Cloud project and consent screen, and refresh tokens expire after 7 days in Testing mode. Everything behind it — outbox, deduplication, redaction, signed `state` — is built and tested (D-010) | D |
 | Card attachments (FR-22) and the native calendar (FR-39) | Only if time, after the Musts and the in-scope Shoulds | B |
 | ZAP scan | Not run | D |
-| Accessibility audit | axe runs in the component tests; the manual keyboard, screen reader and contrast pass isn't done | B |
+| Screen reader pass | axe in real Chrome on 27 screens and a keyboard-only run are done (`docs/nfr-results.md`); nobody has listened to the boards and forms with NVDA or VoiceOver yet | B |
+| The app's files aren't compressed (NFR-06) | A first visit at 1 Mbps takes 5 to 6 s uncompressed and 2.5 to 3 s gzipped. Compressing the static files where the API serves them would meet the 4 s target | C |

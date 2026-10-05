@@ -27,7 +27,11 @@
   margin: var(--space-1) 0 0;
   font-size: var(--fs-xl);
 
+  //taller to tap than it looks, without pushing the badges down (NFR-24)
   a {
+    display: inline-block;
+    padding-block: 0.5rem;
+    margin-block: -0.5rem;
     color: inherit;
   }
 }

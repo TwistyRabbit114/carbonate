@@ -30,9 +30,11 @@
   min-width: 0;
 }
 
+//a full touch target on a phone, crew open tasks with a thumb (NFR-24)
 .subject {
-  display: inline-block;
-  padding: var(--space-1) 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target);
   color: var(--ink);
   font-weight: 600;
 }

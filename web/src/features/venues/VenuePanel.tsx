@@ -97,7 +97,7 @@ export function VenueDetails({ venue }: { venue: Venue }) {
       <FieldRow label="Venue">
         {venue.name}
         <br />
-        <a href={mapLink(venue.address)} target="_blank" rel="noopener noreferrer">
+        <a href={mapLink(venue.address)} target="_blank" rel="noopener noreferrer" className={styles.mapLink}>
           {venue.address}
         </a>
       </FieldRow>

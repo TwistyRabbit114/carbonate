@@ -42,3 +42,10 @@
 .text {
   white-space: pre-line;
 }
+
+//the address opens the map, so give it a 44px touch target without spacing the row out (NFR-24)
+.mapLink {
+  display: inline-block;
+  padding-block: 0.875rem;
+  margin-block: -0.875rem;
+}

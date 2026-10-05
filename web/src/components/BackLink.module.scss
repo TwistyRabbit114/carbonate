@@ -5,6 +5,10 @@
   align-items: baseline;
   gap: 0.25rem;
   color: inherit;
+  //the padding makes it a 44px touch target and the margin takes it back out, so the eyebrow
+  //doesn't move (NFR-24)
+  padding-block: 0.875rem;
+  margin-block: -0.875rem;
 }
 
 .icon {

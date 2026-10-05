@@ -79,6 +79,7 @@ public static class DependencyInjection
 
         // Stock and templates (D, FR-24-30)
         services.AddScoped<IEventTemplateSeeder, EventTemplateSeeder>();
+        services.AddScoped<IStockRepository, StockRepository>();
 
         // Files (D, FR-31; FR-06 and FR-22 use it too)
         services.Configure<FileStorageOptions>(configuration.GetSection(FileStorageOptions.Section));

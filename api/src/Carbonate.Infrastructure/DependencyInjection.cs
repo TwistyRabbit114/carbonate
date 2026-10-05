@@ -102,9 +102,25 @@ public static class DependencyInjection
         services.Configure<FileStorageOptions>(configuration.GetSection(FileStorageOptions.Section));
         services.AddSingleton(provider =>
         {
-            var uri = provider.GetRequiredService<IOptions<FileStorageOptions>>().Value.BlobServiceUri;
-            // Managed identity in Azure; whatever the developer is signed in with locally.
-            return new BlobServiceClient(new Uri(uri), new DefaultAzureCredential());
+            var storage = provider.GetRequiredService<IOptions<FileStorageOptions>>().Value;
+
+            // Azurite only. The emulator is plain HTTP and DefaultAzureCredential will not send a
+            // bearer token over an unencrypted connection, so the credential path cannot work locally.
+            // Set Storage:ConnectionString in user-secrets, never in Azure.
+            if (storage.UsesConnectionString)
+            {
+                var local = new BlobServiceClient(storage.ConnectionString);
+
+                // In Azure the container is a deployment step and the app has no right to create one.
+                // A fresh Azurite volume has nothing in it, so without this every upload 404s and a new
+                // developer has to know to run an az CLI command first. Emulator path only.
+                local.GetBlobContainerClient(storage.Container).CreateIfNotExists();
+
+                return local;
+            }
+
+            // Managed identity in Azure; whatever the developer is signed in with otherwise.
+            return new BlobServiceClient(new Uri(storage.BlobServiceUri), new DefaultAzureCredential());
         });
         services.AddScoped<IFileStorage, BlobFileStorage>();
 

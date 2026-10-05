@@ -1,23 +1,32 @@
 using Azure.Identity;
 using Azure.Storage.Blobs;
-using Carbonate.Application.Features.Calendar;
 using Carbonate.Application.Common;
+using Carbonate.Application.Features.Boards;
+using Carbonate.Application.Features.Calendar;
 using Carbonate.Application.Features.Commercial;
 using Carbonate.Application.Features.Events;
+using Carbonate.Application.Features.Incidents;
 using Carbonate.Application.Features.Lifecycle;
 using Carbonate.Application.Features.Stock;
+using Carbonate.Application.Features.Venues;
 using Carbonate.Application.Platform.Audit;
 using Carbonate.Application.Platform.Auth;
+using Carbonate.Application.Platform.Users;
 using Carbonate.Application.Platform.Files;
 using Carbonate.Domain.Lifecycle;
+using Carbonate.Infrastructure.Common;
+using Carbonate.Infrastructure.Features.Boards;
 using Carbonate.Infrastructure.Features.Calendar;
 using Carbonate.Infrastructure.Features.Commercial;
 using Carbonate.Infrastructure.Features.Events;
+using Carbonate.Infrastructure.Features.Incidents;
 using Carbonate.Infrastructure.Features.Lifecycle;
 using Carbonate.Infrastructure.Features.Stock;
+using Carbonate.Infrastructure.Features.Venues;
 using Carbonate.Infrastructure.Persistence;
 using Carbonate.Infrastructure.Platform.Audit;
 using Carbonate.Infrastructure.Platform.Auth;
+using Carbonate.Infrastructure.Platform.Users;
 using Carbonate.Infrastructure.Platform.Files;
 using Carbonate.Infrastructure.Seeding;
 using Microsoft.EntityFrameworkCore;
@@ -38,11 +47,16 @@ public static class DependencyInjection
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.Section));
         services.Configure<FinanceOptions>(configuration.GetSection(FinanceOptions.Section));
         services.Configure<QuoteOptions>(configuration.GetSection(QuoteOptions.Section));
+        services.Configure<CrewOptions>(configuration.GetSection(CrewOptions.Section));
         services.AddSingleton(TimeProvider.System);
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IEventRepository, EventRepository>();
         services.AddScoped<ICommercialRepository, CommercialRepository>();
+        services.AddScoped<IUserAdminRepository, UserAdminRepository>();
+        services.AddScoped<IAuditReadRepository, AuditReadRepository>();
+        services.AddScoped<CrewExpiryService>();
+        services.AddHostedService<CrewAccountExpiryWorker>();
         services.AddScoped<ITransactionRunner, TransactionRunner>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IAuditService, AuditService>();
@@ -72,6 +86,17 @@ public static class DependencyInjection
 
         // Stock and templates (D, FR-24-30)
         services.AddScoped<IEventTemplateSeeder, EventTemplateSeeder>();
+        services.AddScoped<IStockRepository, StockRepository>();
+
+        //event visibility and description cleaning, shared by every module that needs them (plan sections 7.2, 7.5)
+        services.AddScoped<IEventAccess, EventAccess>();
+        services.AddSingleton<IHtmlSanitiser, HtmlSanitiser>();
+
+        //boards and cards (B, FR-19 to FR-21)
+        services.AddScoped<IBoardRepository, BoardRepository>();
+
+        //venues and site visits (B, FR-32, FR-33)
+        services.AddScoped<IVenueRepository, VenueRepository>();
 
         // Files (D, FR-31; FR-06 and FR-22 use it too)
         services.Configure<FileStorageOptions>(configuration.GetSection(FileStorageOptions.Section));
@@ -82,6 +107,9 @@ public static class DependencyInjection
             return new BlobServiceClient(new Uri(uri), new DefaultAzureCredential());
         });
         services.AddScoped<IFileStorage, BlobFileStorage>();
+
+        // Incidents (D, FR-31)
+        services.AddScoped<IIncidentRepository, IncidentRepository>();
 
         services.AddScoped<PlatformSeeder>();
         services.AddScoped<TemplateSeeder>();

@@ -1,0 +1,41 @@
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+%bar {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--line) 0%, var(--paper) 50%, var(--line) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.eyebrow {
+  @extend %bar;
+  width: 6rem;
+  height: 0.75rem;
+}
+
+.title {
+  @extend %bar;
+  width: 14rem;
+  height: 1.75rem;
+  margin-bottom: var(--space-3);
+}
+
+.block {
+  @extend %bar;
+  height: 8rem;
+  border-radius: var(--radius-lg);
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: -100% 0;
+  }
+}

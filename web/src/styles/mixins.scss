@@ -1,0 +1,47 @@
+//breakpoints from the prototype, plus a tablet band it didn't have
+
+//----------------------------------------------------------\\
+//                              BREAKPOINTS
+//----------------------------------------------------------\\
+
+@mixin phone {
+  @media (max-width: 760px) {
+    @content;
+  }
+}
+
+@mixin tablet-down {
+  @media (max-width: 1024px) {
+    @content;
+  }
+}
+
+//----------------------------------------------------------\\
+//                              HELPERS
+//----------------------------------------------------------\\
+
+@mixin visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@mixin focus-ring {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+//uppercase label used for eyebrows and panel headings
+@mixin eyebrow {
+  font-size: var(--fs-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 700;
+  color: var(--accent-strong);
+}

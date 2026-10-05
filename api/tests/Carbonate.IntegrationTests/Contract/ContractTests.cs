@@ -64,7 +64,10 @@ public class ContractTests : IClassFixture<ContractTests.ContractFactory>
         foreach (var endpoint in endpoints.OfType<RouteEndpoint>())
         {
             var route = (endpoint.RoutePattern.RawText ?? "").TrimStart('/');
-            if (route.StartsWith("openapi", StringComparison.Ordinal) || route.Contains("swagger", StringComparison.Ordinal))
+            // The API explorer and the app fallback (which serves the page, never data) are not API endpoints.
+            if (route.StartsWith("openapi", StringComparison.Ordinal)
+                || route.Contains("swagger", StringComparison.Ordinal)
+                || route.StartsWith("{*path", StringComparison.Ordinal))
             {
                 continue;
             }
@@ -81,7 +84,7 @@ public class ContractTests : IClassFixture<ContractTests.ContractFactory>
 
         Assert.Empty(undeclared);
         Assert.Equivalent(
-            new[] { "api/auth/login", "api/auth/mfa/verify", "api/auth/refresh", "health" },
+            new[] { "api/auth/login", "api/auth/mfa/verify", "api/auth/refresh", "api/csp-report", "health" },
             anonymous);
     }
 
@@ -90,7 +93,8 @@ public class ContractTests : IClassFixture<ContractTests.ContractFactory>
     {
         var client = _factory.CreateClientWith(["Director"], RolePermissionMatrix.PermissionsFor(RoleNames.Director));
 
-        var response = await client.GetAsync("/api/venues");
+        //card attachments (FR-22) stay unbuilt until there's time, venues are built now
+        var response = await client.GetAsync($"/api/cards/{Guid.NewGuid()}/attachments");
 
         Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();

@@ -11,6 +11,28 @@
     }
   ],
   "paths": {
+    "/api/csp-report": {
+      "post": {
+        "tags": [
+          "Carbonate.Api"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "422": {
+            "description": "A business rule stops this.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -748,6 +770,282 @@
         ]
       }
     },
+    "/api/events/{eventId}/site-visits": {
+      "get": {
+        "tags": [
+          "SiteVisits"
+        ],
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SiteVisitDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field is invalid. The body lists each one.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the access token has expired.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in, but missing the permission this needs.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to this user.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "SiteVisits"
+        ],
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SiteVisitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteVisitDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field is invalid. The body lists each one.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the access token has expired.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in, but missing the permission this needs.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to this user.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A business rule stops this.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/site-visits/{siteVisitId}": {
+      "put": {
+        "tags": [
+          "SiteVisits"
+        ],
+        "parameters": [
+          {
+            "name": "siteVisitId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SiteVisitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteVisitDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field is invalid. The body lists each one.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the access token has expired.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in, but missing the permission this needs.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to this user.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Someone else changed it first, or the state change is not allowed. See the problem type.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A business rule stops this.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/venues": {
       "get": {
         "tags": [
@@ -762,7 +1060,7 @@
             }
           },
           {
-            "name": "IsActive",
+            "name": "IncludeInactive",
             "in": "query",
             "schema": {
               "type": "boolean"
@@ -782,13 +1080,6 @@
             "schema": {
               "type": "integer",
               "format": "int32"
-            }
-          },
-          {
-            "name": "Sort",
-            "in": "query",
-            "schema": {
-              "type": "string"
             }
           }
         ],
@@ -848,15 +1139,15 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SaveVenueRequest"
+                "$ref": "#/components/schemas/VenueRequest"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "201": {
-            "description": "Created",
+          "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1006,7 +1297,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SaveVenueRequest"
+                "$ref": "#/components/schemas/VenueRequest"
               }
             }
           },
@@ -1019,282 +1310,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/VenueDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "A field is invalid. The body lists each one.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not signed in, or the access token has expired.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Signed in, but missing the permission this needs.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found, or not visible to this user.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Someone else changed it first, or the state change is not allowed. See the problem type.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "A business rule stops this.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "Bearer": []
-          }
-        ]
-      }
-    },
-    "/api/events/{eventId}/site-visits": {
-      "get": {
-        "tags": [
-          "Venues"
-        ],
-        "parameters": [
-          {
-            "name": "eventId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SiteVisitDto"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "A field is invalid. The body lists each one.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not signed in, or the access token has expired.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Signed in, but missing the permission this needs.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found, or not visible to this user.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "Bearer": []
-          }
-        ]
-      },
-      "post": {
-        "tags": [
-          "Venues"
-        ],
-        "parameters": [
-          {
-            "name": "eventId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SaveSiteVisitRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SiteVisitDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "A field is invalid. The body lists each one.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not signed in, or the access token has expired.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Signed in, but missing the permission this needs.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found, or not visible to this user.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "A business rule stops this.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "Bearer": []
-          }
-        ]
-      }
-    },
-    "/api/site-visits/{siteVisitId}": {
-      "put": {
-        "tags": [
-          "Venues"
-        ],
-        "parameters": [
-          {
-            "name": "siteVisitId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SaveSiteVisitRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SiteVisitDto"
                 }
               }
             }
@@ -6630,105 +6645,10 @@
         ]
       }
     },
-    "/api/boards/{boardId}/cards": {
-      "post": {
-        "tags": [
-          "Boards"
-        ],
-        "parameters": [
-          {
-            "name": "boardId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateCardRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CardDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "A field is invalid. The body lists each one.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not signed in, or the access token has expired.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Signed in, but missing the permission this needs.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found, or not visible to this user.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "A business rule stops this.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "Bearer": []
-          }
-        ]
-      }
-    },
     "/api/cards/{cardId}": {
       "get": {
         "tags": [
-          "Boards"
+          "Cards"
         ],
         "parameters": [
           {
@@ -6801,7 +6721,7 @@
       },
       "patch": {
         "tags": [
-          "Boards"
+          "Cards"
         ],
         "parameters": [
           {
@@ -6903,14 +6823,14 @@
         ]
       }
     },
-    "/api/cards/{cardId}/move": {
+    "/api/boards/{boardId}/cards": {
       "post": {
         "tags": [
-          "Boards"
+          "Cards"
         ],
         "parameters": [
           {
-            "name": "cardId",
+            "name": "boardId",
             "in": "path",
             "required": true,
             "schema": {
@@ -6923,7 +6843,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/MoveCardRequest"
+                "$ref": "#/components/schemas/CreateCardRequest"
               }
             }
           },
@@ -6980,16 +6900,6 @@
               }
             }
           },
-          "409": {
-            "description": "Someone else changed it first, or the state change is not allowed. See the problem type.",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
           "422": {
             "description": "A business rule stops this.",
             "content": {
@@ -7011,7 +6921,7 @@
     "/api/cards/{cardId}/assignees": {
       "put": {
         "tags": [
-          "Boards"
+          "Cards"
         ],
         "parameters": [
           {
@@ -7116,7 +7026,7 @@
     "/api/cards/{cardId}/complete": {
       "post": {
         "tags": [
-          "Boards"
+          "Cards"
         ],
         "parameters": [
           {
@@ -7133,7 +7043,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ReviewCardRequest"
+                "$ref": "#/components/schemas/CompleteTaskRequest"
               }
             }
           },
@@ -7221,7 +7131,7 @@
     "/api/cards/{cardId}/return": {
       "post": {
         "tags": [
-          "Boards"
+          "Cards"
         ],
         "parameters": [
           {
@@ -7238,7 +7148,112 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ReviewCardRequest"
+                "$ref": "#/components/schemas/ReturnTaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field is invalid. The body lists each one.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the access token has expired.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in, but missing the permission this needs.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to this user.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Someone else changed it first, or the state change is not allowed. See the problem type.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A business rule stops this.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/cards/{cardId}/move": {
+      "post": {
+        "tags": [
+          "Cards"
+        ],
+        "parameters": [
+          {
+            "name": "cardId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveCardRequest"
               }
             }
           },
@@ -7326,7 +7341,7 @@
     "/api/cards/{cardId}/attachments": {
       "get": {
         "tags": [
-          "Boards"
+          "Cards"
         ],
         "parameters": [
           {
@@ -7402,7 +7417,7 @@
       },
       "post": {
         "tags": [
-          "Boards"
+          "Cards"
         ],
         "parameters": [
           {
@@ -7560,20 +7575,19 @@
       },
       "AssigneesRequest": {
         "required": [
-          "userIds",
-          "rowVersion"
+          "userIds"
         ],
         "type": "object",
         "properties": {
           "userIds": {
-            "type": "array",
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "type": "string",
               "format": "uuid"
             }
-          },
-          "rowVersion": {
-            "type": "string"
           }
         }
       },
@@ -7637,49 +7651,11 @@
           }
         }
       },
-      "BoardColumnDto": {
-        "required": [
-          "columnId",
-          "name",
-          "position",
-          "isDoneColumn",
-          "cards"
-        ],
-        "type": "object",
-        "properties": {
-          "columnId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "position": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "wipLimit": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "isDoneColumn": {
-            "type": "boolean"
-          },
-          "cards": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CardDto"
-            }
-          }
-        }
-      },
       "BoardDto": {
         "required": [
           "boardId",
           "boardType",
+          "eventId",
           "name",
           "columns"
         ],
@@ -7689,6 +7665,9 @@
             "type": "string",
             "format": "uuid"
           },
+          "boardType": {
+            "$ref": "#/components/schemas/BoardType"
+          },
           "eventId": {
             "type": [
               "null",
@@ -7696,16 +7675,13 @@
             ],
             "format": "uuid"
           },
-          "boardType": {
-            "$ref": "#/components/schemas/BoardType"
-          },
           "name": {
             "type": "string"
           },
           "columns": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/BoardColumnDto"
+              "$ref": "#/components/schemas/ColumnDto"
             }
           }
         }
@@ -7757,29 +7733,14 @@
           }
         }
       },
-      "CardAssigneeDto": {
-        "required": [
-          "userId",
-          "fullName"
-        ],
-        "type": "object",
-        "properties": {
-          "userId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "fullName": {
-            "type": "string"
-          }
-        }
-      },
       "CardAttachmentDto": {
         "required": [
           "attachmentId",
           "cardId",
           "fileName",
           "uploadedByUserId",
-          "uploadedAt"
+          "uploadedAt",
+          "downloadUrl"
         ],
         "type": "object",
         "properties": {
@@ -7813,13 +7774,21 @@
       "CardDto": {
         "required": [
           "cardId",
+          "boardId",
           "columnId",
           "subject",
+          "description",
           "priority",
+          "dueAt",
           "position",
           "status",
-          "createdByUserId",
+          "milestoneId",
           "assignees",
+          "createdBy",
+          "reviewNotes",
+          "returnedBy",
+          "returnedAt",
+          "completedAt",
           "attachmentCount",
           "rowVersion"
         ],
@@ -7829,15 +7798,12 @@
             "type": "string",
             "format": "uuid"
           },
-          "columnId": {
+          "boardId": {
             "type": "string",
             "format": "uuid"
           },
-          "milestoneId": {
-            "type": [
-              "null",
-              "string"
-            ],
+          "columnId": {
+            "type": "string",
             "format": "uuid"
           },
           "subject": {
@@ -7866,18 +7832,37 @@
           "status": {
             "type": "string"
           },
+          "milestoneId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "assignees": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserRefDto"
+            }
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/UserRefDto"
+          },
           "reviewNotes": {
             "type": [
               "null",
               "string"
             ]
           },
-          "returnedByUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
+          "returnedBy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UserRefDto"
+              }
+            ]
           },
           "returnedAt": {
             "type": [
@@ -7892,16 +7877,6 @@
               "string"
             ],
             "format": "date-time"
-          },
-          "createdByUserId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "assignees": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CardAssigneeDto"
-            }
           },
           "attachmentCount": {
             "type": "integer",
@@ -7946,6 +7921,60 @@
           },
           "isActive": {
             "type": "boolean"
+          }
+        }
+      },
+      "ColumnDto": {
+        "required": [
+          "columnId",
+          "name",
+          "position",
+          "wipLimit",
+          "isDoneColumn",
+          "cards"
+        ],
+        "type": "object",
+        "properties": {
+          "columnId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "wipLimit": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "isDoneColumn": {
+            "type": "boolean"
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CardDto"
+            }
+          }
+        }
+      },
+      "CompleteTaskRequest": {
+        "required": [
+          "rowVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "rowVersion": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -8104,19 +8133,21 @@
       },
       "CreateCardRequest": {
         "required": [
-          "columnId",
           "subject",
+          "description",
           "priority",
+          "dueAt",
+          "milestoneId",
+          "columnId",
           "assigneeIds"
         ],
         "type": "object",
         "properties": {
-          "columnId": {
-            "type": "string",
-            "format": "uuid"
-          },
           "subject": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "description": {
             "type": [
@@ -8125,7 +8156,14 @@
             ]
           },
           "priority": {
-            "$ref": "#/components/schemas/CardPriority"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CardPriority"
+              }
+            ]
           },
           "dueAt": {
             "type": [
@@ -8141,8 +8179,18 @@
             ],
             "format": "uuid"
           },
+          "columnId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
           "assigneeIds": {
-            "type": "array",
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "type": "string",
               "format": "uuid"
@@ -8993,7 +9041,10 @@
             "format": "int32"
           },
           "rowVersion": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -9886,8 +9937,9 @@
           }
         }
       },
-      "ReviewCardRequest": {
+      "ReturnTaskRequest": {
         "required": [
+          "reviewNotes",
           "rowVersion"
         ],
         "type": "object",
@@ -9899,7 +9951,10 @@
             ]
           },
           "rowVersion": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -10138,72 +10193,6 @@
           }
         }
       },
-      "SaveSiteVisitRequest": {
-        "required": [
-          "visitDate"
-        ],
-        "type": "object",
-        "properties": {
-          "visitDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "vehicleType": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "signInProcedure": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "securityCheckpoint": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "requiredDriverDetails": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "notes": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "licencePlate": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "driverName": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "crewNames": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "healthSafetyFileRef": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
-      },
       "SaveStockItemRequest": {
         "required": [
           "categoryId",
@@ -10363,65 +10352,6 @@
           }
         }
       },
-      "SaveVenueRequest": {
-        "required": [
-          "name",
-          "address",
-          "requiresSecurityClearance",
-          "requiresHealthSafetyFile",
-          "isActive"
-        ],
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "address": {
-            "type": "string"
-          },
-          "accessRoute": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "loadingBayDetails": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "operatingHoursStart": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "time"
-          },
-          "operatingHoursEnd": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "time"
-          },
-          "requiresSecurityClearance": {
-            "type": "boolean"
-          },
-          "requiresHealthSafetyFile": {
-            "type": "boolean"
-          },
-          "ppeRequirements": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "isActive": {
-            "type": "boolean"
-          }
-        }
-      },
       "ScheduleResultDto": {
         "required": [
           "milestones",
@@ -10502,8 +10432,17 @@
         "required": [
           "siteVisitId",
           "eventId",
-          "conductedByUserId",
-          "visitDate"
+          "conductedBy",
+          "visitDate",
+          "vehicleType",
+          "licencePlate",
+          "driverName",
+          "requiredDriverDetails",
+          "crewNames",
+          "signInProcedure",
+          "securityCheckpoint",
+          "healthSafetyFileRef",
+          "notes"
         ],
         "type": "object",
         "properties": {
@@ -10515,39 +10454,14 @@
             "type": "string",
             "format": "uuid"
           },
-          "conductedByUserId": {
-            "type": "string",
-            "format": "uuid"
+          "conductedBy": {
+            "$ref": "#/components/schemas/UserRefDto"
           },
           "visitDate": {
             "type": "string",
             "format": "date"
           },
           "vehicleType": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "signInProcedure": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "securityCheckpoint": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "requiredDriverDetails": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "notes": {
             "type": [
               "null",
               "string"
@@ -10565,13 +10479,120 @@
               "string"
             ]
           },
+          "requiredDriverDetails": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "crewNames": {
             "type": [
               "null",
               "string"
             ]
           },
+          "signInProcedure": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "securityCheckpoint": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "healthSafetyFileRef": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SiteVisitRequest": {
+        "required": [
+          "visitDate",
+          "conductedByUserId",
+          "vehicleType",
+          "licencePlate",
+          "driverName",
+          "requiredDriverDetails",
+          "crewNames",
+          "signInProcedure",
+          "securityCheckpoint",
+          "healthSafetyFileRef",
+          "notes"
+        ],
+        "type": "object",
+        "properties": {
+          "visitDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "conductedByUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "vehicleType": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "licencePlate": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "driverName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "requiredDriverDetails": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "crewNames": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "signInProcedure": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "securityCheckpoint": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "healthSafetyFileRef": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
             "type": [
               "null",
               "string"
@@ -10904,6 +10925,11 @@
       },
       "UpdateCardRequest": {
         "required": [
+          "subject",
+          "description",
+          "priority",
+          "dueAt",
+          "milestoneId",
           "rowVersion"
         ],
         "type": "object",
@@ -10937,8 +10963,18 @@
             ],
             "format": "date-time"
           },
+          "milestoneId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
           "rowVersion": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -11145,6 +11181,22 @@
           }
         }
       },
+      "UserRefDto": {
+        "required": [
+          "userId",
+          "fullName"
+        ],
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          }
+        }
+      },
       "UserSummary": {
         "required": [
           "userId",
@@ -11174,8 +11226,13 @@
           "venueId",
           "name",
           "address",
+          "accessRoute",
+          "loadingBayDetails",
+          "operatingHoursStart",
+          "operatingHoursEnd",
           "requiresSecurityClearance",
           "requiresHealthSafetyFile",
+          "ppeRequirements",
           "isActive"
         ],
         "type": "object",
@@ -11232,6 +11289,77 @@
             "type": "boolean"
           }
         }
+      },
+      "VenueRequest": {
+        "required": [
+          "name",
+          "address",
+          "accessRoute",
+          "loadingBayDetails",
+          "operatingHoursStart",
+          "operatingHoursEnd",
+          "requiresSecurityClearance",
+          "requiresHealthSafetyFile",
+          "ppeRequirements",
+          "isActive"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "address": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "accessRoute": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "loadingBayDetails": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "operatingHoursStart": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "time"
+          },
+          "operatingHoursEnd": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "time"
+          },
+          "requiresSecurityClearance": {
+            "type": "boolean"
+          },
+          "requiresHealthSafetyFile": {
+            "type": "boolean"
+          },
+          "ppeRequirements": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        }
       }
     },
     "securitySchemes": {
@@ -11258,6 +11386,9 @@
     },
     {
       "name": "Me"
+    },
+    {
+      "name": "SiteVisits"
     },
     {
       "name": "Venues"
@@ -11294,6 +11425,9 @@
     },
     {
       "name": "Boards"
+    },
+    {
+      "name": "Cards"
     }
   ]
 }

@@ -1,0 +1,141 @@
+@use '@/styles/mixins' as *;
+
+//----------------------------------------------------------\\
+//                              CARD
+//----------------------------------------------------------\\
+
+.card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    opacity 120ms ease;
+
+  &:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-hover);
+  }
+
+  //the whole card shows the focus ring when its title link has keyboard focus
+  &:has(.link:focus-visible) {
+    box-shadow: var(--focus-ring);
+  }
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: 0.375rem;
+  font-weight: 700;
+}
+
+//stretched over the card, so clicking anywhere that isn't a button opens what the card is for
+.link {
+  color: inherit;
+
+  &:hover {
+    text-decoration: none;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+
+  &:focus-visible {
+    box-shadow: none;
+  }
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+//----------------------------------------------------------\\
+//                              DRAGGING
+//----------------------------------------------------------\\
+
+.dragging {
+  opacity: 0.4;
+}
+
+.overlay {
+  border-color: var(--accent);
+  box-shadow: 0 8px 24px rgba(22, 33, 28, 0.18);
+  cursor: grabbing;
+}
+
+//----------------------------------------------------------\\
+//                              ACTIONS
+//----------------------------------------------------------\\
+
+//above the stretched link so the buttons get the clicks
+.actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-shrink: 0;
+  margin: -0.375rem -0.375rem 0 0;
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+
+  svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  &:hover {
+    background: var(--accent-tint);
+    color: var(--accent-strong);
+  }
+
+  //44px targets on phones and touch screens (NFR-24)
+  @include phone {
+    width: var(--touch-target);
+    height: var(--touch-target);
+  }
+
+  @media (pointer: coarse) {
+    width: var(--touch-target);
+    height: var(--touch-target);
+  }
+}
+
+//touch-action none so a finger on the handle drags the card instead of scrolling the page
+.handle {
+  cursor: grab;
+  touch-action: none;
+}

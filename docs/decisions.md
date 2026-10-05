@@ -7,6 +7,98 @@ Format: date · decision · why · who · what changes in the Task 3 report.
 
 ---
 
+## D-014 — The content security policy allows `data:` for fonts
+
+**5 Oct 2026 · Owner: C**
+
+`[Δ]` The policy in plan section 7.5 has no `font-src`, so fonts fall back to `default-src 'self'`. Vite
+inlines small font files into the CSS as `data:` URIs, and a real browser check of the hosted site showed
+four of them blocked. The policy now has `font-src 'self' data:`.
+
+**Why.** A font file cannot run script, so allowing `data:` for fonts only is a small, well-understood
+relaxation. The alternative is to stop Vite inlining (`build.assetsInlineLimit: 0`), which is a front-end
+build change; either is acceptable, and this one did not need a rebuild of the app.
+
+**Trade-off.** `script-src` and `style-src` are untouched and still `'self'` only, with no `unsafe-inline`
+and no `unsafe-eval`.
+
+**Known and left alone.** The validation library probes whether it may use `new Function` at start-up, and
+the policy blocks that probe, which the browser reports to `/api/csp-report`. It is caught inside the
+library and the app works normally. Setting zod's `jitless` option would silence the report.
+
+**Task 3 report.** List this as a deviation from the policy in Task 1 section 7.4 and the plan.
+
+---
+
+## D-013 — The demo accounts get a documented authenticator secret, and the demo gets money
+
+**5 Oct 2026 · Owner: C (fixing D's demo seeder)**
+
+Two gaps meant the hosted demo could not show what it was built for:
+
+- **The demo Director and Accounts could not sign in.** Both require a two-step code, and the demo seeder
+  enrolled them with a *random* secret that was never recorded, so nobody could produce a valid code.
+  The seeder now uses one fixed, documented secret (`DemoDataSeeder.DemoTotpSecret`, printed in the README),
+  and it also puts right accounts that were seeded earlier with a random one. This follows how the demo
+  password is already handled: it is a constant in the seeder, documented in the README, and the seeder
+  only runs when `Seeding:Demo` is set, which it never is in production.
+- **The demo had no money.** No budgets, costings or invoices existed, so the client's main requirement
+  (finance fields visible to three roles and absent for everyone else) could not be shown. The seeder now
+  adds budgets, a costing for each event in a different state (draft, waiting for the Director, approved and
+  issued, accepted), a confirmation for every event past enquiry, and two invoices (one paid, one issued).
+  It runs when no costing exists, so it also fills the dev database that was seeded before.
+
+**Why.** A demo that cannot sign in as the Director, or has nothing for the Operations Manager to be denied,
+proves nothing about the security model.
+
+**Trade-off.** A known TOTP secret means anyone with the README can sign in as the demo Director on dev.
+That environment holds only fictional data, and production is never seeded with demo accounts.
+
+**Task 3 report.** Mention that demo accounts use a fixed documented secret for demonstration only.
+
+---
+
+## D-012 — Safeguards on user administration that the plan does not state
+
+**5 Oct 2026 · Owner: C**
+
+The plan says the Director and the Operations Manager create users, deactivate them and change roles
+(FR-38), and that there must always be one active Director. Taken literally, anyone holding
+`user.manage` could make themselves a Director, which defeats the financial-masking model. So:
+
+- **Only a Director can give someone the Director role, or change a Director's account.** The
+  Operations Manager manages everyone else.
+- **Nobody can change their own roles or deactivate themselves.** Renaming themselves is fine.
+- **The last active Director cannot be removed**, by deactivating them or by taking their role. The
+  check runs after the change is saved, inside the transaction, so a change that would leave none is
+  undone. It also covers two Directors removing each other at the same moment.
+- A role change or deactivation bumps `SecurityStamp` and revokes every refresh token for that person,
+  so their session ends within the 15 minutes an access token lasts, as the plan requires.
+- Giving someone Director or Accounts means they set up two-step sign-in on their next login; nothing
+  extra is needed.
+- The initial password is chosen by the administrator and passes the same 12 character and breach
+  check as any password. There is no "must change at first login" flag, because the schema has no
+  column for one.
+
+**Crew expiry (FR-36).** A daily worker deactivates an account that holds *only* the casual crew
+role, has been assigned to at least one event, has no shift still ahead, and whose every event had its
+Debrief end (actual end, else scheduled) more than `Crew:DeactivateAfterDays` (7) ago. Two choices the
+plan does not spell out: an account with **no assignments** is left alone, so a new account is not
+deactivated before its first shift; and an event **with no Debrief milestone** keeps the account open,
+because it cannot be shown to be over. It runs at 02:30 Cape Town and sleeps until then.
+
+**Not built.** There is no password reset endpoint, because none is in the published contract.
+Plan section 7.1 says a reset bumps the stamp; that needs an endpoint, so it is an open question.
+
+**Why.** Each rule closes a way for administration to be used to widen access.
+
+**Trade-off.** The Operations Manager cannot promote anyone to Director, and an administrator needs a
+colleague to change their own roles.
+
+**Task 3 report.** Describe these safeguards under access control, and list password reset as outstanding.
+
+---
+
 ## D-011 — How costings, confirmation and invoices behave where the plan is silent
 
 **5 Oct 2026 · Owner: C**
@@ -45,6 +137,92 @@ status flow as built.
 
 ---
 
+## D-012 — The transition worker's sleep cap defeats the database auto-pause
+
+**5 Oct 2026 · Owner: D**
+
+Measured, not predicted. Two days of real usage cost **$14.43**, of which **$11.57 is SQL compute** —
+against an estimate of $20–30 for a whole month built on the database being paused most of the time.
+
+**Why.** `EventTransitionWorker` sleeps until the next event is due, capped at 30 minutes so a newly
+created event is noticed without a restart. Azure SQL serverless pauses after an hour of inactivity. A
+query every half hour means the database never reaches an idle hour, so it never pauses, so we pay for
+provisioned compute continuously. The cap that makes FR-02 responsive is the same cap that removes the
+saving the whole hosting choice was based on.
+
+**Why it was not caught earlier.** Nothing about it is visible in code review or in tests. The worker
+is correct, the queries are efficient, the design is the one the plan asked for. It shows up only on a
+bill, which is the first time anyone looks at the interaction between a sleep interval and an
+auto-pause delay.
+
+**Decision: leave it, and document it.** With the submission due, changing the worker's timing risks
+the automatic transitions that FR-02 is demonstrated by — an event becoming due while the worker sleeps
+longer would not move. The options and their trade-offs are written up in `docs/hosting.md` section 3.
+The fix after the demonstration is a one-line constant, or a signal from the event-create path.
+
+**Trade-off accepted.** The project runs over its cost estimate until that change is made. The budget
+alert at 50% and 80% of the $100 credit is what catches it.
+
+**Task 3 report.** Worth a section of its own. The cost argument in Task 1 section 5 rests on
+auto-pause, and this is a concrete case of an implementation detail quietly invalidating an
+architectural assumption — found by looking at the bill rather than the code.
+
+---
+
+## D-011 — Deploys run from package, and only dev runs as `Development`
+
+**5 Oct 2026 · Owner: D**
+
+Two deployment settings, both found the hard way.
+
+### `WEBSITE_RUN_FROM_PACKAGE = 1` on both App Services
+
+**What happened.** The dev API started cleanly, ran its workers, queried the database — and then threw
+`System.BadImageFormatException: Bad IL range` on every request that reached the rate limiter, with
+garbled type names in the stack trace. Production, running the **same artefact**, was perfectly
+healthy.
+
+The difference was deployment history. `azure/webapps-deploy` copies files over whatever is already in
+`wwwroot` and removes nothing, and dev had been deployed a dozen times across several days of
+fast-moving code. Listing the directory found `runtimes/unix/lib/net9.0` — libraries from an older
+deployment that targeted .NET 9, sitting alongside .NET 10 assemblies. The loader was resolving a
+mixture of the two.
+
+**The fix.** `WEBSITE_RUN_FROM_PACKAGE = 1` mounts the deployment zip read-only instead of extracting
+it, so what runs is exactly the artefact and nothing can linger between deploys.
+
+**Why it is worth recording.** The symptom looked like a compiler or runtime fault and was neither. It
+was only diagnosable because two environments run the same artefact — prod being healthy is what
+proved the code innocent in one request. That is an argument for having a second environment that has
+nothing to do with "testing before production".
+
+**Trade-off.** `wwwroot` becomes read-only at runtime, so nothing can write into the application
+directory. Carbonate writes files to Blob Storage, so this costs us nothing.
+
+### `ASPNETCORE_ENVIRONMENT = Development` on dev only
+
+Set on `carbonate-api-dev` so the Swagger UI is reachable, which matters while there is no SPA to
+demonstrate. **Never set on `carbonate-api-prod`.**
+
+**What it exposes.** More than expected. `WebApplication` adds the developer exception page
+automatically in Development, so an unhandled error on the dev hostname returns a full stack trace,
+internal paths, request headers and the caller's IP. `/openapi/v1.json` is also anonymous there, so the
+whole API surface is readable by anyone with the URL.
+
+**Why that is acceptable here, and only here.** The dev environment holds fictional demo data, is
+disposable, and its hostname is not published. The same settings on production would be a real
+disclosure problem, which is why the absence of both settings on prod is deliberate rather than
+incidental — as is the absence of `Seeding__Demo`.
+
+**Remove it after the demo.** Three app settings separate the dev environment from a production one,
+and that is a thin margin to leave standing indefinitely.
+
+**Task 3 report.** Worth a short section on deployment hygiene: the failure, how two environments
+made it diagnosable, and the configuration that prevents it. Also state the dev exposure explicitly
+rather than leaving it implied.
+
+---
+
 ## D-010 — The Google OAuth callback is anonymous, with the user carried in a signed `state`
 
 **4 Oct 2026 · Owner: D**
@@ -77,16 +255,36 @@ it is a good example of a control that had to change shape because of how a prot
 
 ---
 
-## D-009 — Event board cards are `Open` or `Done`
+## D-009 — Cards on an event's task board are either `Open` or `Done`
 
 **4 Oct 2026 · Owner: B**
 
-Recorded here because D's template seeder (FR-25) sets the status on every seeded card. A card is
-`Done` exactly when its column has `IsDoneColumn = true`, otherwise `Open`; the boards service keeps it
-in step on every move, along with `CompletedAt`. Admin boards keep the plan's three columns:
-`Assigned`, `InProgressOrNeedsReview`, `Complete`.
+The plan only gives `TASK_CARD.Status` values for the admin board: `Assigned`,
+`InProgressOrNeedsReview` and `Complete` (FR-19). Cards on an event's task board use two:
 
-**Task 3 report.** `TASK_CARD.Status` is described without a vocabulary. State both sets.
+- `Done` while the card is in the board's done column (`IsDoneColumn = true`).
+- `Open` while it is in any other column.
+
+The boards service sets the status on every move, in the same transaction as the column change, and
+never takes it from the request. Moving a card into the done column also sets `CompletedAt`; moving it
+back out makes it `Open` again and clears `CompletedAt`. The template seeder (D) does the same when it
+creates cards: `Done` if a card starts in the done column, otherwise `Open`. This replaces the
+`TODO(plan)` in `EventTemplateSeeder`.
+
+Admin board cards keep their three statuses, because only the manager who assigned a task can complete
+or return it (FR-20).
+
+**Why.** Event boards have no review step, so `InProgressOrNeedsReview` would mean nothing there.
+Copying the column name into the status would repeat what the card's column already says, and would
+break when a template renames a column. What screens actually need from the status is whether a card
+is finished, so lists like My tasks can filter open cards without joining to the column.
+
+**Trade-off.** The status still repeats something the column implies. The boards service is the only
+thing that writes either, in one transaction, so they can't drift apart. If Carbon later wants a review
+step on event cards, it becomes a third value then.
+
+**Task 3 report.** Task 1 defines no card statuses for event boards. Add these two to the data
+dictionary next to the admin board's three.
 
 ---
 

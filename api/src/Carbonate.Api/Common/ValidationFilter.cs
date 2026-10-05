@@ -25,7 +25,9 @@ internal sealed class ValidationFilter(IServiceProvider services) : IAsyncAction
             var result = await validator.ValidateAsync(new ValidationContext<object>(argument));
             foreach (var failure in result.Errors)
             {
-                var field = char.ToLowerInvariant(failure.PropertyName[0]) + failure.PropertyName[1..];
+                // Every segment of a nested name is camel-cased, to match the JSON the client sent: lines[0].unitPriceToClient.
+                var field = string.Join('.', failure.PropertyName.Split('.')
+                    .Select(segment => char.ToLowerInvariant(segment[0]) + segment[1..]));
                 if (!errors.TryGetValue(field, out var messages))
                 {
                     errors[field] = messages = [];

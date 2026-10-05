@@ -1,6 +1,7 @@
 using Carbonate.Api.Common;
 using Carbonate.Api.Platform.Auth;
 using Carbonate.Application.Common;
+using Carbonate.Application.Features.Commercial;
 using Carbonate.Application.Features.Events;
 using Carbonate.Application.Platform.Auth;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +10,7 @@ namespace Carbonate.Api.Features.Events;
 
 /// <summary>Events, milestones, crew and stage moves (FR-01 to FR-10).</summary>
 [Route("api/events")]
-public class EventsController(IEventService events) : ApiControllerBase
+public class EventsController(IEventService events, ICommercialService commercial) : ApiControllerBase
 {
     /// <summary>Events the caller may see. Crew see only events they are assigned to.</summary>
     [HttpGet]
@@ -84,7 +85,8 @@ public class EventsController(IEventService events) : ApiControllerBase
     /// <summary>Earlier events for the same client, to compare costs. Finance roles only.</summary>
     [HttpGet("{eventId:guid}/cost-history")]
     [HasPermission(PermissionCodes.FinanceViewClientPrice)]
-    public ActionResult<IReadOnlyList<CostHistoryItem>> CostHistory(Guid eventId) => NotYetBuilt();
+    public async Task<ActionResult<IReadOnlyList<CostHistoryItem>>> CostHistory(Guid eventId, CancellationToken ct) =>
+        Ok(await commercial.GetCostHistoryAsync(eventId, ct));
 
     /// <summary>Should have (FR-05).</summary>
     [HttpPut("{eventId:guid}/service-schedule")]

@@ -1,186 +1,264 @@
-# Presentation: version control and the delivery pipeline
+# Presentation walkthrough — D (Ulrich)
 
-Presenter: D (Ulrich Bezuidenhout) · Target: 6 minutes · INSY7315 Task 2
+Role D: DevOps, cloud hosting, and the lifecycle, stock, incidents and calendar modules.
 
-The argument running through this segment: **the process is visible in the repository.** Every claim
-below can be clicked on live. Nothing here is a description of what we intended to do.
-
----
-
-## Before you start
-
-Have these open in tabs, in this order:
-
-1. The repo home page — branch list showing `main`, `dev`, and the `feature/*` branches
-2. A merged pull request with the Definition of Done checklist filled in (FR-25 or FR-02)
-3. The **Actions** tab, filtered to show both green and red runs
-4. **CD production** run #3 or later, paused on *Review deployments*
-5. `docs/decisions.md`
-6. The live dev API's `/health` or `/swagger`
-
-Zoom the browser to about 150%. A room cannot read default-size GitHub.
+**Slot: 10 minutes.** Recorded, so each segment below can be a separate take and cut together. Nothing
+here depends on a live run going right first time.
 
 ---
 
-## 1. The shape of the repository (45 seconds)
+## Before you record
 
-> "One repository, three long-lived places: `main` is what is in production, `dev` is what is next,
-> and every piece of work is a branch named after the requirement it implements —
-> `feature/FR-25-event-template-seeder`, `feature/FR-02-event-lifecycle`."
+**Warm the system up, 15 minutes before.** The database auto-pauses and the first request after that
+takes up to a minute. Open the dev URL, log in, click around the board, leave it. Do it again five
+minutes before recording.
 
-> "Commit messages start with the requirement id. So `git log` is a traceability matrix you get for
-> free: `FR-25: seed the board and stock requirements from a checklist template`."
+**Tabs, in this order, left to right.** Set them up once and don't rearrange mid-take.
 
-**Show:** the branch dropdown, then the commit list on `dev`.
+1. The running app — `carbonate-api-dev-…azurewebsites.net`, signed in as `sarah@carbon.demo`
+2. GitHub → the repo home page
+3. GitHub → a merged PR with the checklist filled in (FR-25 or FR-02)
+4. GitHub → **Actions**, unfiltered so both green and red runs show
+5. GitHub → **CD production**, a run paused on *Review deployments*
+6. `docs/decisions.md` on GitHub
+7. Git Bash, sized large, in `~/Documents/PROG7314/carbonate`
 
-**The point to land:** a marker or a new team member can go from a requirement in the specification to
-the exact commits that implemented it without asking anyone.
+**Browser zoom to 150%.** A recording that nobody can read is worth nothing.
+
+**Close** Gmail, the FPS counter overlay, and anything else in the top bar.
 
 ---
 
-## 2. How work gets in (60 seconds)
+## Segment 1 — What I own (0:30)
 
-> "Nothing is committed to `dev` directly. Everything arrives as a pull request with a template that
-> carries our definition of done — tests, no secrets, and conditional sections that only apply
-> sometimes."
+**Screen:** the running app, events board.
 
-> "Two of those conditions matter for this system. If a pull request returns a money field, the
-> security owner must approve it. If it touches the pipeline or infrastructure, I must. That is
+> "I'm Ulrich, role D. I own three things on this project: the hosting and the cloud setup, the
+> delivery pipeline — so the repository rules, the automated checks and the deployments — and four
+> feature modules: the event lifecycle, stock and order lists, incident reports, and the Google
+> Calendar sync."
+>
+> "Most of what I'll show you is either running right now, or it's a record of a decision we had to
+> change our minds about."
+
+---
+
+## Segment 2 — Hosting and cloud architecture (2:00)
+
+**Screen:** Azure portal → `rg-carbonate` → Overview, resource list visible.
+
+> "Everything runs in one resource group in South Africa North. That region is a requirement —
+> NFR-22, data residency — and it's also just correct: the client, their staff and their venues are
+> all in Cape Town, so a European region would add about 150 milliseconds to every request for no
+> benefit."
+
+**Point at the resources as you name them.**
+
+> "Two App Services, dev and production, on one Basic B1 plan. The plan asked for Standard tier with
+> deployment slots. Standard is about five times the price, and the subscription is Azure for
+> Students with a hundred-dollar credit that has to last until the EXPO — so Standard would have
+> taken the system offline before anyone marked it."
+>
+> "We couldn't go cheaper either. The Free tier doesn't support Always On, and this system runs two
+> background workers: one that moves events through their stages automatically, and one that pushes
+> to Google Calendar. On Free they'd silently stop after twenty minutes of inactivity. B1 is the
+> cheapest tier where the architecture actually works."
+
+**Screen:** switch to the SQL database → Overview, showing serverless and auto-pause.
+
+> "The database is serverless with auto-pause. Carbon run about fifty events a year and the system is
+> idle most nights — serverless bills per second and pauses when idle."
+
+**Screen:** `docs/hosting.md` on GitHub, section 3.
+
+> "I'll come back to that one, because the bill said something different."
+
+**Screen:** the App Service → Identity blade, System assigned = On.
+
+> "One thing I'm pleased with: there's no password anywhere in this system's configuration. The apps
+> connect to the database, the storage account and the key vault with a managed identity. Not a
+> password in a vault — no password exists at all. The database is set to Entra-only authentication."
+
+---
+
+## Segment 3 — Version control and the pipeline (3:00)
+
+**Screen:** GitHub repo home, branch dropdown open.
+
+> "Three places: `main` is production, `dev` is what's next, and every piece of work is a branch named
+> after the requirement — `feature/FR-25-event-template-seeder`, `feature/FR-02-event-lifecycle`."
+
+**Screen:** the commit list on `dev`.
+
+> "Commit messages start with the requirement id. So the git log is a traceability matrix you get for
+> free — you can go from a requirement in the specification to the exact commits that implemented it
+> without asking anyone."
+
+**Screen:** a merged PR, checklist visible.
+
+> "Nothing goes into `dev` directly. Everything is a pull request with a template carrying our
+> definition of done. Two of those conditions matter here: if a pull request returns a money field,
+> the security owner has to approve it; if it touches the pipeline or the infrastructure, I do. That's
 > enforced by a CODEOWNERS file, not by remembering."
 
-**Show:** a merged PR with the checklist ticked, including an honestly *unticked* box.
+**Scroll to an unticked box.**
 
-**The point to land:** leaving a box unticked and explaining why is the system working. We have PRs
-that say "does one thing — no, three, flagging rather than hiding it."
+> "And leaving a box unticked is the system working. This one says 'does one thing — no, three,
+> flagging rather than hiding it.'"
 
----
+**Screen:** Actions tab, a PR run with the three checks.
 
-## 3. What has to be true before a merge (90 seconds)
+> "Three checks run on every pull request and all three are required. The API build with its unit and
+> integration tests. The web build. And the financial masking suite, deliberately split into its own
+> job — our requirements say a Crew Lead must never see what an event costs us, and if that breaks I
+> want it to be its own red tick, not one failure buried inside four hundred."
+>
+> "There's also a contract test. Our OpenAPI file is committed, and the test fails if the API has
+> changed and the file hasn't. The front end generates its TypeScript types from that file, so the
+> contract can't quietly drift away from the code."
 
-> "Three checks run on every pull request, and all three are required."
+**Screen:** CD production, paused on *Review deployments*. **Pause here. Let it sit.**
 
-| Check | What it does |
-|---|---|
-| **API build and test** | Restore, build with warnings as errors in the layers that hold business rules, unit tests, integration tests against a real SQL Server in a container, and a dependency vulnerability scan that fails on high or critical |
-| **Web build and test** | Lint, typecheck, test, build, `npm audit` |
-| **Masking acceptance suite** | Financial masking, deliberately a separate job |
-
-> "The masking suite is split out on purpose. Our requirements say a Crew Lead must never see what an
-> event costs us. If that breaks, I want it to be its own red tick in the run summary — not one
-> failure buried inside four hundred others."
-
-> "There is also a contract test. Our OpenAPI file is committed, and the test fails if the API has
-> changed and the file has not. The front end generates its TypeScript types from that file, so the
-> contract cannot silently drift away from the code."
-
-**Show:** the Actions tab with the three named checks on a PR.
+> "Merging to `dev` deploys automatically. Merging to `main` builds — and then stops."
+>
+> "That's a GitHub environment with a required reviewer. Nothing reaches production without a person
+> approving it. The plan wanted a staging slot and a slot swap, which the tier we could afford doesn't
+> support — so we kept the part that actually matters, which is that a human decides."
 
 ---
 
-## 4. How it reaches a server (60 seconds)
+## Segment 4 — The modules, running (2:30)
 
-> "Merging to `dev` builds and deploys automatically, then smoke-tests the health endpoint."
+**Screen:** the app, events board.
 
-> "Merging to `main` builds, and then **stops**."
+> "Now the parts I built, running against the live system."
 
-**Show:** the CD production run paused on *Review deployments*. Pause on it. Let the room see it
-waiting.
+**Point at the In Progress column.**
 
-> "That is a GitHub environment with a required reviewer. Nothing reaches production without a person
-> approving it. Our project plan originally called for a staging slot and a slot swap, which the
-> hosting tier we could afford does not support — so we kept the part that actually matters, which is
-> that a human decides."
+> "Riverlight Festival is in In Progress, and nobody moved it there. Its start time passed while the
+> system was idle, a background worker woke up, the state machine allowed the move, and three
+> observers fired — one wrote the audit entry, one queued a calendar update, one notified the manager.
+> Same for Delacroix in Finished. Those two columns are marked AUTO for that reason."
 
-**The point to land:** the gate is a deliberate replacement for something we could not have, not an
-accident.
+**Drag an event from Confirmed to In Progress.**
 
----
+> "A person can also move one early — the client's ready, so the crew starts. The clock doesn't get a
+> vote when a person is asking."
 
-## 5. When it went wrong (90 seconds — the strongest part)
+**Try to drag the Finished event somewhere.**
 
-Pick **two** of these three. Do not rush them; this is the section that separates a description from
-an account.
+> "But Finished is terminal. The API returns a 409 and the reason, because no amount of paperwork makes
+> that move legal."
 
-### a) The pipeline could not use the authentication the plan specified
+**Point at the board generally.**
 
-> "Our plan specified OIDC federated credentials — short-lived tokens, nothing long-lived stored in
-> GitHub. The subscription sits in the institution's tenant, which denies student accounts access to
-> Microsoft Entra ID entirely. The app registrations page returns a 401. So federated credentials
-> could not be created at all."
+> "Five events here. There's a sixth in the database — an enquiry — and it's deliberately not on the
+> board. That's FR-01, and the demo data has it so we can prove a negative."
 
-> "We fell back to a publish profile in an encrypted secret. It is weaker, and we wrote down exactly
-> how it is weaker and what we did to reduce it: scoped to one app, never in the repository, secret
-> scanning on, regenerable instantly."
+**Point at Naidoo Wedding's CONFIDENTIAL badge.**
 
-### b) A deployment that looked broken and wasn't
+> "This one's confidential. When it syncs to Google Calendar it goes across as 'Confidential event'
+> and its code — no client name, no contact details, no money. Google is outside our security
+> boundary, so the payload carries only enough for the team to know they're committed at that time."
 
-> "Production deployed and the smoke test failed twelve times with a 500. The deployment was fine. The
-> database is serverless and pauses when idle, so a cold start plus the first-run seed took longer
-> than the two minutes the check allowed."
+**Screen:** Git Bash. Run the two masking curls (have them ready to paste).
 
-> "The fix was not to loosen the check. It was to make it able to tell the difference between *still
-> starting* and *answered and unhealthy*, and to say which in the log. A check that cannot tell you
-> which of those happened is not much of a check."
+> "And the financial masking, from the API directly. Same endpoint, two roles."
 
-### c) The health endpoint that must not touch the database
+**Run as Sarah, then as Ops.**
 
-> "Our health endpoint deliberately runs no queries. An availability test pings it every five minutes.
-> If it touched the database, the database would never pause, and the entire cost model behind
-> choosing serverless would collapse."
-
-**The point to land in all three:** the constraint came first, the decision followed, and both are
-written down.
+> "The Event Manager sees the unit cost. The Operations Manager doesn't — and look at what that means:
+> the field isn't zero and it isn't null, it's *absent*. That's the rule from our design document, and
+> it's enforced in the service and again by a global filter."
 
 ---
 
-## 6. Decisions are a file, not a memory (45 seconds)
+## Segment 5 — When it went wrong (1:30)
 
-**Show:** `docs/decisions.md`.
+**This is the most important ninety seconds. Don't rush it.**
 
-> "Eleven decision records. Every deviation from the design document, with the constraint that forced
-> it, what we gave up, and what has to change in the final report."
+**Screen:** `docs/decisions.md`, scrolled to D-011.
 
-> "One example. Our database masks financial columns at rest. The application identity is granted
-> permission to read through that mask — which sounds backwards until you see why: the database
-> masking protects against someone connecting to the database directly, and the application's own
-> masking is what separates a Director from a Crew Lead. Without the grant, a Director would see
-> masked costs and the feature would be quietly broken."
+> "Two things from the last two days."
+>
+> "The dev environment started throwing errors on every request — a corrupt-assembly exception, deep
+> inside the .NET runtime. Production was running the identical build, perfectly healthy. That's what
+> told us the code was fine. The deployment tool copies files over whatever is already there and
+> removes nothing, and dev had been deployed a dozen times in three days — there was a .NET 9 runtime
+> folder left behind from an earlier build, mixed in with .NET 10 assemblies. One app setting fixed
+> it permanently: the deployment is now mounted as a package instead of copied over the top."
+>
+> "It was only diagnosable because two environments run the same artefact. That's a better argument
+> for a second environment than 'test before production'."
+
+**Scroll to D-012.**
+
+> "The second one is more uncomfortable. Our hosting rationale argues for a serverless database
+> because it pauses when idle and costs almost nothing. I checked the actual bill today. Two days of
+> running cost fourteen dollars forty-three, and eighty per cent of that was database compute."
+>
+> "The cause is my own background worker. It sleeps until the next event is due, capped at thirty
+> minutes so a newly created event gets noticed. The database pauses after an hour of inactivity. A
+> query every thirty minutes means it never reaches an idle hour — so it never pauses, and we pay for
+> it around the clock."
+>
+> "Nothing about that is visible in code review or in testing. The worker is correct, the queries are
+> efficient, it's the design the plan asked for. It only shows up on a bill. It's written up with the
+> options and what each one costs, and the fix is a one-line constant once the demonstration is over —
+> I didn't change it tonight because it would risk the automatic transitions I just showed you."
 
 ---
 
-## 7. Close (20 seconds)
+## Segment 6 — Close (0:30)
 
-> "Seventeen pull requests, every one reviewed. Around three hundred and fifty tests, running on every
-> change. Two environments, and a production deploy that waits for a person. The repository is the
-> record — of what we built, and of what we had to change our minds about."
+**Screen:** `docs/decisions.md`, top of the file.
+
+> "Twelve decision records. Every deviation from our design document, with the constraint that forced
+> it, what we gave up, and what has to change in the final report. The tenant that blocked the
+> authentication method we planned. The tier we couldn't afford. A database permission that sounds
+> backwards until you see why."
+>
+> "Around thirty pull requests, every one reviewed. Six hundred-odd tests running on every change. Two
+> environments, and a production deploy that waits for a person."
+>
+> "The repository is the record — of what we built, and of what we had to change our minds about."
 
 ---
 
-## Likely questions
+## If you're asked questions
 
 **"Why not trunk-based development?"**
-Three people, three modules, one shared schema, and a hard deadline. Short-lived feature branches with
-required checks gave us isolation without long-lived divergence. Our branches lived hours to a day,
-not weeks.
+Three people, three modules, one shared schema, a hard deadline. Short-lived branches with required
+checks gave isolation without long divergence — ours lived hours, not weeks.
 
-**"Did the required checks ever actually stop anything?"**
-Yes. The build failed on a locale-dependent date format in a field the front end parses. It would have
-worked on every machine in this room and broken in a different region.
-
-**"Why squash merges?"**
-Linear history on `main` and `dev`. One commit per requirement, so the log reads as a list of delivered
-requirements rather than a list of keystrokes.
+**"Did the required checks ever stop anything real?"**
+Three times in two days. A locale-dependent date format in a field the front end parses — it would
+have worked on every machine in this room and broken in another region. A database query written so
+that Entity Framework couldn't translate it, which compiled fine and failed on every request. And a
+performance test that found an audit column too small for a realistic order run — one order list fits,
+twenty don't.
 
 **"What would you do differently?"**
-Infrastructure as code. Our Azure configuration lives in the portal, which means it is documented but
-not reproducible — I can tell you what the settings are, but I cannot rebuild the environment from the
-repository. For a longer-lived system that would be the first thing to fix.
+Infrastructure as code. Our Azure configuration lives in the portal, so it's documented but not
+reproducible — I can tell you every setting, but I can't rebuild the environment from the repository.
+For anything longer-lived that's the first thing I'd fix.
+
+**"What isn't finished?"**
+The Google OAuth connect flow. Everything behind it — the outbox, the retry, the deduplication, the
+redaction, the signed callback state — is built and tested. The flow itself needs a Google Cloud
+project, and in testing mode the credentials expire every seven days. It's documented rather than
+half-built.
 
 ---
 
-## If asked to prove something live
+## Recording notes
 
-- **A requirement to its code:** search the commit list for `FR-27`
-- **The gate:** open the paused production run
-- **The system running:** `/health`, then `/swagger`
-- **A real constraint:** `docs/decisions.md`, record D-004
+- **Record each segment separately.** Six short takes beat one long one, and a fluffed line costs you
+  thirty seconds instead of ten minutes.
+- **Segment 4 is the one to rehearse.** Dragging cards live is where a recording goes wrong. Do a dry
+  run first and know which event you're dragging.
+- **If a drag fails on camera, say so and move on.** "That's the 409 I mentioned" is a better recovery
+  than silence, and an honest stumble costs nothing.
+- **Put the event back afterwards** if you drag one, so the board is in a known state for the next take.
+- **Don't read this document aloud.** Know the three or four things in each segment and say them in
+  your own words. The written version is stiffer than you should sound.

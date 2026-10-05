@@ -7,6 +7,47 @@ Format: date · decision · why · who · what changes in the Task 3 report.
 
 ---
 
+## D-012 — Safeguards on user administration that the plan does not state
+
+**5 Oct 2026 · Owner: C**
+
+The plan says the Director and the Operations Manager create users, deactivate them and change roles
+(FR-38), and that there must always be one active Director. Taken literally, anyone holding
+`user.manage` could make themselves a Director, which defeats the financial-masking model. So:
+
+- **Only a Director can give someone the Director role, or change a Director's account.** The
+  Operations Manager manages everyone else.
+- **Nobody can change their own roles or deactivate themselves.** Renaming themselves is fine.
+- **The last active Director cannot be removed**, by deactivating them or by taking their role. The
+  check runs after the change is saved, inside the transaction, so a change that would leave none is
+  undone. It also covers two Directors removing each other at the same moment.
+- A role change or deactivation bumps `SecurityStamp` and revokes every refresh token for that person,
+  so their session ends within the 15 minutes an access token lasts, as the plan requires.
+- Giving someone Director or Accounts means they set up two-step sign-in on their next login; nothing
+  extra is needed.
+- The initial password is chosen by the administrator and passes the same 12 character and breach
+  check as any password. There is no "must change at first login" flag, because the schema has no
+  column for one.
+
+**Crew expiry (FR-36).** A daily worker deactivates an account that holds *only* the casual crew
+role, has been assigned to at least one event, has no shift still ahead, and whose every event had its
+Debrief end (actual end, else scheduled) more than `Crew:DeactivateAfterDays` (7) ago. Two choices the
+plan does not spell out: an account with **no assignments** is left alone, so a new account is not
+deactivated before its first shift; and an event **with no Debrief milestone** keeps the account open,
+because it cannot be shown to be over. It runs at 02:30 Cape Town and sleeps until then.
+
+**Not built.** There is no password reset endpoint, because none is in the published contract.
+Plan section 7.1 says a reset bumps the stamp; that needs an endpoint, so it is an open question.
+
+**Why.** Each rule closes a way for administration to be used to widen access.
+
+**Trade-off.** The Operations Manager cannot promote anyone to Director, and an administrator needs a
+colleague to change their own roles.
+
+**Task 3 report.** Describe these safeguards under access control, and list password reset as outstanding.
+
+---
+
 ## D-011 — How costings, confirmation and invoices behave where the plan is silent
 
 **5 Oct 2026 · Owner: C**

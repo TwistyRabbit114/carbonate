@@ -7,30 +7,37 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Carbonate.Api.Platform.Users;
 
-/// <summary>Users and roles (FR-38). Stubs until the module lands; C owns the bodies.</summary>
+/// <summary>Users and roles (FR-38). The Director and the Operations Manager administer accounts.</summary>
 [Route("api/users")]
-public class UsersController : ApiControllerBase
+public class UsersController(IUserService users) : ApiControllerBase
 {
     [HttpGet]
     [HasPermission(PermissionCodes.UserManage)]
-    public ActionResult<PagedResult<UserListItem>> List([FromQuery] UserListQuery query) => NotYetBuilt();
+    public async Task<ActionResult<PagedResult<UserListItem>>> List([FromQuery] UserListQuery query, CancellationToken ct) =>
+        Ok(await users.ListAsync(query, ct));
 
     [HttpPost]
     [HasPermission(PermissionCodes.UserManage)]
     [ProducesResponseType<UserListItem>(StatusCodes.Status201Created)]
-    public ActionResult<UserListItem> Create(CreateUserRequest request) => NotYetBuilt();
+    public async Task<ActionResult<UserListItem>> Create(CreateUserRequest request, CancellationToken ct) =>
+        StatusCode(StatusCodes.Status201Created, await users.CreateAsync(request, ct));
 
-    /// <summary>Change roles or deactivate. There must always be at least one active Director.</summary>
+    /// <summary>
+    /// Change roles, name or active state. There must always be at least one active Director, and a role
+    /// change or deactivation ends the person's current sessions.
+    /// </summary>
     [HttpPatch("{userId:guid}")]
     [HasPermission(PermissionCodes.UserManage)]
-    public ActionResult<UserListItem> Update(Guid userId, UpdateUserRequest request) => NotYetBuilt();
+    public async Task<ActionResult<UserListItem>> Update(Guid userId, UpdateUserRequest request, CancellationToken ct) =>
+        Ok(await users.UpdateAsync(userId, request, ct));
 }
 
-/// <summary>The audit trail (FR-37, should have). Read only; entries are never changed.</summary>
+/// <summary>The audit trail (FR-37). Read only; entries are never changed.</summary>
 [Route("api/audit")]
-public class AuditController : ApiControllerBase
+public class AuditController(IAuditQueryService audit) : ApiControllerBase
 {
     [HttpGet]
     [HasPermission(PermissionCodes.AuditView)]
-    public ActionResult<PagedResult<AuditEntryDto>> List([FromQuery] AuditQuery query) => NotYetBuilt();
+    public async Task<ActionResult<PagedResult<AuditEntryDto>>> List([FromQuery] AuditQuery query, CancellationToken ct) =>
+        Ok(await audit.ListAsync(query, ct));
 }

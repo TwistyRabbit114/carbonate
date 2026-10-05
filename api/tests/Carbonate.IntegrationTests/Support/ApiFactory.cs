@@ -30,6 +30,9 @@ public class ApiFactory : WebApplicationFactory<Program>
         // The suite sends far more than 100 requests a minute from one address; the limiter has its own test.
         builder.UseSetting("RateLimiting:GlobalPermitPerMinute", "100000");
 
+        // Never call the real breached-password service from tests. A password containing "breached" counts as breached.
+        builder.ConfigureServices(services => services.AddSingleton<IPwnedPasswordChecker, OfflinePwnedChecker>());
+
         if (IncludeProbes)
         {
             builder.ConfigureServices(services => services
@@ -56,4 +59,10 @@ public class ApiFactory : WebApplicationFactory<Program>
         client.DefaultRequestHeaders.Authorization = new("Bearer", token);
         return client;
     }
+}
+
+internal sealed class OfflinePwnedChecker : IPwnedPasswordChecker
+{
+    public Task<bool> IsPwnedAsync(string password, CancellationToken ct) =>
+        Task.FromResult(password.Contains("breached", StringComparison.OrdinalIgnoreCase));
 }

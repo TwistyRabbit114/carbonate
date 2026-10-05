@@ -119,7 +119,8 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseSecurityHeaders();
+app.UseSecurityHeaders(BlobHost(app.Configuration));
+app.UseSpaFiles();
 app.UseStatusCodePages();
 app.UseRateLimiter();
 
@@ -133,12 +134,21 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapCspReport();
 
 // Flat 200, no dependency checks: the availability test hits this every five minutes and a
 // database query here would stop the serverless database auto-pausing (decisions D-001).
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
+// Last, so every API route wins and anything else that is not a file gets the app.
+app.MapSpaFallback();
+
 app.Run();
+
+static string? BlobHost(IConfiguration configuration) =>
+    Uri.TryCreate(configuration["Storage:BlobServiceUri"], UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps
+        ? uri.GetLeftPart(UriPartial.Authority)
+        : null;
 
 static string ClientKey(HttpContext context) => context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 

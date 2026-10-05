@@ -64,7 +64,10 @@ public class ContractTests : IClassFixture<ContractTests.ContractFactory>
         foreach (var endpoint in endpoints.OfType<RouteEndpoint>())
         {
             var route = (endpoint.RoutePattern.RawText ?? "").TrimStart('/');
-            if (route.StartsWith("openapi", StringComparison.Ordinal) || route.Contains("swagger", StringComparison.Ordinal))
+            // The API explorer and the app fallback (which serves the page, never data) are not API endpoints.
+            if (route.StartsWith("openapi", StringComparison.Ordinal)
+                || route.Contains("swagger", StringComparison.Ordinal)
+                || route.StartsWith("{*path", StringComparison.Ordinal))
             {
                 continue;
             }
@@ -81,7 +84,7 @@ public class ContractTests : IClassFixture<ContractTests.ContractFactory>
 
         Assert.Empty(undeclared);
         Assert.Equivalent(
-            new[] { "api/auth/login", "api/auth/mfa/verify", "api/auth/refresh", "health" },
+            new[] { "api/auth/login", "api/auth/mfa/verify", "api/auth/refresh", "api/csp-report", "health" },
             anonymous);
     }
 

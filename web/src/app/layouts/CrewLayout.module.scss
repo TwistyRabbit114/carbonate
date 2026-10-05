@@ -1,0 +1,98 @@
+//----------------------------------------------------------\\
+//                              SHELL
+//----------------------------------------------------------\\
+
+.shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom));
+}
+
+.topBar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-4);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+//one readable column on wide screens, crew mostly use phones anyway
+.content {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 1.125rem var(--space-4) 1.75rem;
+
+  &:focus {
+    outline: none;
+    box-shadow: none;
+  }
+
+  //16px inputs so ios doesn't zoom in on focus
+  :where(input, select, textarea) {
+    font-size: var(--fs-md);
+  }
+}
+
+//----------------------------------------------------------\\
+//                              TAB BAR
+//----------------------------------------------------------\\
+
+.tabBar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+
+.tabList {
+  display: flex;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+
+  > li {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: var(--tab-bar-height);
+  padding: var(--space-1) 2px;
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+
+  &:hover {
+    color: var(--accent-strong);
+    text-decoration: none;
+  }
+
+  //bar on top plus colour, so the current tab isn't marked by colour alone
+  &[aria-current='page'] {
+    color: var(--accent-strong);
+    box-shadow: inset 0 3px 0 var(--accent-strong);
+  }
+}
+
+.tabIcon {
+  width: 1.375rem;
+  height: 1.375rem;
+}

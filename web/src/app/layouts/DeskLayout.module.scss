@@ -1,0 +1,216 @@
+@use '@/styles/mixins' as *;
+
+//----------------------------------------------------------\\
+//                              SHELL
+//----------------------------------------------------------\\
+
+.shell {
+  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  max-width: 68.75rem;
+  padding: 1.625rem 2.125rem 3.75rem;
+
+  //focus lands here from the skip link, no ring needed on the whole page
+  &:focus {
+    outline: none;
+    box-shadow: none;
+  }
+}
+
+//----------------------------------------------------------\\
+//                              SIDEBAR
+//----------------------------------------------------------\\
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 13.75rem;
+  height: 100vh;
+  height: 100dvh;
+  padding: 1.125rem 0.875rem;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+
+.brand {
+  padding: var(--space-1) 0.375rem var(--space-5);
+}
+
+.nav {
+  flex: 1;
+}
+
+.navList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.5625rem 0.625rem;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--fs-base);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--accent-tint);
+    text-decoration: none;
+  }
+
+  //weight and background mark the current page as well as colour
+  &[aria-current='page'] {
+    background: var(--accent-tint);
+    color: var(--accent-strong);
+    font-weight: 700;
+  }
+}
+
+.navIcon {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.userArea {
+  margin-top: var(--space-2);
+  padding: 0.625rem 0.375rem 0;
+  border-top: 1px solid var(--line);
+}
+
+//the "More" item only exists for phones
+.more {
+  display: none;
+}
+
+.morePanel {
+  margin: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgba(22, 33, 28, 0.12);
+}
+
+.moreList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+//----------------------------------------------------------\\
+//                              PHONE
+//----------------------------------------------------------\\
+
+@include phone {
+  .shell {
+    flex-direction: column;
+  }
+
+  //sidebar becomes a slim top bar with the logo and user, the nav moves to the bottom
+  .sidebar {
+    z-index: 10;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: auto;
+    padding: var(--space-1) var(--space-4);
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand {
+    padding: 0;
+
+    img {
+      width: 2.5rem;
+      height: 2.5rem;
+    }
+  }
+
+  .userArea {
+    margin: 0;
+    padding: 0;
+    border: none;
+  }
+
+  .nav {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 10;
+    padding: 0 var(--space-1) env(safe-area-inset-bottom);
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+  }
+
+  .navList {
+    flex-direction: row;
+    gap: 0;
+
+    > li {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  .navLink {
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    min-height: var(--tab-bar-height);
+    padding: var(--space-1) 2px;
+    font-size: var(--fs-2xs);
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .overflowing > li:nth-child(n + 5):not(.more) {
+    display: none;
+  }
+
+  .more {
+    display: block;
+  }
+
+  .morePanel {
+    position: fixed;
+    inset: auto var(--space-3) calc(var(--tab-bar-height) + env(safe-area-inset-bottom) + var(--space-2)) auto;
+    min-width: 12rem;
+
+    .navLink {
+      flex-direction: row;
+      justify-content: flex-start;
+      min-height: var(--touch-target);
+      padding: var(--space-2) var(--space-3);
+      font-size: var(--fs-base);
+    }
+  }
+
+  //room at the bottom so the tab bar never covers the last of the page
+  .content {
+    padding: 1.125rem var(--space-4) calc(var(--tab-bar-height) + env(safe-area-inset-bottom) + 1.75rem);
+  }
+}

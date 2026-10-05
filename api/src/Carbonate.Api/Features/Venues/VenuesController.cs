@@ -7,37 +7,35 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Carbonate.Api.Features.Venues;
 
-/// <summary>Venues and site visits (FR-32, FR-33). Stubs until the module lands; B owns the bodies.</summary>
-[ApiController]
-public class VenuesController : ApiControllerBase
+//----------------------------------------------------------\\
+//                              VENUES (FR-32)
+//----------------------------------------------------------\\
+
+[Route("api/venues")]
+public sealed class VenuesController(IVenueService venues) : ApiControllerBase
 {
-    [HttpGet("api/venues")]
+    /// <summary>Searchable list for the event form and settings. Desk roles only.</summary>
+    [HttpGet]
+    [HasPermission(PermissionCodes.EventViewAll)]
+    public Task<PagedResult<VenueDto>> List([FromQuery] VenueQuery query, CancellationToken ct) =>
+        venues.ListAsync(query, ct);
+
+    /// <summary>Crew get a venue only through an event they're assigned to; the service checks.</summary>
+    [HttpGet("{venueId:guid}")]
     [HasPermission(PermissionCodes.EventViewAssigned)]
-    public ActionResult<PagedResult<VenueDto>> List([FromQuery] VenueListQuery query) => NotYetBuilt();
+    public Task<VenueDto> Get(Guid venueId, CancellationToken ct) => venues.GetAsync(venueId, ct);
 
-    [HttpPost("api/venues")]
+    [HttpPost]
     [HasPermission(PermissionCodes.VenueEdit)]
-    [ProducesResponseType<VenueDto>(StatusCodes.Status201Created)]
-    public ActionResult<VenueDto> Create(SaveVenueRequest request) => NotYetBuilt();
+    public async Task<ActionResult<VenueDto>> Create(VenueRequest request, CancellationToken ct)
+    {
+        var venue = await venues.CreateAsync(request, ct);
+        return CreatedAtAction(nameof(Get), new { venueId = venue.VenueId }, venue);
+    }
 
-    [HttpGet("api/venues/{venueId:guid}")]
-    [HasPermission(PermissionCodes.EventViewAssigned)]
-    public ActionResult<VenueDto> Get(Guid venueId) => NotYetBuilt();
-
-    [HttpPut("api/venues/{venueId:guid}")]
+    /// <summary>Also how a venue is deactivated: send isActive false. Venues are never deleted.</summary>
+    [HttpPut("{venueId:guid}")]
     [HasPermission(PermissionCodes.VenueEdit)]
-    public ActionResult<VenueDto> Update(Guid venueId, SaveVenueRequest request) => NotYetBuilt();
-
-    [HttpGet("api/events/{eventId:guid}/site-visits")]
-    [HasPermission(PermissionCodes.EventViewAssigned)]
-    public ActionResult<IReadOnlyList<SiteVisitDto>> SiteVisits(Guid eventId) => NotYetBuilt();
-
-    [HttpPost("api/events/{eventId:guid}/site-visits")]
-    [HasPermission(PermissionCodes.VenueEdit)]
-    [ProducesResponseType<SiteVisitDto>(StatusCodes.Status201Created)]
-    public ActionResult<SiteVisitDto> CreateSiteVisit(Guid eventId, SaveSiteVisitRequest request) => NotYetBuilt();
-
-    [HttpPut("api/site-visits/{siteVisitId:guid}")]
-    [HasPermission(PermissionCodes.VenueEdit)]
-    public ActionResult<SiteVisitDto> UpdateSiteVisit(Guid siteVisitId, SaveSiteVisitRequest request) => NotYetBuilt();
+    public Task<VenueDto> Update(Guid venueId, VenueRequest request, CancellationToken ct) =>
+        venues.UpdateAsync(venueId, request, ct);
 }

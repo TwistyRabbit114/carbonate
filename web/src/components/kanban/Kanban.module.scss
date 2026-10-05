@@ -1,0 +1,200 @@
+@use '@/styles/mixins' as *;
+
+//----------------------------------------------------------\\
+//                              BOARD
+//----------------------------------------------------------\\
+
+//positioned so the absolutely placed screen-reader text inside the columns scrolls with the
+//board, otherwise columns scrolled out of view stretch the whole page sideways
+.board {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 1.125rem;
+  overflow-x: auto;
+  padding-bottom: var(--space-3);
+
+  //tablets scroll sideways a column at a time
+  @include tablet-down {
+    scroll-snap-type: x mandatory;
+  }
+
+  @include phone {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+    overflow-x: visible;
+  }
+}
+
+//----------------------------------------------------------\\
+//                              COLUMN
+//----------------------------------------------------------\\
+
+.column {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 18.75rem;
+  max-height: calc(100vh - 10rem);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  scroll-snap-align: start;
+
+  @include phone {
+    flex-basis: auto;
+    max-height: none;
+  }
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0.75rem 0.875rem;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+
+.title {
+  min-width: 0;
+}
+
+.count {
+  margin-left: auto;
+  padding: 0.0625rem 0.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+}
+
+//the phone-only fold toggle fills the whole heading so it's an easy target
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--touch-target);
+  margin: calc(var(--space-2) * -1) 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chevron {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--muted);
+  transition: transform 150ms ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.body {
+  padding: 0.75rem;
+  overflow-y: auto;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.empty {
+  margin: 0;
+  padding: var(--space-3) 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+
+//----------------------------------------------------------\\
+//                              DROP TARGETS
+//----------------------------------------------------------\\
+
+//while dragging: dashed green where the card may go, solid green under the pointer, faded where it
+//can't go. each one also says so in words, colour is never the only signal
+.allowed {
+  border: 2px dashed var(--accent);
+}
+
+.over {
+  border: 2px solid var(--accent-strong);
+  background: var(--accent-tint);
+}
+
+.blocked,
+.checking {
+  opacity: 0.55;
+}
+
+.dropHint {
+  margin: 0;
+  padding: var(--space-1) 0.875rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+
+  .allowed &,
+  .over & {
+    color: var(--accent-strong);
+  }
+}
+
+//----------------------------------------------------------\\
+//                              SKELETON
+//----------------------------------------------------------\\
+
+%shimmer {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--line) 0%, var(--paper) 50%, var(--line) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.skeletonTitle {
+  @extend %shimmer;
+  width: 9rem;
+  height: 0.875rem;
+}
+
+.skeletonCard {
+  @extend %shimmer;
+  height: 4.25rem;
+  border-radius: var(--radius-md);
+
+  & + & {
+    margin-top: 0.625rem;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: -100% 0;
+  }
+}

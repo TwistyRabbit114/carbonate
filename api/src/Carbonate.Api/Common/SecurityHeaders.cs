@@ -10,8 +10,11 @@ internal static class SecurityHeaders
     public static string ContentSecurityPolicy(string? blobHost)
     {
         var images = string.IsNullOrWhiteSpace(blobHost) ? "'self' data:" : $"'self' data: {blobHost}";
+        // font-src is not in the plan's policy, so fonts fell back to default-src and Vite's small inlined
+        // data: fonts were blocked on the hosted site. A font cannot run script, so data: is allowed for
+        // fonts only (decisions D-014).
         return "default-src 'self'; script-src 'self'; style-src 'self'; "
-            + $"img-src {images}; connect-src 'self'; object-src 'none'; "
+            + $"img-src {images}; font-src 'self' data:; connect-src 'self'; object-src 'none'; "
             + "base-uri 'self'; frame-ancestors 'none'; form-action 'self'; report-uri /api/csp-report";
     }
 

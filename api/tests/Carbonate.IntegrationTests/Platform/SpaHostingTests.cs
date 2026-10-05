@@ -98,6 +98,7 @@ public class SpaHostingTests : IClassFixture<SpaHostingTests.SpaFactory>, IDispo
             Assert.Contains("script-src 'self'", policy);
             Assert.Contains("style-src 'self'", policy);
             Assert.Contains("object-src 'none'", policy);
+            Assert.Contains("font-src 'self' data:", policy);
             Assert.Contains("frame-ancestors 'none'", policy);
             Assert.Contains("report-uri /api/csp-report", policy);
             Assert.DoesNotContain("unsafe-inline", policy);

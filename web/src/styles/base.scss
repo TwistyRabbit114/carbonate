@@ -94,6 +94,10 @@ a {
   border-radius: var(--radius-sm);
   font-weight: 600;
   transform: translateY(-200%);
+  //a full touch target, it's the first thing a keyboard or switch user lands on (NFR-24)
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target);
 
   &:focus {
     transform: none;

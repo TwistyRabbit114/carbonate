@@ -104,7 +104,12 @@ function CrewEvent({ event }: { event: EventDetail }) {
               <>
                 {venue.data.name}
                 <br />
-                <a href={mapLink(venue.data.address)} target="_blank" rel="noopener noreferrer">
+                <a
+                  href={mapLink(venue.data.address)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.mapLink}
+                >
                   {venue.data.address}
                 </a>
               </>

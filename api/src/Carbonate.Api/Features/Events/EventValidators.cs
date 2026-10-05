@@ -78,3 +78,15 @@ internal sealed class EventListQueryValidator : AbstractValidator<EventListQuery
         RuleFor(x => x.PageSize).InclusiveBetween(1, 200);
     }
 }
+
+internal sealed class PackSizeRequestValidator : AbstractValidator<PackSizeRequest>
+{
+    public PackSizeRequestValidator()
+    {
+        RuleFor(x => x).Must(x => x.PackSizeEstimated is not null || x.PackSizeActual is not null)
+            .WithName("packSize").WithMessage("Send the estimated pack size, the actual pack size, or both.");
+        RuleFor(x => x.PackSizeEstimated).InclusiveBetween(0, 100000).When(x => x.PackSizeEstimated is not null);
+        RuleFor(x => x.PackSizeActual).InclusiveBetween(0, 100000).When(x => x.PackSizeActual is not null);
+        RuleFor(x => x.RowVersion).NotEmpty().MaximumLength(100);
+    }
+}

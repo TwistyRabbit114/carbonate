@@ -266,6 +266,14 @@ public sealed class CommercialService(
 
     // ---- invoices -------------------------------------------------------------------------------
 
+    public async Task<IReadOnlyList<UninvoicedEventDto>> ListUninvoicedEventsAsync(CancellationToken ct)
+    {
+        Require(PermissionCodes.InvoiceManage);
+
+        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        return await repository.ListUninvoicedEventsAsync(VisibleTo, today, ct);
+    }
+
     public async Task<PagedResult<InvoiceDto>> ListInvoicesAsync(InvoiceListQuery query, CancellationToken ct)
     {
         Require(PermissionCodes.InvoiceView);

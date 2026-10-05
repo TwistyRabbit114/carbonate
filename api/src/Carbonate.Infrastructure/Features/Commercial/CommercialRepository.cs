@@ -195,6 +195,36 @@ internal sealed class CommercialRepository(CemDbContext db) : ICommercialReposit
         ];
     }
 
+    public async Task<IReadOnlyList<UninvoicedEventDto>> ListUninvoicedEventsAsync(Guid? visibleToUserId, DateOnly today, CancellationToken ct)
+    {
+        var events = db.Events.AsNoTracking().Where(e => e.IsActive && e.Status == EventStatus.Finished);
+
+        if (visibleToUserId is not null)
+        {
+            events = events.Where(e => e.CrewAssignments.Any(c => c.UserId == visibleToUserId));
+        }
+
+        var rows = await events
+            .Where(e => !db.Invoices.Any(i => i.EventId == e.EventId && i.Status != InvoiceStatus.Void))
+            .Join(db.Clients, e => e.ClientId, c => c.ClientId,
+                (e, c) => new { e.EventId, e.EventCode, e.Name, ClientName = c.Name, e.EventDate })
+            .OrderBy(r => r.EventDate).ThenBy(r => r.EventCode)
+            .ToListAsync(ct);
+
+        return
+        [
+            .. rows.Select(r => new UninvoicedEventDto
+            {
+                EventId = r.EventId,
+                EventCode = r.EventCode,
+                Name = r.Name,
+                ClientName = r.ClientName,
+                EventDate = r.EventDate,
+                DaysSinceEvent = Math.Max(today.DayNumber - r.EventDate.DayNumber, 0),
+            }),
+        ];
+    }
+
     private IQueryable<InvoiceDto> InvoiceQuery() =>
         from i in db.Invoices.AsNoTracking()
         join e in db.Events on i.EventId equals e.EventId

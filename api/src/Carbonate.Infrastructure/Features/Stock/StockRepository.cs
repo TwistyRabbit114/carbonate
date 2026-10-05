@@ -53,11 +53,10 @@ internal sealed class StockRepository(CemDbContext db) : IStockRepository
 
         var total = await items.CountAsync(ct);
 
-        var page = await items
-            .OrderBy(i => i.Name)
-            .Skip((query.Page - 1) * query.PageSize)
-            .Take(query.PageSize)
-            .Select(i => Project(i, db))
+        var page = await ProjectItems(items
+                .OrderBy(i => i.Name)
+                .Skip((query.Page - 1) * query.PageSize)
+                .Take(query.PageSize))
             .ToListAsync(ct);
 
         return new PagedResult<StockItemDto>
@@ -70,10 +69,7 @@ internal sealed class StockRepository(CemDbContext db) : IStockRepository
     }
 
     public async Task<StockItemDto?> GetItemAsync(Guid stockItemId, CancellationToken ct) =>
-        await db.StockItems
-            .AsNoTracking()
-            .Where(i => i.StockItemId == stockItemId)
-            .Select(i => Project(i, db))
+        await ProjectItems(db.StockItems.AsNoTracking().Where(i => i.StockItemId == stockItemId))
             .FirstOrDefaultAsync(ct);
 
     public async Task<StockItem?> FindItemAsync(Guid stockItemId, CancellationToken ct) =>
@@ -261,11 +257,10 @@ internal sealed class StockRepository(CemDbContext db) : IStockRepository
 
         var total = await lists.CountAsync(ct);
 
-        var page = await lists
-            .OrderByDescending(l => l.GeneratedAt)
-            .Skip((query.Page - 1) * query.PageSize)
-            .Take(query.PageSize)
-            .Select(l => Project(l, db))
+        var page = await ProjectLists(lists
+                .OrderByDescending(l => l.GeneratedAt)
+                .Skip((query.Page - 1) * query.PageSize)
+                .Take(query.PageSize))
             .ToListAsync(ct);
 
         return new PagedResult<OrderListDto>
@@ -278,10 +273,7 @@ internal sealed class StockRepository(CemDbContext db) : IStockRepository
     }
 
     public async Task<OrderListDto?> GetOrderListAsync(Guid orderListId, CancellationToken ct) =>
-        await db.OrderLists
-            .AsNoTracking()
-            .Where(l => l.OrderListId == orderListId)
-            .Select(l => Project(l, db))
+        await ProjectLists(db.OrderLists.AsNoTracking().Where(l => l.OrderListId == orderListId))
             .FirstOrDefaultAsync(ct);
 
     public async Task<OrderList?> FindOrderListAsync(Guid orderListId, CancellationToken ct) =>
@@ -305,68 +297,74 @@ internal sealed class StockRepository(CemDbContext db) : IStockRepository
     }
 
     // ---- projections --------------------------------------------------------------------------
+    //
+    // Written inline inside these methods, not extracted into a helper that takes an entity. EF has to
+    // translate the lambda into SQL, and it cannot translate a call to a method of ours — doing that
+    // compiles happily and then throws at runtime on every query.
 
-    private static StockItemDto Project(StockItem i, CemDbContext db) => new()
-    {
-        StockItemId = i.StockItemId,
-        CategoryId = i.CategoryId,
-        CategoryName = db.StockCategories
-            .Where(c => c.CategoryId == i.CategoryId)
-            .Select(c => c.Name)
-            .FirstOrDefault() ?? "",
-        DefaultSupplierId = i.DefaultSupplierId,
-        Sku = i.Sku,
-        Name = i.Name,
-        Unit = i.Unit,
-        IsConsumable = i.IsConsumable,
-        IsAsset = i.IsAsset,
-        ReorderLevel = i.ReorderLevel,
-        ConsumptionPerHundredGuests = i.ConsumptionPerHundredGuests,
-        StandardUnitCost = i.StandardUnitCost,
-        IsActive = i.IsActive,
-    };
+    private IQueryable<StockItemDto> ProjectItems(IQueryable<StockItem> items) =>
+        items.Select(i => new StockItemDto
+        {
+            StockItemId = i.StockItemId,
+            CategoryId = i.CategoryId,
+            CategoryName = db.StockCategories
+                .Where(c => c.CategoryId == i.CategoryId)
+                .Select(c => c.Name)
+                .FirstOrDefault() ?? "",
+            DefaultSupplierId = i.DefaultSupplierId,
+            Sku = i.Sku,
+            Name = i.Name,
+            Unit = i.Unit,
+            IsConsumable = i.IsConsumable,
+            IsAsset = i.IsAsset,
+            ReorderLevel = i.ReorderLevel,
+            ConsumptionPerHundredGuests = i.ConsumptionPerHundredGuests,
+            StandardUnitCost = i.StandardUnitCost,
+            IsActive = i.IsActive,
+        });
 
-    private static OrderListDto Project(OrderList l, CemDbContext db) => new()
-    {
-        OrderListId = l.OrderListId,
-        EventId = l.EventId,
-        SupplierId = l.SupplierId,
-        SupplierName = db.Suppliers
-            .Where(s => s.SupplierId == l.SupplierId)
-            .Select(s => s.Name)
-            .FirstOrDefault() ?? "",
-        GeneratedByUserId = l.GeneratedByUserId,
-        Status = l.Status,
-        RequiredByDate = l.RequiredByDate,
-        GeneratedAt = l.GeneratedAt,
-        PeriodStart = l.PeriodStart,
-        PeriodEnd = l.PeriodEnd,
-        ApprovedByUserId = l.ApprovedByUserId,
-        ApprovedAt = l.ApprovedAt,
-        PlacedAt = l.PlacedAt,
-        RowVersion = Convert.ToBase64String(l.RowVersion),
-        Lines = db.OrderListLines
-            .Where(line => line.OrderListId == l.OrderListId)
-            .OrderBy(line => line.LineId)
-            .Select(line => new OrderListLineDto
-            {
-                LineId = line.LineId,
-                StockItemId = line.StockItemId,
-                StockItemName = db.StockItems
-                    .Where(i => i.StockItemId == line.StockItemId)
-                    .Select(i => i.Name)
-                    .FirstOrDefault() ?? "",
-                Unit = db.StockItems
-                    .Where(i => i.StockItemId == line.StockItemId)
-                    .Select(i => i.Unit)
-                    .FirstOrDefault() ?? "",
-                QuantityOrdered = line.QuantityOrdered,
-                EstimatedUnitCost = line.EstimatedUnitCost,
-                Notes = line.Notes,
-            })
-            .ToList(),
-        // Recomputed on read rather than stored: a lead-time warning depends on today's date, so a
-        // value written when the list was generated would go stale the next morning.
-        Warnings = new List<StockWarningDto>(),
-    };
+    private IQueryable<OrderListDto> ProjectLists(IQueryable<OrderList> lists) =>
+        lists.Select(l => new OrderListDto
+        {
+            OrderListId = l.OrderListId,
+            EventId = l.EventId,
+            SupplierId = l.SupplierId,
+            SupplierName = db.Suppliers
+                .Where(s => s.SupplierId == l.SupplierId)
+                .Select(s => s.Name)
+                .FirstOrDefault() ?? "",
+            GeneratedByUserId = l.GeneratedByUserId,
+            Status = l.Status,
+            RequiredByDate = l.RequiredByDate,
+            GeneratedAt = l.GeneratedAt,
+            PeriodStart = l.PeriodStart,
+            PeriodEnd = l.PeriodEnd,
+            ApprovedByUserId = l.ApprovedByUserId,
+            ApprovedAt = l.ApprovedAt,
+            PlacedAt = l.PlacedAt,
+            RowVersion = Convert.ToBase64String(l.RowVersion),
+            Lines = db.OrderListLines
+                .Where(line => line.OrderListId == l.OrderListId)
+                .OrderBy(line => line.LineId)
+                .Select(line => new OrderListLineDto
+                {
+                    LineId = line.LineId,
+                    StockItemId = line.StockItemId,
+                    StockItemName = db.StockItems
+                        .Where(i => i.StockItemId == line.StockItemId)
+                        .Select(i => i.Name)
+                        .FirstOrDefault() ?? "",
+                    Unit = db.StockItems
+                        .Where(i => i.StockItemId == line.StockItemId)
+                        .Select(i => i.Unit)
+                        .FirstOrDefault() ?? "",
+                    QuantityOrdered = line.QuantityOrdered,
+                    EstimatedUnitCost = line.EstimatedUnitCost,
+                    Notes = line.Notes,
+                })
+                .ToList(),
+            // Recomputed on read rather than stored: a lead-time warning depends on today's date, so
+            // a value written when the list was generated would go stale the next morning.
+            Warnings = new List<StockWarningDto>(),
+        });
 }

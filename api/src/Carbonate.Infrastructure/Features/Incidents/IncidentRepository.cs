@@ -54,18 +54,14 @@ internal sealed class IncidentRepository(CemDbContext db) : IIncidentRepository
         await db.IncidentReports.FirstOrDefaultAsync(i => i.IncidentId == incidentId, ct);
 
     public async Task<IncidentRow?> GetRowAsync(Guid incidentId, CancellationToken ct) =>
-        await db.IncidentReports
-            .AsNoTracking()
-            .Where(i => i.IncidentId == incidentId)
-            .Select(i => Project(i, db))
+        await Project(db.IncidentReports.AsNoTracking().Where(i => i.IncidentId == incidentId))
             .FirstOrDefaultAsync(ct);
 
     public async Task<IReadOnlyList<IncidentRow>> ListForEventAsync(Guid eventId, CancellationToken ct) =>
-        await db.IncidentReports
-            .AsNoTracking()
-            .Where(i => i.EventId == eventId)
-            .OrderByDescending(i => i.ReportedAt)
-            .Select(i => Project(i, db))
+        await Project(db.IncidentReports
+                .AsNoTracking()
+                .Where(i => i.EventId == eventId)
+                .OrderByDescending(i => i.ReportedAt))
             .ToListAsync(ct);
 
     public async Task<PagedResult<IncidentRow>> ListAsync(
@@ -86,11 +82,10 @@ internal sealed class IncidentRepository(CemDbContext db) : IIncidentRepository
 
         var total = await rows.CountAsync(ct);
 
-        var page = await rows
-            .OrderByDescending(i => i.ReportedAt)
-            .Skip((query.Page - 1) * query.PageSize)
-            .Take(query.PageSize)
-            .Select(i => Project(i, db))
+        var page = await Project(rows
+                .OrderByDescending(i => i.ReportedAt)
+                .Skip((query.Page - 1) * query.PageSize)
+                .Take(query.PageSize))
             .ToListAsync(ct);
 
         return new PagedResult<IncidentRow>
@@ -104,27 +99,30 @@ internal sealed class IncidentRepository(CemDbContext db) : IIncidentRepository
 
     public Task SaveChangesAsync(CancellationToken ct) => db.SaveChangesAsync(ct);
 
-    private static IncidentRow Project(IncidentReport i, CemDbContext db) => new(
-        i.IncidentId,
-        i.EventId,
-        i.AssetId,
-        i.StockItemId,
-        i.AssetId == null
-            ? db.StockItems.Where(s => s.StockItemId == i.StockItemId).Select(s => s.Name).FirstOrDefault() ?? ""
-            : db.EquipmentAssets
-                  .Where(a => a.AssetId == i.AssetId)
-                  .Select(a => db.StockItems
-                                   .Where(s => s.StockItemId == a.StockItemId)
-                                   .Select(s => s.Name)
-                                   .FirstOrDefault() + " " + a.SerialNumber)
-                  .FirstOrDefault() ?? "",
-        i.ReportedByUserId,
-        db.Users.Where(u => u.UserId == i.ReportedByUserId).Select(u => u.FullName).FirstOrDefault() ?? "",
-        i.IncidentType,
-        i.Quantity,
-        i.ReportedAt,
-        i.Description,
-        i.ResolutionNotes,
-        i.ReplacementCost,
-        i.PhotoBlobUri);
+    // Inline inside this method on purpose. EF translates the lambda into SQL and cannot translate a
+    // call to a method of ours — that compiles and then throws at runtime on every query.
+    private IQueryable<IncidentRow> Project(IQueryable<IncidentReport> incidents) =>
+        incidents.Select(i => new IncidentRow(
+            i.IncidentId,
+            i.EventId,
+            i.AssetId,
+            i.StockItemId,
+            i.AssetId == null
+                ? db.StockItems.Where(s => s.StockItemId == i.StockItemId).Select(s => s.Name).FirstOrDefault() ?? ""
+                : db.EquipmentAssets
+                      .Where(a => a.AssetId == i.AssetId)
+                      .Select(a => db.StockItems
+                                       .Where(s => s.StockItemId == a.StockItemId)
+                                       .Select(s => s.Name)
+                                       .FirstOrDefault() + " " + a.SerialNumber)
+                      .FirstOrDefault() ?? "",
+            i.ReportedByUserId,
+            db.Users.Where(u => u.UserId == i.ReportedByUserId).Select(u => u.FullName).FirstOrDefault() ?? "",
+            i.IncidentType,
+            i.Quantity,
+            i.ReportedAt,
+            i.Description,
+            i.ResolutionNotes,
+            i.ReplacementCost,
+            i.PhotoBlobUri));
 }

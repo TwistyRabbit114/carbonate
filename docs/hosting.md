@@ -157,6 +157,7 @@ computes its next due time and sleeps until it, capped at 30 minutes.
 | Backups | Azure SQL automated backups, 35-day point-in-time restore |
 | Durability of files | Blob Storage LRS, soft delete |
 | Deployment safety | Smoke test against `/health` after every deploy; production requires a human approval |
+| Deployment integrity | `WEBSITE_RUN_FROM_PACKAGE=1` on both apps, so a deploy replaces the application rather than copying over it and leaving older files behind (D-011) |
 | Rollback | Redeploy the previous artefact, or restore the database to a point in time |
 | Release windows | Production deploys Monday–Wednesday, 09:00–15:00 SAST, never within 48 h of a load-in on real client data (NFR-11) |
 
@@ -204,7 +205,13 @@ Stated deliberately — these are conscious trade-offs, not oversights.
 - **Publish profile rather than OIDC**, forced by tenant policy as described above.
 - **Single region, no geo-redundancy.** At this scale and budget, a regional outage is accepted risk;
   the backup retention covers data loss, not availability.
-- **Cold start** of up to a minute after the database auto-pauses. Warm it before any demo.
+- **Cold start** of up to a minute after the database auto-pauses. Warm it before any demo. The
+  startup seed runs inside `StartAsync`, so the first request after a deploy can wait two to three
+  minutes while a paused database wakes.
+- **The dev environment runs as `Development`**, which exposes the Swagger UI, the OpenAPI document
+  anonymously, and the developer exception page with full stack traces. Acceptable for fictional data
+  on a disposable host with an unpublished URL; it is removed after the demo, and production has none
+  of it (decision D-011).
 
 ---
 

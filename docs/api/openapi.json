@@ -11,6 +11,28 @@
     }
   ],
   "paths": {
+    "/api/csp-report": {
+      "post": {
+        "tags": [
+          "Carbonate.Api"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "422": {
+            "description": "A business rule stops this.",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [

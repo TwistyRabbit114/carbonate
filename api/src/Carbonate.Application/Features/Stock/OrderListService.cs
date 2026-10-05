@@ -72,7 +72,12 @@ public sealed class OrderListService(
         }
 
         await stock.SaveChangesAsync(ct);
-        await audit.RecordAsync("order.generate", nameof(OrderList), string.Join(",", created),
+
+        // The entity id is the period, not the list ids. AUDIT_ENTRY.EntityId is nvarchar(64), which
+        // holds one GUID and not twenty-four — a real December overflowed it. The ids go in the
+        // payload, which is nvarchar(max).
+        await audit.RecordAsync("order.generate", nameof(OrderList),
+            $"{request.From:yyyy-MM-dd}..{request.To:yyyy-MM-dd}",
             null,
             new
             {
@@ -80,6 +85,7 @@ public sealed class OrderListService(
                 request.To,
                 Lists = created.Count,
                 Unassigned = generation.Unassigned.Count,
+                OrderListIds = created,
             },
             user.UserId, ct);
 

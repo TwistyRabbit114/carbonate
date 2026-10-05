@@ -86,6 +86,60 @@ status flow as built.
 
 ---
 
+## D-011 — Deploys run from package, and only dev runs as `Development`
+
+**5 Oct 2026 · Owner: D**
+
+Two deployment settings, both found the hard way.
+
+### `WEBSITE_RUN_FROM_PACKAGE = 1` on both App Services
+
+**What happened.** The dev API started cleanly, ran its workers, queried the database — and then threw
+`System.BadImageFormatException: Bad IL range` on every request that reached the rate limiter, with
+garbled type names in the stack trace. Production, running the **same artefact**, was perfectly
+healthy.
+
+The difference was deployment history. `azure/webapps-deploy` copies files over whatever is already in
+`wwwroot` and removes nothing, and dev had been deployed a dozen times across several days of
+fast-moving code. Listing the directory found `runtimes/unix/lib/net9.0` — libraries from an older
+deployment that targeted .NET 9, sitting alongside .NET 10 assemblies. The loader was resolving a
+mixture of the two.
+
+**The fix.** `WEBSITE_RUN_FROM_PACKAGE = 1` mounts the deployment zip read-only instead of extracting
+it, so what runs is exactly the artefact and nothing can linger between deploys.
+
+**Why it is worth recording.** The symptom looked like a compiler or runtime fault and was neither. It
+was only diagnosable because two environments run the same artefact — prod being healthy is what
+proved the code innocent in one request. That is an argument for having a second environment that has
+nothing to do with "testing before production".
+
+**Trade-off.** `wwwroot` becomes read-only at runtime, so nothing can write into the application
+directory. Carbonate writes files to Blob Storage, so this costs us nothing.
+
+### `ASPNETCORE_ENVIRONMENT = Development` on dev only
+
+Set on `carbonate-api-dev` so the Swagger UI is reachable, which matters while there is no SPA to
+demonstrate. **Never set on `carbonate-api-prod`.**
+
+**What it exposes.** More than expected. `WebApplication` adds the developer exception page
+automatically in Development, so an unhandled error on the dev hostname returns a full stack trace,
+internal paths, request headers and the caller's IP. `/openapi/v1.json` is also anonymous there, so the
+whole API surface is readable by anyone with the URL.
+
+**Why that is acceptable here, and only here.** The dev environment holds fictional demo data, is
+disposable, and its hostname is not published. The same settings on production would be a real
+disclosure problem, which is why the absence of both settings on prod is deliberate rather than
+incidental — as is the absence of `Seeding__Demo`.
+
+**Remove it after the demo.** Three app settings separate the dev environment from a production one,
+and that is a thin margin to leave standing indefinitely.
+
+**Task 3 report.** Worth a short section on deployment hygiene: the failure, how two environments
+made it diagnosable, and the configuration that prevents it. Also state the dev exposure explicitly
+rather than leaving it implied.
+
+---
+
 ## D-010 — The Google OAuth callback is anonymous, with the user carried in a signed `state`
 
 **4 Oct 2026 · Owner: D**

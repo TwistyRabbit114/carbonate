@@ -1,3 +1,4 @@
+using Carbonate.Application.Common;
 using Carbonate.Application.Features.Venues;
 using FluentValidation;
 
@@ -31,7 +32,7 @@ internal sealed class VenueQueryValidator : AbstractValidator<VenueQuery>
     {
         RuleFor(x => x.Q).MaximumLength(200);
         RuleFor(x => x.Page).GreaterThanOrEqualTo(1);
-        RuleFor(x => x.PageSize).InclusiveBetween(1, 200); //plan section 5 caps a page at 200
+        RuleFor(x => x.PageSize).InclusiveBetween(1, PageQuery.MaxPageSize);
     }
 }
 

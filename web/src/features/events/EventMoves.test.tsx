@@ -45,9 +45,10 @@ function openMovableBoard({ me = users.eventManager, reject, slow = false }: Opt
       http.get('/api/events', () =>
         HttpResponse.json({ items: events, page: 1, pageSize: 200, total: events.length }),
       ),
-      http.get('/api/events/:eventId/allowed-transitions', ({ params }) =>
-        HttpResponse.json(allowedFrom[events.find((event) => event.eventId === params.eventId)!.status]),
-      ),
+      http.get('/api/events/:eventId/allowed-transitions', ({ params }) => {
+        const event = events.find((candidate) => candidate.eventId === params.eventId)!;
+        return HttpResponse.json({ eventId: event.eventId, current: event.status, allowed: allowedFrom[event.status] });
+      }),
       http.post('/api/events/:eventId/transitions', async ({ request, params }) => {
         const body = (await request.json()) as { to: EventStatus };
         sent.push(body);

@@ -45,6 +45,15 @@ public record CardDto(
     int AttachmentCount,
     string RowVersion);
 
+//files and photos on a card (FR-22), in the contract but not built yet
+public record CardAttachmentDto(
+    Guid AttachmentId,
+    Guid CardId,
+    string FileName,
+    Guid UploadedByUserId,
+    DateTime UploadedAt,
+    string? DownloadUrl);
+
 //----------------------------------------------------------\\
 //                              MOVES
 //----------------------------------------------------------\\

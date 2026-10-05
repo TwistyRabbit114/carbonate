@@ -2,6 +2,9 @@ using Azure.Identity;
 using Azure.Storage.Blobs;
 using Carbonate.Application.Common;
 using Carbonate.Application.Features.Boards;
+using Carbonate.Application.Features.Calendar;
+using Carbonate.Application.Features.Commercial;
+using Carbonate.Application.Features.Events;
 using Carbonate.Application.Features.Lifecycle;
 using Carbonate.Application.Features.Stock;
 using Carbonate.Application.Features.Venues;
@@ -11,6 +14,9 @@ using Carbonate.Application.Platform.Files;
 using Carbonate.Domain.Lifecycle;
 using Carbonate.Infrastructure.Common;
 using Carbonate.Infrastructure.Features.Boards;
+using Carbonate.Infrastructure.Features.Calendar;
+using Carbonate.Infrastructure.Features.Commercial;
+using Carbonate.Infrastructure.Features.Events;
 using Carbonate.Infrastructure.Features.Lifecycle;
 using Carbonate.Infrastructure.Features.Stock;
 using Carbonate.Infrastructure.Features.Venues;
@@ -35,9 +41,14 @@ public static class DependencyInjection
 
         services.Configure<AuthOptions>(configuration.GetSection(AuthOptions.Section));
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.Section));
+        services.Configure<FinanceOptions>(configuration.GetSection(FinanceOptions.Section));
+        services.Configure<QuoteOptions>(configuration.GetSection(QuoteOptions.Section));
         services.AddSingleton(TimeProvider.System);
 
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IEventRepository, EventRepository>();
+        services.AddScoped<ICommercialRepository, CommercialRepository>();
+        services.AddScoped<ITransactionRunner, TransactionRunner>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddSingleton<ITokenService, TokenService>();
@@ -57,6 +68,12 @@ public static class DependencyInjection
         services.AddScoped<IEventStateObserver, CalendarSyncObserver>();
         services.AddScoped<IEventStateObserver, NotificationObserver>();
         services.AddHostedService<EventTransitionWorker>();
+
+        // Calendar sync (D, FR-40-42). Outbound only: the worker drains CALENDAR_OUTBOX so no user
+        // request ever waits on Google (NFR-12).
+        services.AddScoped<ICalendarClient, UnconfiguredCalendarClient>();
+        services.AddSingleton<ICalendarStateTokens, CalendarStateTokens>();
+        services.AddHostedService<CalendarSyncWorker>();
 
         // Stock and templates (D, FR-24-30)
         services.AddScoped<IEventTemplateSeeder, EventTemplateSeeder>();

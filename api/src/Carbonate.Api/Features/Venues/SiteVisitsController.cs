@@ -1,3 +1,4 @@
+using Carbonate.Api.Common;
 using Carbonate.Api.Platform.Auth;
 using Carbonate.Application.Features.Venues;
 using Carbonate.Application.Platform.Auth;
@@ -9,8 +10,7 @@ namespace Carbonate.Api.Features.Venues;
 //                              SITE VISITS (FR-33)
 //----------------------------------------------------------\\
 
-[ApiController]
-public sealed class SiteVisitsController(ISiteVisitService siteVisits) : ControllerBase
+public sealed class SiteVisitsController(ISiteVisitService siteVisits) : ApiControllerBase
 {
     /// <summary>Anyone who can see the event, crew included. An event they can't see is a 404.</summary>
     [HttpGet("api/events/{eventId:guid}/site-visits")]

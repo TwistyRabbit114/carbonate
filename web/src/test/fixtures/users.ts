@@ -147,7 +147,14 @@ export const users = {
   casualCrew: account(6, 'Priya R.', 'priya@example.com', 'CasualCrew', casualCrew),
 };
 
-//the same accounts as rows of GET /api/users
+//the same accounts as rows of GET /api/users. director and accounts sign in with a code (FR-34)
 export function userList(): UserListItem[] {
-  return Object.values(users).map(({ user, roles }) => ({ ...user, roles, isActive: true }));
+  return Object.values(users).map(({ user, roles }, index) => ({
+    ...user,
+    employeeNumber: `CB-${String(index + 1).padStart(3, '0')}`,
+    roles,
+    isActive: true,
+    mfaEnabled: roles.some((role) => role === 'Director' || role === 'Accounts'),
+    lastLoginAt: null,
+  }));
 }

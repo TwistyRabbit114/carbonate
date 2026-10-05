@@ -181,11 +181,10 @@ internal sealed class EventTemplateSeeder(
                 Priority = card.Priority,
                 DueAt = TemplateMath.DueAt(card.MilestoneType, card.OffsetHours, milestoneStarts),
                 Position = column.Cards.Count,
-                // TODO(plan): TASK_CARD.Status is a free string and neither the plan nor Task 1
-                // gives the vocabulary for event boards — only the admin board's three columns
-                // (plan section 6, "Admin board columns"). Seeded cards start at "Assigned", the
-                // admin board's first state. B owns the card status vocabulary; confirm with him.
-                Status = "Assigned",
+                // Event board cards are Open or Done only, and Done exactly when the column is the
+                // done column (B's rule, decision D-009). In practice every seeded card is Open,
+                // but deriving it rather than hard-coding keeps the rule in one shape.
+                Status = column.IsDoneColumn ? "Done" : "Open",
                 CreatedByUserId = createdByUserId,
                 CreatedAt = createdAt,
             });

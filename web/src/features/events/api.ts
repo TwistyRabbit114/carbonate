@@ -1,7 +1,7 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/api/client';
 import { queryKeys } from '@/api/queryKeys';
-import type { EventListItem, EventStatus, PagedResult } from '@/api/types';
+import type { AllowedTransitions, EventListItem, EventStatus, PagedResult } from '@/api/types';
 import { useToast } from '@/components/toast/ToastContext';
 import { stageLabels } from './labels';
 import { describeMoveError } from './moves';
@@ -10,12 +10,13 @@ import { describeMoveError } from './moves';
 //                              EVENTS BOARD
 //----------------------------------------------------------\\
 
-//TODO(plan): view=board is assumed to mean "active stages only, no enquired", confirm with C.
-//also whether finished events are capped to a recent window, since records are kept forever
+//board=true leaves out enquired and cancelled events (FR-03)
+//TODO(plan): finished events aren't capped to a recent window and records are kept forever, so
+//the Finished column only grows. ask C whether the board should stop at the last few weeks
 export function useEventsBoard() {
   return useQuery({
     queryKey: queryKeys.eventsBoard,
-    queryFn: () => apiFetch<PagedResult<EventListItem>>('/events?view=board&pageSize=200'),
+    queryFn: () => apiFetch<PagedResult<EventListItem>>('/events?board=true&pageSize=200'),
     select: (page) => page.items,
     //the server moves events at their start and end times, this picks that up within a minute
     refetchInterval: 60_000,
@@ -28,11 +29,11 @@ export function useEventsBoard() {
 
 //the lifecycle rules live on the server (D's state machine), the board only asks what's allowed.
 //fetched when someone reaches for a card rather than for every card up front
-//TODO(plan): response assumed to be a plain list of statuses, confirm the shape with D
 export function allowedTransitionsQuery(eventId: string) {
   return queryOptions({
     queryKey: queryKeys.allowedTransitions(eventId),
-    queryFn: () => apiFetch<EventStatus[]>(`/events/${eventId}/allowed-transitions`),
+    queryFn: () => apiFetch<AllowedTransitions>(`/events/${eventId}/allowed-transitions`),
+    select: (transitions): EventStatus[] => transitions.allowed,
     staleTime: 60_000,
   });
 }

@@ -1,3 +1,4 @@
+using Carbonate.Api.Common;
 using Carbonate.Api.Platform.Auth;
 using Carbonate.Application.Features.Boards;
 using Carbonate.Application.Platform.Auth;
@@ -10,8 +11,7 @@ namespace Carbonate.Api.Features.Boards;
 //----------------------------------------------------------\\
 
 //not the events board (FR-18): that one is the event list itself and has no board table behind it
-[ApiController]
-public sealed class BoardsController(IBoardService boards) : ControllerBase
+public sealed class BoardsController(IBoardService boards) : ApiControllerBase
 {
     /// <summary>The single Admin Tasks board. Crew get only the cards assigned to them.</summary>
     [HttpGet("api/boards/admin")]
@@ -30,9 +30,8 @@ public sealed class BoardsController(IBoardService boards) : ControllerBase
 
 //a card can sit on either board and the two have different rules, so the attribute is the gate every
 //role passes and the service applies the board's own permission (task.move, admin_task.view)
-[ApiController]
 [Route("api/cards")]
-public sealed class CardsController(IBoardService boards) : ControllerBase
+public sealed class CardsController(IBoardService boards) : ApiControllerBase
 {
     [HttpGet("{cardId:guid}")]
     [HasPermission(PermissionCodes.EventViewAssigned)]
@@ -79,4 +78,20 @@ public sealed class CardsController(IBoardService boards) : ControllerBase
     [HasPermission(PermissionCodes.EventViewAssigned)]
     public Task<CardDto> Move(Guid cardId, MoveCardRequest request, CancellationToken ct) =>
         boards.MoveCardAsync(cardId, request, ct);
+
+    /// <summary>Files and photos on a card (FR-22, a Should). In the contract, not built yet.</summary>
+    [HttpGet("{cardId:guid}/attachments")]
+    [HasPermission(PermissionCodes.EventViewAssigned)]
+    public ActionResult<IReadOnlyList<CardAttachmentDto>> Attachments(Guid cardId) => NotYetBuilt();
+
+    [HttpPost("{cardId:guid}/attachments")]
+    [HasPermission(PermissionCodes.EventViewAssigned)]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType<CardAttachmentDto>(StatusCodes.Status201Created)]
+    public ActionResult<CardAttachmentDto> Attach(Guid cardId, [FromForm] AttachmentForm form) => NotYetBuilt();
+}
+
+public sealed class AttachmentForm
+{
+    public IFormFile File { get; set; } = null!;
 }

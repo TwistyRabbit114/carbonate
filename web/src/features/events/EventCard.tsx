@@ -42,7 +42,8 @@ export function EventCardOverlay({ event }: { event: EventListItem }) {
 //                              CONTENT
 //----------------------------------------------------------\\
 
-//title, then "date · venue" and "guests · type" as in the prototype. a live event says so instead of the date
+//title, then "date · venue" and "guests · type" as in the prototype. a live event says so instead of
+//the date, and the venue is left off when the api has none for the event
 function EventCardContent({ event, linked }: { event: EventListItem; linked: boolean }) {
   const when = event.status === 'InProgress' ? 'Live now' : formatDateOnly(event.eventDate);
   const guests = event.packSizeActual ?? event.packSizeEstimated;
@@ -60,9 +61,7 @@ function EventCardContent({ event, linked }: { event: EventListItem; linked: boo
         {event.isConfidential && <Badge tone="confidential">Confidential</Badge>}
       </span>
       <span className={styles.meta}>
-        <span>
-          {when} · {event.venueName}
-        </span>
+        <span>{event.venueName ? `${when} · ${event.venueName}` : when}</span>
         <span>
           {formatCount(guests)} guests · {eventTypeLabels[event.eventType]}
         </span>

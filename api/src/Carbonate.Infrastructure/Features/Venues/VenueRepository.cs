@@ -32,7 +32,7 @@ internal sealed class VenueRepository(CemDbContext db) : IVenueRepository
             .Skip((page - 1) * pageSize).Take(pageSize)
             .ToListAsync(ct);
 
-        return new PagedResult<Venue>(items, page, pageSize, total);
+        return new PagedResult<Venue> { Items = items, Page = page, PageSize = pageSize, Total = total };
     }
 
     public Task<Venue?> FindAsync(Guid venueId, CancellationToken ct) =>

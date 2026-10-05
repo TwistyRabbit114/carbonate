@@ -35,13 +35,13 @@ public record VenueDto(
     string? PpeRequirements,
     bool IsActive);
 
-//GET /api/venues?q=&includeInactive=&page=&pageSize=
+//GET /api/venues?q=&includeInactive=&page=&pageSize=. no sort, the list is always by name
 public sealed class VenueQuery
 {
     public string? Q { get; init; }
     public bool IncludeInactive { get; init; }
     public int Page { get; init; } = 1;
-    public int PageSize { get; init; } = 50;
+    public int PageSize { get; init; } = PageQuery.DefaultPageSize;
 }
 
 public interface IVenueService

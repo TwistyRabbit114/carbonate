@@ -17,7 +17,11 @@ using Microsoft.Extensions.Options;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
-    .AddControllers(options => options.Filters.Add<ValidationFilter>())
+    .AddControllers(options =>
+    {
+        options.Filters.Add<ValidationFilter>();
+        options.Filters.Add<FinancialMaskingFilter>();
+    })
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
     .ConfigureApiBehaviorOptions(options =>
         options.InvalidModelStateResponseFactory = context => throw ProblemException.Validation(
@@ -28,11 +32,6 @@ builder.Services
                     e => e.Value!.Errors.Select(x => x.ErrorMessage).ToArray())));
 
 builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>(includeInternalTypes: true);
-
-//problem details are written with these options, not the mvc ones above, so without this an enum in an
-//extension (a 409's "current" record) would go out as a number
-builder.Services.ConfigureHttpJsonOptions(options =>
-    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
 {
@@ -52,6 +51,7 @@ builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = 
 });
 builder.Services.AddExceptionHandler<ProblemExceptionHandler>();
 
+builder.Services.AddCarbonateOpenApi();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
@@ -87,7 +87,8 @@ builder.Services.AddRateLimiter(options =>
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         RateLimitPartition.GetFixedWindowLimiter(ClientKey(context), _ => new FixedWindowRateLimiterOptions
         {
-            PermitLimit = 100,
+            PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>()
+                .GetValue("RateLimiting:GlobalPermitPerMinute", 100),
             Window = TimeSpan.FromMinutes(1),
         }));
     // Sign-in and code checks are the brute-force targets, so they get a much tighter limit.
@@ -125,6 +126,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.UseCarbonateOpenApi();
 
 // Flat 200, no dependency checks: the availability test hits this every five minutes and a
 // database query here would stop the serverless database auto-pausing (decisions D-001).

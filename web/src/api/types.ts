@@ -1,7 +1,10 @@
 import type { Permission } from '@/auth/permissions';
+import type { components } from './schema.gen';
 
-//hand-written to match the api's contracts until docs/api/openapi.json is committed.
-//once it is, run npm run gen:api and turn these into aliases over the generated schema
+//aliases over the types generated from docs/api/openapi.json (npm run gen:api), so a field the api
+//renames or drops breaks the build here first. where the contract only says string (roles,
+//permissions, card status), these narrow it to the values the api actually sends
+type Schemas = components['schemas'];
 
 //----------------------------------------------------------\\
 //                              AUTH
@@ -10,31 +13,27 @@ import type { Permission } from '@/auth/permissions';
 export type RoleName =
   'Director' | 'OperationsManager' | 'EventManager' | 'Accounts' | 'CrewLead' | 'CasualCrew';
 
-export type UserSummary = {
-  userId: string;
-  fullName: string;
-  email: string;
-  employmentType: 'Permanent' | 'Casual';
+export type UserSummary = Omit<Schemas['UserSummary'], 'employmentType'> & {
+  employmentType: Schemas['EmploymentType'];
 };
 
 //GET /api/me
-export type MeResponse = {
+export type MeResponse = Omit<Schemas['MeResponse'], 'user' | 'roles' | 'permissions'> & {
   user: UserSummary;
   roles: RoleName[];
   permissions: Permission[];
 };
 
-//the api sends one session shape with every field present: either a code is still owed or
+//the api sends one flat session shape with every field present: either a code is still owed or
 //the user is in. director and accounts always get the code step first (FR-34)
-export type MfaStep = {
+export type MfaStep = Schemas['SessionResponse'] & {
   mfaRequired: true;
-  mfaEnrolmentRequired: boolean; //first login, the authenticator app isn't set up yet
   mfaToken: string; //short-lived, held in memory between the password and the code
   accessToken: null;
   expiresInSeconds: null;
 };
 
-export type SignedInSession = {
+export type SignedInSession = Schemas['SessionResponse'] & {
   mfaRequired: false;
   mfaEnrolmentRequired: false;
   mfaToken: null;
@@ -46,15 +45,14 @@ export type SignedInSession = {
 export type SessionResponse = MfaStep | SignedInSession;
 
 //POST /api/auth/mfa/enrol
-export type MfaEnrolResponse = {
-  otpauthUri: string;
-};
+export type MfaEnrolResponse = Schemas['MfaEnrolResponse'];
 
 //----------------------------------------------------------\\
 //                              LISTS
 //----------------------------------------------------------\\
 
-//every list endpoint answers in this shape (plan section 5)
+//every list endpoint answers in this shape (plan section 5). the contract spells it out once per
+//item type (PagedResultOfEventListItem and so on), this is the same thing written once
 export type PagedResult<T> = {
   items: T[];
   page: number;
@@ -66,92 +64,45 @@ export type PagedResult<T> = {
 //                              EVENTS
 //----------------------------------------------------------\\
 
-export type EventStatus = 'Enquired' | 'ConfirmedInPlanning' | 'InProgress' | 'Finished' | 'Cancelled';
-export type EventType = 'Activation' | 'Corporate' | 'Wedding' | 'Festival' | 'YearEnd' | 'Private';
+export type EventStatus = Schemas['EventStatus'];
+export type EventType = Schemas['EventType'];
+
+//the two seeded divisions. the contract leaves divisionCode as a plain string
 export type DivisionCode = 'CE' | 'CLM';
 
-//one row of GET /api/events. no money here: the board doesn't show any, and the event
-//detail is where masked price fields come in
-//TODO(plan): list item field names (venueName, divisionCode) are assumed, confirm with C
-export type EventListItem = {
-  eventId: string;
-  eventCode: string;
-  name: string;
-  status: EventStatus;
-  eventType: EventType;
-  divisionCode: DivisionCode;
-  eventDate: string; //yyyy-MM-dd
-  startsAt: string; //utc instant, the live window that drives automatic stage moves
-  endsAt: string;
-  venueName: string;
-  packSizeEstimated: number;
-  packSizeActual?: number | null;
-  isConfidential: boolean;
-  rowVersion: string;
-};
+//one row of GET /api/events. no money here: the board doesn't show any, and the event detail is
+//where masked price fields come in
+export type EventListItem = Schemas['EventListItem'];
+
+//GET /api/events/{id}/allowed-transitions
+export type AllowedTransitions = Schemas['AllowedTransitionsResponse'];
 
 //----------------------------------------------------------\\
 //                              BOARDS
 //----------------------------------------------------------\\
 
-export type CardPriority = 'Low' | 'Normal' | 'High' | 'Critical';
+export type CardPriority = Schemas['CardPriority'];
 
 //admin tasks follow their column (FR-19), event board cards are open or done (D-009)
 export type CardStatus = 'Assigned' | 'InProgressOrNeedsReview' | 'Complete' | 'Open' | 'Done';
 
 //a person as other records show them
-export type UserRef = {
-  userId: string;
-  fullName: string;
-};
+export type UserRef = Schemas['UserRefDto'];
 
-//one card on either board. no money lives on a card
-export type TaskCard = {
-  cardId: string;
-  boardId: string;
-  columnId: string;
-  subject: string;
-  description: string | null; //sanitised html, only ever rendered through SanitisedDescription
-  priority: CardPriority;
-  dueAt: string | null;
-  position: number;
-  status: CardStatus;
-  milestoneId: string | null;
-  assignees: UserRef[];
-  createdBy: UserRef; //on an admin task, the manager who handed it out and signs it off (FR-20)
-  reviewNotes: string | null;
-  returnedBy: UserRef | null;
-  returnedAt: string | null;
-  completedAt: string | null;
-  attachmentCount: number;
-  rowVersion: string;
-};
+//one card on either board. no money lives on a card. the description is sanitised html, only ever
+//rendered through SanitisedDescription. createdBy is, on an admin task, the manager who handed it
+//out and signs it off (FR-20)
+export type TaskCard = Omit<Schemas['CardDto'], 'status'> & { status: CardStatus };
 
-export type BoardColumn = {
-  columnId: string;
-  name: string;
-  position: number;
-  wipLimit: number | null; //display only (FR-23)
-  isDoneColumn: boolean;
-  cards: TaskCard[];
-};
+//wipLimit is display only (FR-23)
+export type BoardColumn = Omit<Schemas['ColumnDto'], 'cards'> & { cards: TaskCard[] };
 
 //GET /api/boards/admin and GET /api/events/{id}/board. crew get only the cards assigned to them
-export type Board = {
-  boardId: string;
-  boardType: 'Event' | 'Admin';
-  eventId: string | null;
-  name: string;
-  columns: BoardColumn[];
-};
+export type Board = Omit<Schemas['BoardDto'], 'columns'> & { columns: BoardColumn[] };
 
 //----------------------------------------------------------\\
 //                              USERS
 //----------------------------------------------------------\\
 
 //one row of GET /api/users, which takes user.manage
-//TODO(plan): row shape and the isActive filter are assumed until C's users endpoint lands
-export type UserListItem = UserSummary & {
-  roles: RoleName[];
-  isActive: boolean;
-};
+export type UserListItem = Omit<Schemas['UserListItem'], 'roles'> & { roles: RoleName[] };

@@ -47,6 +47,12 @@
   align-items: center;
   gap: var(--space-2);
   min-height: 2.375rem;
+
+  //with no filters set there's nothing to show, so it takes no room. phones would otherwise get an
+  //empty row under the filters. it stays in the page so the live count is still read out
+  &:not(:has(button)) {
+    @include visually-hidden;
+  }
 }
 
 .count {

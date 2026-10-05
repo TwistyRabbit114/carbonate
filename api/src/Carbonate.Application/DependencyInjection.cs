@@ -1,5 +1,8 @@
 using Carbonate.Application.Features.Boards;
+using Carbonate.Application.Features.Commercial;
+using Carbonate.Application.Features.Events;
 using Carbonate.Application.Features.Venues;
+using Carbonate.Application.Masking;
 using Carbonate.Application.Platform.Auth;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,7 +12,10 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
+        services.AddSingleton<IFinancialMasker, FinancialMasker>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IEventService, EventService>();
+        services.AddScoped<ICommercialService, CommercialService>();
         services.AddScoped<PasswordPolicy>();
 
         //boards and cards (B, FR-19 to FR-21)

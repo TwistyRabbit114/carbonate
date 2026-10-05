@@ -1,3 +1,4 @@
+using Carbonate.Api.Common;
 using Carbonate.Api.Platform.Auth;
 using Carbonate.Application.Common;
 using Carbonate.Application.Features.Venues;
@@ -10,9 +11,8 @@ namespace Carbonate.Api.Features.Venues;
 //                              VENUES (FR-32)
 //----------------------------------------------------------\\
 
-[ApiController]
 [Route("api/venues")]
-public sealed class VenuesController(IVenueService venues) : ControllerBase
+public sealed class VenuesController(IVenueService venues) : ApiControllerBase
 {
     /// <summary>Searchable list for the event form and settings. Desk roles only.</summary>
     [HttpGet]

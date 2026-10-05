@@ -185,7 +185,7 @@ export const eventHandlers = [
     if (!key) return new HttpResponse(null, { status: 401 });
 
     const visible = permissionCheck(users[key].permissions).can('event.view_all') ? mockEvents : [];
-    const boardOnly = new URL(request.url).searchParams.get('view') === 'board';
+    const boardOnly = new URL(request.url).searchParams.get('board') === 'true';
     const items = boardOnly
       ? visible.filter((event) => event.status !== 'Enquired' && event.status !== 'Cancelled')
       : visible;
@@ -199,7 +199,8 @@ export const eventHandlers = [
       return new HttpResponse(null, { status: 401 });
 
     const event = mockEvents.find((candidate) => candidate.eventId === params.eventId);
-    return event ? HttpResponse.json(allowedFrom[event.status]) : problem(404, 'Not found');
+    if (!event) return problem(404, 'Not found');
+    return HttpResponse.json({ eventId: event.eventId, current: event.status, allowed: allowedFrom[event.status] });
   }),
 
   http.post('/api/events/:eventId/transitions', async ({ request, params }) => {

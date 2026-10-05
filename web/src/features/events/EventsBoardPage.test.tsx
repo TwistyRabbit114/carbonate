@@ -54,7 +54,7 @@ describe('events board', () => {
     expect(within(column('Finished')).getByText('Auto')).toBeInTheDocument();
     expect(within(column('Confirmed / In Planning')).queryByText('Auto')).not.toBeInTheDocument();
 
-    expect(requests[0]?.searchParams.get('view')).toBe('board');
+    expect(requests[0]?.searchParams.get('board')).toBe('true');
   });
 
   it('puts each event in its stage, with the details from the prototype', async () => {
@@ -71,6 +71,16 @@ describe('events board', () => {
 
     //the actual pack size wins once it's known
     expect(within(column('Finished')).getByText('86 guests · Corporate')).toBeInTheDocument();
+  });
+
+  it('leaves the venue off a card when the api has none for the event', async () => {
+    const events = demoEvents().map((event) =>
+      event.name === 'Riverlight Festival' ? { ...event, venueName: null } : event,
+    );
+    openBoard(events);
+    await screen.findByText('Riverlight Festival');
+
+    expect(card(within(column('In Progress')), 'Riverlight Festival').getByText('Live now')).toBeInTheDocument();
   });
 
   it('lists upcoming events soonest first', async () => {

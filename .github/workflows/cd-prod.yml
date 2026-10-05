@@ -90,14 +90,27 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PROD }}
           package: publish
 
+      # Six minutes, for the same reason as cd-dev: a cold start on B1 plus a serverless
+      # database waking from auto-pause can exceed two minutes.
       - name: Smoke test
         run: |
           set -e
-          for i in $(seq 1 12); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.PROD_URL }}/health" || true)
-            if [ "$code" = "200" ]; then echo "Production healthy."; exit 0; fi
-            echo "Attempt $i returned $code - retrying in 10s"
+          echo "Waiting for ${{ vars.PROD_URL }}/health ..."
+          for i in $(seq 1 36); do
+            code=$(curl -s -m 20 -o /dev/null -w "%{http_code}" "${{ vars.PROD_URL }}/health" || echo "000")
+            case "$code" in
+              200)
+                echo "Production healthy after $(( i * 10 ))s."
+                exit 0
+                ;;
+              000|403|502|503)
+                echo "Attempt $i: $code (starting) - retrying in 10s"
+                ;;
+              *)
+                echo "Attempt $i: $code (app responded but is not healthy) - retrying in 10s"
+                ;;
+            esac
             sleep 10
           done
-          echo "::error::Production health check failed"
+          echo "::error::Production /health never returned 200 within six minutes"
           exit 1

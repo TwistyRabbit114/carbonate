@@ -21,7 +21,13 @@ public sealed class VenueService(IVenueRepository venues, ICurrentUser currentUs
         }
 
         var page = await venues.SearchAsync(FieldText.Clean(query.Q), query.IncludeInactive, query.Page, query.PageSize, ct);
-        return new PagedResult<VenueDto>([.. page.Items.Select(ToDto)], page.Page, page.PageSize, page.Total);
+        return new PagedResult<VenueDto>
+        {
+            Items = [.. page.Items.Select(ToDto)],
+            Page = page.Page,
+            PageSize = page.PageSize,
+            Total = page.Total,
+        };
     }
 
     //a venue crew aren't working at is a 404, not a 403, so they can't tell which venues exist

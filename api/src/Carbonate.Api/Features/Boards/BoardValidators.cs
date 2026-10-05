@@ -57,6 +57,34 @@ internal sealed class UpdateCardRequestValidator : AbstractValidator<UpdateCardR
     }
 }
 
+internal sealed class CompleteTaskRequestValidator : AbstractValidator<CompleteTaskRequest>
+{
+    public CompleteTaskRequestValidator()
+    {
+        RuleFor(x => x.RowVersion)
+            .NotEmpty().WithMessage("Send the card's rowVersion, so a change made meanwhile isn't overwritten.");
+        RuleFor(x => x.RowVersion)
+            .Must(CardRules.BeBase64).When(x => !string.IsNullOrEmpty(x.RowVersion))
+            .WithMessage("rowVersion isn't valid.");
+    }
+}
+
+//notes are required, they're how the assignee knows what to fix (FR-20)
+internal sealed class ReturnTaskRequestValidator : AbstractValidator<ReturnTaskRequest>
+{
+    public ReturnTaskRequestValidator()
+    {
+        RuleFor(x => x.ReviewNotes)
+            .NotEmpty().WithMessage("Say what still needs doing before it comes back.")
+            .MaximumLength(2000);
+        RuleFor(x => x.RowVersion)
+            .NotEmpty().WithMessage("Send the card's rowVersion, so a change made meanwhile isn't overwritten.");
+        RuleFor(x => x.RowVersion)
+            .Must(CardRules.BeBase64).When(x => !string.IsNullOrEmpty(x.RowVersion))
+            .WithMessage("rowVersion isn't valid.");
+    }
+}
+
 internal sealed class AssigneesRequestValidator : AbstractValidator<AssigneesRequest>
 {
     public AssigneesRequestValidator()

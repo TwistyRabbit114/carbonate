@@ -78,6 +78,16 @@ public record UpdateCardRequest(
 //the full set of people on the card, replacing whoever was there
 public record AssigneesRequest(IReadOnlyList<Guid>? UserIds);
 
+//----------------------------------------------------------\\
+//                              ADMIN REVIEW (FR-20)
+//----------------------------------------------------------\\
+
+//the manager signs a handed-in task off
+public record CompleteTaskRequest(string? RowVersion);
+
+//the manager sends a handed-in task back to Assigned, saying what still needs doing
+public record ReturnTaskRequest(string? ReviewNotes, string? RowVersion);
+
 public interface IBoardService
 {
     Task<BoardDto> GetAdminBoardAsync(CancellationToken ct);
@@ -87,6 +97,8 @@ public interface IBoardService
     Task<CardDto> CreateCardAsync(Guid boardId, CreateCardRequest request, CancellationToken ct);
     Task<CardDto> UpdateCardAsync(Guid cardId, UpdateCardRequest request, CancellationToken ct);
     Task<CardDto> SetAssigneesAsync(Guid cardId, AssigneesRequest request, CancellationToken ct);
+    Task<CardDto> CompleteTaskAsync(Guid cardId, CompleteTaskRequest request, CancellationToken ct);
+    Task<CardDto> ReturnTaskAsync(Guid cardId, ReturnTaskRequest request, CancellationToken ct);
 }
 
 //----------------------------------------------------------\\

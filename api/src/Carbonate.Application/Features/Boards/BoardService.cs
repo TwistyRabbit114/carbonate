@@ -68,20 +68,20 @@ public sealed class BoardService(
         ArgumentNullException.ThrowIfNull(request);
         var place = await RequireVisibleAsync(cardId, ct);
 
-        //on the admin board who may move what depends on who created and who holds the task (FR-20)
-        if (place.BoardType == BoardType.Admin)
-        {
-            throw ProblemException.Conflict("/problems/invalid-transition", "Use the task's own actions",
-                "Admin tasks move by submitting, returning or completing them.");
-        }
-
-        RequireScoped(PermissionCodes.TaskMove, place);
-
         var board = await boards.LoadBoardForMoveAsync(place.BoardId, ct) ?? throw ProblemException.NotFound();
         var from = board.Columns.Single(column => column.Cards.Any(c => c.CardId == cardId));
         var card = from.Cards.Single(c => c.CardId == cardId);
         var to = board.Columns.FirstOrDefault(column => column.ColumnId == request.ColumnId)
             ?? throw ProblemException.BusinessRule("That column isn't on this card's board.");
+
+        if (place.BoardType == BoardType.Admin)
+        {
+            RequireAdminMove(place, card, from, to);
+        }
+        else
+        {
+            RequireScoped(PermissionCodes.TaskMove, place);
+        }
 
         var expected = await RequireRowVersionAsync(card, request.RowVersion, ct);
 
@@ -98,6 +98,93 @@ public sealed class BoardService(
 
         await audit.RecordAsync("card.moved", nameof(TaskCard), cardId.ToString(), before,
             new { to.ColumnId, card.Position, card.Status }, currentUser.UserId, ct);
+        return await LoadCardAsync(cardId, ct);
+    }
+
+    //on the admin board a drag can only reorder a column, or hand a task in. signing off and sending back go
+    //through complete and return, which is where the creator check and the notes live (FR-20)
+    private void RequireAdminMove(CardPlace place, TaskCard card, BoardColumn from, BoardColumn to)
+    {
+        if (from.ColumnId == to.ColumnId)
+        {
+            RequireScoped(PermissionCodes.AdminTaskEdit, place);
+            return;
+        }
+
+        //TODO(plan): the plan has an assignee's reply or attachment hand a task in, but schema v1 has nowhere to
+        //keep a reply (the proposed CARD_COMMENT table isn't in it). until C decides, handing in is this drag
+        if (from.Position == AdminTaskRules.Assigned && to.Position == AdminTaskRules.NeedsReview)
+        {
+            Enforce(AdminTaskRules.Check(AdminTaskAction.HandIn, from.Position, currentUser.UserId,
+                card.CreatedByUserId, place.AssigneeIds));
+            return;
+        }
+
+        throw InvalidTransition("Use Complete or Return to move a task on from review.");
+    }
+
+    //----------------------------------------------------------\\
+    //                              ADMIN REVIEW (FR-20)
+    //----------------------------------------------------------\\
+
+    public Task<CardDto> CompleteTaskAsync(Guid cardId, CompleteTaskRequest request, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return ReviewAsync(cardId, AdminTaskAction.Complete, request.RowVersion, null, ct);
+    }
+
+    public Task<CardDto> ReturnTaskAsync(Guid cardId, ReturnTaskRequest request, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return ReviewAsync(cardId, AdminTaskAction.Return, request.RowVersion, request.ReviewNotes, ct);
+    }
+
+    //only the creating manager, never the assignee, and only once the task has been handed in
+    private async Task<CardDto> ReviewAsync(
+        Guid cardId, AdminTaskAction action, string? rowVersion, string? reviewNotes, CancellationToken ct)
+    {
+        Require(PermissionCodes.AdminTaskReview);
+        var place = await RequireVisibleAsync(cardId, ct);
+        if (place.BoardType != BoardType.Admin)
+        {
+            throw InvalidTransition("Event cards are finished by moving them into the done column.");
+        }
+
+        var board = await boards.LoadBoardForMoveAsync(place.BoardId, ct) ?? throw ProblemException.NotFound();
+        var from = board.Columns.Single(column => column.Cards.Any(c => c.CardId == cardId));
+        var card = from.Cards.Single(c => c.CardId == cardId);
+        Enforce(AdminTaskRules.Check(action, from.Position, currentUser.UserId, card.CreatedByUserId,
+            place.AssigneeIds));
+        var expected = await RequireRowVersionAsync(card, rowVersion, ct);
+
+        var before = new { from.ColumnId, card.Status, card.ReviewNotes };
+        var now = clock.GetUtcNow().UtcDateTime;
+        var to = board.Columns.Single(column => column.Position ==
+            (action == AdminTaskAction.Complete ? AdminTaskRules.Complete : AdminTaskRules.Assigned));
+
+        CardPositioner.Move(card, from, to, int.MaxValue);
+        card.Status = CardStatus.For(BoardType.Admin, to);
+        if (action == AdminTaskAction.Complete)
+        {
+            card.CompletedAt = now;
+        }
+        else
+        {
+            //the notes stay on the card when it's handed in again, so the history isn't lost
+            card.ReviewNotes = reviewNotes?.Trim();
+            card.ReturnedByUserId = currentUser.UserId;
+            card.ReturnedAt = now;
+            card.CompletedAt = null;
+        }
+
+        if (!await boards.TrySaveCardAsync(card, expected, ct))
+        {
+            throw await ConflictAsync(cardId, ct);
+        }
+
+        await audit.RecordAsync(action == AdminTaskAction.Complete ? "card.completed" : "card.returned",
+            nameof(TaskCard), cardId.ToString(), before, new { to.ColumnId, card.Status, card.ReviewNotes },
+            currentUser.UserId, ct);
         return await LoadCardAsync(cardId, ct);
     }
 
@@ -377,6 +464,20 @@ public sealed class BoardService(
             throw ProblemException.BusinessRule("Add them to the event's crew first, then assign the card.");
         }
     }
+
+    private static void Enforce(AdminTaskDecision decision)
+    {
+        switch (decision.Verdict)
+        {
+            case AdminTaskVerdict.NotYours:
+                throw ProblemException.Forbidden(decision.Reason!);
+            case AdminTaskVerdict.WrongStage:
+                throw InvalidTransition(decision.Reason!);
+        }
+    }
+
+    private static ProblemException InvalidTransition(string detail) =>
+        ProblemException.Conflict("/problems/invalid-transition", "That move isn't allowed", detail);
 
     private async Task<ProblemException> ConflictAsync(Guid cardId, CancellationToken ct) =>
         ProblemException.Conflict("/problems/concurrency-conflict", "Changed by someone else",

@@ -62,6 +62,18 @@ public sealed class CardsController(IBoardService boards) : ControllerBase
     public Task<CardDto> SetAssignees(Guid cardId, AssigneesRequest request, CancellationToken ct) =>
         boards.SetAssigneesAsync(cardId, request, ct);
 
+    /// <summary>Signs off a handed-in admin task. Only the manager who created it, never an assignee (FR-20).</summary>
+    [HttpPost("{cardId:guid}/complete")]
+    [HasPermission(PermissionCodes.AdminTaskReview)]
+    public Task<CardDto> Complete(Guid cardId, CompleteTaskRequest request, CancellationToken ct) =>
+        boards.CompleteTaskAsync(cardId, request, ct);
+
+    /// <summary>Sends a handed-in admin task back to Assigned with notes. Creator only (FR-20).</summary>
+    [HttpPost("{cardId:guid}/return")]
+    [HasPermission(PermissionCodes.AdminTaskReview)]
+    public Task<CardDto> Return(Guid cardId, ReturnTaskRequest request, CancellationToken ct) =>
+        boards.ReturnTaskAsync(cardId, request, ct);
+
     /// <summary>Moves a card to a column and position. A stale rowVersion is a 409 with the current card.</summary>
     [HttpPost("{cardId:guid}/move")]
     [HasPermission(PermissionCodes.EventViewAssigned)]

@@ -7,6 +7,34 @@ Format: date · decision · why · who · what changes in the Task 3 report.
 
 ---
 
+## D-013 — The demo accounts get a documented authenticator secret, and the demo gets money
+
+**5 Oct 2026 · Owner: C (fixing D's demo seeder)**
+
+Two gaps meant the hosted demo could not show what it was built for:
+
+- **The demo Director and Accounts could not sign in.** Both require a two-step code, and the demo seeder
+  enrolled them with a *random* secret that was never recorded, so nobody could produce a valid code.
+  The seeder now uses one fixed, documented secret (`DemoDataSeeder.DemoTotpSecret`, printed in the README),
+  and it also puts right accounts that were seeded earlier with a random one. This follows how the demo
+  password is already handled: it is a constant in the seeder, documented in the README, and the seeder
+  only runs when `Seeding:Demo` is set, which it never is in production.
+- **The demo had no money.** No budgets, costings or invoices existed, so the client's main requirement
+  (finance fields visible to three roles and absent for everyone else) could not be shown. The seeder now
+  adds budgets, a costing for each event in a different state (draft, waiting for the Director, approved and
+  issued, accepted), a confirmation for every event past enquiry, and two invoices (one paid, one issued).
+  It runs when no costing exists, so it also fills the dev database that was seeded before.
+
+**Why.** A demo that cannot sign in as the Director, or has nothing for the Operations Manager to be denied,
+proves nothing about the security model.
+
+**Trade-off.** A known TOTP secret means anyone with the README can sign in as the demo Director on dev.
+That environment holds only fictional data, and production is never seeded with demo accounts.
+
+**Task 3 report.** Mention that demo accounts use a fixed documented secret for demonstration only.
+
+---
+
 ## D-012 — Safeguards on user administration that the plan does not state
 
 **5 Oct 2026 · Owner: C**

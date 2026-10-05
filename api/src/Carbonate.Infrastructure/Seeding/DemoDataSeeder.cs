@@ -1,7 +1,9 @@
+using Carbonate.Application.Features.Commercial;
 using Carbonate.Application.Features.Stock;
 using Carbonate.Application.Platform.Auth;
 using Carbonate.Domain.Common;
 using Carbonate.Domain.Features.Boards;
+using Carbonate.Domain.Features.Commercial;
 using Carbonate.Domain.Features.Events;
 using Carbonate.Domain.Features.Stock;
 using Carbonate.Domain.Features.Venues;
@@ -9,6 +11,7 @@ using Carbonate.Domain.Platform;
 using Carbonate.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Carbonate.Infrastructure.Seeding;
 
@@ -36,16 +39,32 @@ public sealed class DemoDataSeeder(
     IPasswordService passwords,
     ITotpService totp,
     ISecretProtector secrets,
+    IOptions<FinanceOptions> finance,
     TimeProvider clock,
     ILogger<DemoDataSeeder> logger)
 {
     /// <summary>In the README for the demo environment only. Never a real client's data.</summary>
     private const string DemoPassword = "Carbonate-Demo-2026!";
 
+    /// <summary>
+    /// The authenticator secret for the demo Director and Accounts, documented in the README for the demo
+    /// environment. It must be known: a random secret that is thrown away leaves two accounts that need a
+    /// code nobody can produce. Demo accounts only; fictional people, and never seeded in production.
+    /// </summary>
+    public const string DemoTotpSecret = "CARBONATEDEMOSECRETFORTOTPAPPS23";
+
+    private static readonly string[] MfaDemoEmails = ["director@carbon.demo", "accounts@carbon.demo"];
+
     public async Task SeedAsync(CancellationToken ct = default)
     {
+        // Runs first and every time, so accounts seeded before the secret was fixed are put right too.
+        await EnsureDemoMfaAsync(ct);
+
         if (await db.Events.AnyAsync(ct))
         {
+            // The world is already there. Fill in the money if it is missing, so a demo seeded before
+            // costings existed can still show what each role sees.
+            await EnsureDemoCommercialAsync(ct);
             logger.LogInformation("Demo data already present; nothing to seed.");
             return;
         }
@@ -72,11 +91,214 @@ public sealed class DemoDataSeeder(
 
         await db.SaveChangesAsync(ct);
         await ApplyDemoTrapsAsync(items, ct);
+        await EnsureDemoCommercialAsync(ct);
 
         logger.LogInformation("Demo data seeded.");
     }
 
+    // ---- Money ----------------------------------------------------------------------------
+
+    private sealed record DemoLine(string Description, decimal Quantity, decimal Cost, decimal Price, QuoteLineCategory Category);
+
+    private sealed record DemoCosting(
+        string EventCode,
+        decimal Budget,
+        QuoteStatus Status,
+        bool ApprovedByDirector,
+        string PoNumber,
+        decimal PoAmount,
+        InvoiceStatus? Invoice,
+        DemoLine[] Lines);
+
+    private static readonly DemoCosting[] Costings =
+    [
+        new("DEL-GOLF-26", 24_000m, QuoteStatus.Accepted, false, "PO-DG-4410", 21_300m, InvoiceStatus.Paid,
+        [
+            new("Mobile bar unit hire", 1, 3_500m, 6_500m, QuoteLineCategory.Infrastructure),
+            new("Bartenders (shifts)", 4, 650m, 1_100m, QuoteLineCategory.Crew),
+            new("Ice, bulk (kg)", 120, 14m, 28m, QuoteLineCategory.Ice),
+            new("Glassware hire", 90, 6m, 12m, QuoteLineCategory.Glassware),
+            new("Transport and set-up", 1, 1_800m, 3_200m, QuoteLineCategory.Transportation),
+        ]),
+        new("RIV-FEST-26", 700_000m, QuoteStatus.Accepted, true, "PO-RF-0092", 718_000m, InvoiceStatus.Issued,
+        [
+            new("Festival bar infrastructure (6 units)", 6, 18_000m, 32_000m, QuoteLineCategory.Infrastructure),
+            new("Bar staff (shifts)", 60, 700m, 1_150m, QuoteLineCategory.Crew),
+            new("Ice, bulk (kg)", 2_400, 14m, 26m, QuoteLineCategory.Ice),
+            new("Spirits and mixers", 1, 140_000m, 245_000m, QuoteLineCategory.Stock),
+            new("Glassware and cups", 2_500, 3m, 7m, QuoteLineCategory.Glassware),
+            new("Logistics and strike", 1, 22_000m, 38_000m, QuoteLineCategory.Transportation),
+        ]),
+        // Above the approval threshold, already approved and issued.
+        new("NAI-WED-26", 150_000m, QuoteStatus.Issued, true, "", 0m, null,
+        [
+            new("Bar hire and set-up", 1, 9_000m, 16_000m, QuoteLineCategory.SetUpAndStrike),
+            new("Bartenders (shifts)", 8, 650m, 1_100m, QuoteLineCategory.Crew),
+            new("Ice, bulk (kg)", 160, 14m, 28m, QuoteLineCategory.Ice),
+            new("Premium glassware", 180, 8m, 18m, QuoteLineCategory.Glassware),
+            new("Wedding stock package", 1, 52_000m, 88_000m, QuoteLineCategory.Stock),
+        ]),
+        // Above the threshold and waiting for the Director, so the approval can be shown live.
+        new("VAN-ACT-26", 320_000m, QuoteStatus.PendingApproval, false, "PO-VAN-0873", 330_000m, null,
+        [
+            new("Activation bars (4 units)", 4, 14_000m, 24_000m, QuoteLineCategory.Infrastructure),
+            new("Staff (shifts)", 36, 700m, 1_200m, QuoteLineCategory.Crew),
+            new("Ice, bulk (kg)", 1_800, 14m, 27m, QuoteLineCategory.Ice),
+            new("Branded cups", 600, 4m, 9m, QuoteLineCategory.Glassware),
+            new("Stock", 1, 60_000m, 105_000m, QuoteLineCategory.Stock),
+        ]),
+        // Below the threshold, still a draft.
+        new("MER-YE-26", 40_000m, QuoteStatus.Draft, false, "PO-MER-5521", 31_000m, null,
+        [
+            new("Bar hire", 2, 3_000m, 5_500m, QuoteLineCategory.Infrastructure),
+            new("Bartenders (shifts)", 6, 650m, 1_100m, QuoteLineCategory.Crew),
+            new("Ice, bulk (kg)", 150, 14m, 28m, QuoteLineCategory.Ice),
+            new("Glassware hire", 240, 6m, 12m, QuoteLineCategory.Glassware),
+        ]),
+    ];
+
+    /// <summary>
+    /// Budgets, costings in each state, confirmations and invoices for the demo events. Without money the
+    /// demo cannot show the client's main requirement: finance fields visible to three roles and absent
+    /// for everyone else. Does nothing if any costing already exists.
+    /// </summary>
+    private async Task EnsureDemoCommercialAsync(CancellationToken ct)
+    {
+        if (await db.Quotes.AnyAsync(ct))
+        {
+            return;
+        }
+
+        var codes = Costings.Select(c => c.EventCode).ToList();
+        var events = await db.Events.Where(e => codes.Contains(e.EventCode)).ToDictionaryAsync(e => e.EventCode, ct);
+        if (events.Count == 0)
+        {
+            return;
+        }
+
+        var director = await db.Users.FirstOrDefaultAsync(u => u.Email == "director@carbon.demo", ct);
+        var clientTerms = await db.Clients.ToDictionaryAsync(c => c.ClientId, c => c.PaymentTermsDays, ct);
+        var now = clock.GetUtcNow().UtcDateTime;
+        var today = DateOnly.FromDateTime(now);
+        var invoiceNumber = 0;
+
+        foreach (var costing in Costings.Where(c => events.ContainsKey(c.EventCode)))
+        {
+            var ev = events[costing.EventCode];
+            ev.BudgetAmount = costing.Budget;
+
+            var totals = QuoteCalculator.Calculate(
+                [.. costing.Lines.Select(l => new QuoteLineInput(l.Quantity, l.Cost, l.Price))],
+                finance.Value.VatRate);
+            var issued = costing.Status is QuoteStatus.Issued or QuoteStatus.Accepted;
+
+            var quote = new Quote
+            {
+                EventId = ev.EventId,
+                Version = 1,
+                Status = costing.Status,
+                SubtotalExVat = totals.SubtotalExVat,
+                VatAmount = totals.VatAmount,
+                TotalIncVat = totals.TotalIncVat,
+                ValidUntil = today.AddDays(30),
+                CreatedAt = now.AddDays(-14),
+                IssuedAt = issued ? now.AddDays(-10) : null,
+                AcceptedAt = costing.Status == QuoteStatus.Accepted ? now.AddDays(-8) : null,
+                ApprovedByUserId = costing.ApprovedByDirector ? director?.UserId : null,
+                ApprovedAt = costing.ApprovedByDirector ? now.AddDays(-11) : null,
+                Lines =
+                [
+                    .. costing.Lines.Select((l, i) => new QuoteLine
+                    {
+                        Description = l.Description,
+                        Quantity = l.Quantity,
+                        UnitCostToUs = l.Cost,
+                        UnitPriceToClient = l.Price,
+                        LineTotal = totals.LineTotals[i],
+                        Category = l.Category,
+                    }),
+                ],
+            };
+            db.Quotes.Add(quote);
+
+            // An event past Enquired has a confirmation. Naidoo paid a deposit; the others sent a PO.
+            var deposit = costing.EventCode == "NAI-WED-26";
+            var confirmation = new EventConfirmation
+            {
+                EventId = ev.EventId,
+                ConfirmationType = deposit ? ConfirmationType.Deposit : ConfirmationType.PurchaseOrder,
+                ClientPoNumber = deposit ? null : costing.PoNumber,
+                PoReceivedDate = deposit ? null : today.AddDays(-12),
+                PoAmount = deposit ? null : costing.PoAmount,
+                DepositAmount = deposit ? 30_000m : null,
+                DepositPaidDate = deposit ? today.AddDays(-9) : null,
+                DepositReference = deposit ? "EFT-NAI-221" : null,
+                ConfirmedAt = now.AddDays(-9),
+            };
+            db.EventConfirmations.Add(confirmation);
+
+            if (costing.Invoice is { } status)
+            {
+                var issuedOn = today.AddDays(-6);
+                var terms = clientTerms.GetValueOrDefault(ev.ClientId);
+                db.Invoices.Add(new Invoice
+                {
+                    EventId = ev.EventId,
+                    ConfirmationId = confirmation.ConfirmationId,
+                    InvoiceNumber = $"INV-{today.Year}-{++invoiceNumber:0000}",
+                    IssuedDate = issuedOn,
+                    DueDate = issuedOn.AddDays(terms),
+                    AmountIncVat = totals.TotalIncVat,
+                    Status = status,
+                    PaidDate = status == InvoiceStatus.Paid ? issuedOn.AddDays(Math.Min(terms, 10)) : null,
+                    CreatedAt = now.AddDays(-6),
+                });
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation("Demo costings, confirmations and invoices seeded.");
+    }
+
     // ---- People ---------------------------------------------------------------------------
+
+    /// <summary>Gives the demo Director and Accounts the documented authenticator secret if they do not already have it.</summary>
+    private async Task EnsureDemoMfaAsync(CancellationToken ct)
+    {
+        var accounts = await db.Users.Where(u => MfaDemoEmails.Contains(u.Email)).ToListAsync(ct);
+        var repaired = 0;
+
+        foreach (var account in accounts.Where(a => !HasDemoSecret(a)))
+        {
+            account.MfaEnabled = true;
+            account.MfaSecretEncrypted = secrets.Protect(DemoTotpSecret);
+            repaired++;
+        }
+
+        if (repaired > 0)
+        {
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Gave {Count} demo account(s) the documented authenticator secret.", repaired);
+        }
+    }
+
+    private bool HasDemoSecret(AppUser account)
+    {
+        if (!account.MfaEnabled || account.MfaSecretEncrypted is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            return secrets.Unprotect(account.MfaSecretEncrypted) == DemoTotpSecret;
+        }
+        catch (Exception ex) when (ex is System.Security.Cryptography.CryptographicException or FormatException)
+        {
+            // Encrypted under a key we no longer hold, so it cannot be used. Replace it.
+            return false;
+        }
+    }
 
     private async Task<Dictionary<string, AppUser>> SeedUsersAsync(CancellationToken ct)
     {
@@ -111,7 +333,7 @@ public sealed class DemoDataSeeder(
             if (RoleNames.MfaRequired.Contains(roleName))
             {
                 user.MfaEnabled = true;
-                user.MfaSecretEncrypted = secrets.Protect(totp.GenerateSecret());
+                user.MfaSecretEncrypted = secrets.Protect(DemoTotpSecret);
             }
 
             user.UserRoles.Add(new UserRole { User = user, Role = roles[roleName], GrantedAt = DateTime.UtcNow });

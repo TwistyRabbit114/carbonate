@@ -669,11 +669,6 @@ public sealed class DemoDataSeeder(
     /// </remarks>
     private async Task SeedCrewAsync(DateTime now, CancellationToken ct)
     {
-        if (await db.CrewAssignments.AnyAsync(ct))
-        {
-            return;
-        }
-
         // Looked up rather than passed in, so this also runs against a world that was seeded before
         // crew existed — the same reason EnsureDemoCommercialAsync backfills money.
         var crew = await db.Users
@@ -689,6 +684,14 @@ public sealed class DemoDataSeeder(
         var thabo = crew["thabo@carbon.demo"];
         var priya = crew["priya@carbon.demo"];
 
+        // Scoped to these two accounts on purpose. A global "are there any crew assignments" check
+        // would skip the backfill as soon as anyone assigned crew through the UI, which is exactly
+        // what happened on dev once the assign-crew dialog went live.
+        if (await db.CrewAssignments.AnyAsync(a => a.UserId == thabo || a.UserId == priya, ct))
+        {
+            return;
+        }
+
         // Rates are $staff-tier money (FR-35): an Event Manager sees them, a Crew Lead does not.
         // Seeding them is what gives that masking tier something to demonstrate.
         var specs = new (string Code, Guid UserId, string CrewRole, decimal Rate, bool Confirmed)[]
@@ -697,8 +700,10 @@ public sealed class DemoDataSeeder(
             ("RIV-FEST-26", thabo, "Crew lead", 185.00m, true),
             ("RIV-FEST-26", priya, "Bar staff", 140.00m, true),
 
-            // Four days out. Also the event carrying the FR-27 and FR-29 stock warnings.
+            // Four days out. Also the event carrying the FR-27 and FR-29 stock warnings, which is
+            // why both of them are on it: it is the one Christiaan films the crew view against.
             ("VAN-ACT-26", thabo, "Crew lead", 185.00m, true),
+            ("VAN-ACT-26", priya, "Bar staff", 140.00m, true),
 
             // Finished a fortnight ago: past work, so the crew view is not only what is ahead.
             ("DEL-GOLF-26", thabo, "Crew lead", 185.00m, true),
@@ -735,7 +740,7 @@ public sealed class DemoDataSeeder(
             });
         }
 
-        logger.LogInformation("Seeded {Count} crew assignments as at {Now:u}.", specs.Length, now);
+        logger.LogInformation("Seeded {Count} demo crew assignments as at {Now:u}.", specs.Length, now);
     }
 
     // ---- The admin board ------------------------------------------------------------------

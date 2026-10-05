@@ -1,0 +1,21 @@
+@use '@/styles/mixins' as *;
+
+.lead {
+  margin-bottom: var(--space-4);
+  color: var(--muted);
+}
+
+.alert {
+  margin-bottom: var(--space-4);
+}
+
+//two columns for the short fields, everything else spans both. one column on phones
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-3);
+
+  @include phone {
+    grid-template-columns: 1fr;
+  }
+}

@@ -7,6 +7,29 @@ Format: date · decision · why · who · what changes in the Task 3 report.
 
 ---
 
+## D-014 — The content security policy allows `data:` for fonts
+
+**5 Oct 2026 · Owner: C**
+
+`[Δ]` The policy in plan section 7.5 has no `font-src`, so fonts fall back to `default-src 'self'`. Vite
+inlines small font files into the CSS as `data:` URIs, and a real browser check of the hosted site showed
+four of them blocked. The policy now has `font-src 'self' data:`.
+
+**Why.** A font file cannot run script, so allowing `data:` for fonts only is a small, well-understood
+relaxation. The alternative is to stop Vite inlining (`build.assetsInlineLimit: 0`), which is a front-end
+build change; either is acceptable, and this one did not need a rebuild of the app.
+
+**Trade-off.** `script-src` and `style-src` are untouched and still `'self'` only, with no `unsafe-inline`
+and no `unsafe-eval`.
+
+**Known and left alone.** The validation library probes whether it may use `new Function` at start-up, and
+the policy blocks that probe, which the browser reports to `/api/csp-report`. It is caught inside the
+library and the app works normally. Setting zod's `jitless` option would silence the report.
+
+**Task 3 report.** List this as a deviation from the policy in Task 1 section 7.4 and the plan.
+
+---
+
 ## D-013 — The demo accounts get a documented authenticator secret, and the demo gets money
 
 **5 Oct 2026 · Owner: C (fixing D's demo seeder)**
@@ -200,16 +223,36 @@ it is a good example of a control that had to change shape because of how a prot
 
 ---
 
-## D-009 — Event board cards are `Open` or `Done`
+## D-009 — Cards on an event's task board are either `Open` or `Done`
 
 **4 Oct 2026 · Owner: B**
 
-Recorded here because D's template seeder (FR-25) sets the status on every seeded card. A card is
-`Done` exactly when its column has `IsDoneColumn = true`, otherwise `Open`; the boards service keeps it
-in step on every move, along with `CompletedAt`. Admin boards keep the plan's three columns:
-`Assigned`, `InProgressOrNeedsReview`, `Complete`.
+The plan only gives `TASK_CARD.Status` values for the admin board: `Assigned`,
+`InProgressOrNeedsReview` and `Complete` (FR-19). Cards on an event's task board use two:
 
-**Task 3 report.** `TASK_CARD.Status` is described without a vocabulary. State both sets.
+- `Done` while the card is in the board's done column (`IsDoneColumn = true`).
+- `Open` while it is in any other column.
+
+The boards service sets the status on every move, in the same transaction as the column change, and
+never takes it from the request. Moving a card into the done column also sets `CompletedAt`; moving it
+back out makes it `Open` again and clears `CompletedAt`. The template seeder (D) does the same when it
+creates cards: `Done` if a card starts in the done column, otherwise `Open`. This replaces the
+`TODO(plan)` in `EventTemplateSeeder`.
+
+Admin board cards keep their three statuses, because only the manager who assigned a task can complete
+or return it (FR-20).
+
+**Why.** Event boards have no review step, so `InProgressOrNeedsReview` would mean nothing there.
+Copying the column name into the status would repeat what the card's column already says, and would
+break when a template renames a column. What screens actually need from the status is whether a card
+is finished, so lists like My tasks can filter open cards without joining to the column.
+
+**Trade-off.** The status still repeats something the column implies. The boards service is the only
+thing that writes either, in one transaction, so they can't drift apart. If Carbon later wants a review
+step on event cards, it becomes a third value then.
+
+**Task 3 report.** Task 1 defines no card statuses for event boards. Add these two to the data
+dictionary next to the admin board's three.
 
 ---
 

@@ -6,66 +6,92 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Carbonate.Api.Features.Boards;
 
-/// <summary>
-/// Event task boards and the admin tasks board (FR-19 to FR-23). Stubs until the module lands; B owns
-/// the bodies. Crew roles list and act only on cards assigned to them (FR-21).
-/// </summary>
-[ApiController]
-public class BoardsController : ApiControllerBase
+//----------------------------------------------------------\\
+//                              BOARDS (FR-19, FR-21)
+//----------------------------------------------------------\\
+
+//not the events board (FR-18): that one is the event list itself and has no board table behind it
+public sealed class BoardsController(IBoardService boards) : ApiControllerBase
 {
+    /// <summary>The single Admin Tasks board. Crew get only the cards assigned to them.</summary>
     [HttpGet("api/boards/admin")]
     [HasPermission(PermissionCodes.AdminTaskView)]
-    public ActionResult<BoardDto> Admin() => NotYetBuilt();
+    public Task<BoardDto> GetAdminBoard(CancellationToken ct) => boards.GetAdminBoardAsync(ct);
 
+    /// <summary>An event's task board. An event the caller can't see is a 404; crew get only their cards.</summary>
     [HttpGet("api/events/{eventId:guid}/board")]
     [HasPermission(PermissionCodes.EventViewAssigned)]
-    public ActionResult<BoardDto> ForEvent(Guid eventId) => NotYetBuilt();
+    public Task<BoardDto> GetEventBoard(Guid eventId, CancellationToken ct) => boards.GetEventBoardAsync(eventId, ct);
+}
 
-    [HttpPost("api/boards/{boardId:guid}/cards")]
-    [HasPermission(PermissionCodes.TaskEdit)]
-    [ProducesResponseType<CardDto>(StatusCodes.Status201Created)]
-    public ActionResult<CardDto> CreateCard(Guid boardId, CreateCardRequest request) => NotYetBuilt();
+//----------------------------------------------------------\\
+//                              CARDS
+//----------------------------------------------------------\\
 
-    [HttpGet("api/cards/{cardId:guid}")]
+//a card can sit on either board and the two have different rules, so the attribute is the gate every
+//role passes and the service applies the board's own permission (task.move, admin_task.view)
+[Route("api/cards")]
+public sealed class CardsController(IBoardService boards) : ApiControllerBase
+{
+    [HttpGet("{cardId:guid}")]
     [HasPermission(PermissionCodes.EventViewAssigned)]
-    public ActionResult<CardDto> GetCard(Guid cardId) => NotYetBuilt();
+    public Task<CardDto> Get(Guid cardId, CancellationToken ct) => boards.GetCardAsync(cardId, ct);
 
-    [HttpPatch("api/cards/{cardId:guid}")]
-    [HasPermission(PermissionCodes.TaskEdit)]
-    public ActionResult<CardDto> UpdateCard(Guid cardId, UpdateCardRequest request) => NotYetBuilt();
+    /// <summary>
+    /// Adds a card to the bottom of a column. On the admin board it takes admin_task.assign and always
+    /// starts in Assigned; on an event board it takes task.edit.
+    /// </summary>
+    [HttpPost("~/api/boards/{boardId:guid}/cards")]
+    [HasPermission(PermissionCodes.EventViewAssigned)]
+    public async Task<ActionResult<CardDto>> Create(Guid boardId, CreateCardRequest request, CancellationToken ct)
+    {
+        var card = await boards.CreateCardAsync(boardId, request, ct);
+        return CreatedAtAction(nameof(Get), new { cardId = card.CardId }, card);
+    }
 
-    /// <summary>Checks the row version and the WIP limit, and renumbers the column, in one transaction.</summary>
-    [HttpPost("api/cards/{cardId:guid}/move")]
-    [HasPermission(PermissionCodes.TaskMove)]
-    public ActionResult<CardDto> MoveCard(Guid cardId, MoveCardRequest request) => NotYetBuilt();
+    /// <summary>Replaces the card's editable fields, so send them all. Needs the card's rowVersion.</summary>
+    [HttpPatch("{cardId:guid}")]
+    [HasPermission(PermissionCodes.EventViewAssigned)]
+    public Task<CardDto> Update(Guid cardId, UpdateCardRequest request, CancellationToken ct) =>
+        boards.UpdateCardAsync(cardId, request, ct);
 
-    [HttpPut("api/cards/{cardId:guid}/assignees")]
-    [HasPermission(PermissionCodes.TaskEdit)]
-    public ActionResult<CardDto> SetAssignees(Guid cardId, AssigneesRequest request) => NotYetBuilt();
+    /// <summary>Replaces who the card is assigned to.</summary>
+    [HttpPut("{cardId:guid}/assignees")]
+    [HasPermission(PermissionCodes.EventViewAssigned)]
+    public Task<CardDto> SetAssignees(Guid cardId, AssigneesRequest request, CancellationToken ct) =>
+        boards.SetAssigneesAsync(cardId, request, ct);
 
-    /// <summary>Only the manager who created an admin task can complete it (FR-20).</summary>
-    [HttpPost("api/cards/{cardId:guid}/complete")]
+    /// <summary>Signs off a handed-in admin task. Only the manager who created it, never an assignee (FR-20).</summary>
+    [HttpPost("{cardId:guid}/complete")]
     [HasPermission(PermissionCodes.AdminTaskReview)]
-    public ActionResult<CardDto> Complete(Guid cardId, ReviewCardRequest request) => NotYetBuilt();
+    public Task<CardDto> Complete(Guid cardId, CompleteTaskRequest request, CancellationToken ct) =>
+        boards.CompleteTaskAsync(cardId, request, ct);
 
-    /// <summary>Sends an admin task back to Assigned with review notes (FR-20).</summary>
-    [HttpPost("api/cards/{cardId:guid}/return")]
+    /// <summary>Sends a handed-in admin task back to Assigned with notes. Creator only (FR-20).</summary>
+    [HttpPost("{cardId:guid}/return")]
     [HasPermission(PermissionCodes.AdminTaskReview)]
-    public ActionResult<CardDto> Return(Guid cardId, ReviewCardRequest request) => NotYetBuilt();
+    public Task<CardDto> Return(Guid cardId, ReturnTaskRequest request, CancellationToken ct) =>
+        boards.ReturnTaskAsync(cardId, request, ct);
 
-    /// <summary>Should have (FR-22).</summary>
-    [HttpGet("api/cards/{cardId:guid}/attachments")]
+    /// <summary>Moves a card to a column and position. A stale rowVersion is a 409 with the current card.</summary>
+    [HttpPost("{cardId:guid}/move")]
+    [HasPermission(PermissionCodes.EventViewAssigned)]
+    public Task<CardDto> Move(Guid cardId, MoveCardRequest request, CancellationToken ct) =>
+        boards.MoveCardAsync(cardId, request, ct);
+
+    /// <summary>Files and photos on a card (FR-22, a Should). In the contract, not built yet.</summary>
+    [HttpGet("{cardId:guid}/attachments")]
     [HasPermission(PermissionCodes.EventViewAssigned)]
     public ActionResult<IReadOnlyList<CardAttachmentDto>> Attachments(Guid cardId) => NotYetBuilt();
 
-    [HttpPost("api/cards/{cardId:guid}/attachments")]
-    [HasPermission(PermissionCodes.TaskEdit)]
+    [HttpPost("{cardId:guid}/attachments")]
+    [HasPermission(PermissionCodes.EventViewAssigned)]
     [Consumes("multipart/form-data")]
     [ProducesResponseType<CardAttachmentDto>(StatusCodes.Status201Created)]
     public ActionResult<CardAttachmentDto> Attach(Guid cardId, [FromForm] AttachmentForm form) => NotYetBuilt();
 }
 
-public class AttachmentForm
+public sealed class AttachmentForm
 {
     public IFormFile File { get; set; } = null!;
 }

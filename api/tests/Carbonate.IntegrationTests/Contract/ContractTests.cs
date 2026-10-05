@@ -93,7 +93,8 @@ public class ContractTests : IClassFixture<ContractTests.ContractFactory>
     {
         var client = _factory.CreateClientWith(["Director"], RolePermissionMatrix.PermissionsFor(RoleNames.Director));
 
-        var response = await client.GetAsync("/api/venues");
+        //card attachments (FR-22) stay unbuilt until there's time, venues are built now
+        var response = await client.GetAsync($"/api/cards/{Guid.NewGuid()}/attachments");
 
         Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();

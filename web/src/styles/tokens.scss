@@ -1,0 +1,68 @@
+//colours come from the task 1 prototype, with the contrast fixes for NFR-24.
+//ratios in the trailing comments are against --surface unless noted
+
+//----------------------------------------------------------\\
+//                              COLOUR
+//----------------------------------------------------------\\
+
+:root {
+  --ink: #16211c; //body text, 16.6:1
+  --paper: #f7f8f6; //page background
+  --surface: #ffffff; //panels, cards, inputs
+  --accent: #2f8f63; //non-text accents only: focus ring, selected borders (4.0:1)
+  --accent-strong: #1f6b48; //links, primary buttons, active nav text (6.45:1 with white)
+  --accent-deep: #185a3c; //primary button hover
+  --accent-tint: #e6f2ec; //active nav, auto badge, cost rows
+  --line: #dde3de; //decorative dividers and panel borders only (1.3:1)
+  --line-strong: #7f8c85; //input and control borders, needs 3:1 as a non-text boundary (3.5:1)
+  --muted: #5b6b62; //secondary text and labels (5.6:1)
+  --warning: #b54708; //warnings, confidential (4.9:1 on warning-tint)
+  --warning-tint: #fdf1e8;
+  --warning-line: #f3c99f;
+  --danger: #b42318; //errors, high priority (5.5:1 on danger-tint)
+  --danger-tint: #fee4e2;
+  --brand-green: #59da7d; //the logo's green, decoration only (1.9:1, never for text)
+}
+
+//----------------------------------------------------------\\
+//                              TYPE
+//----------------------------------------------------------\\
+
+:root {
+  --font-head: 'Manrope', -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+
+  --fs-2xs: 0.6875rem; //11px eyebrows, badges, calendar chips
+  --fs-xs: 0.75rem; //12px card meta, inline warnings, hints
+  --fs-sm: 0.8125rem; //13px table cells, column heads, panel headings
+  --fs-base: 0.875rem; //14px body, buttons, form text on desktop
+  --fs-md: 1rem; //16px brand name, form inputs on phones so ios doesn't zoom
+  --fs-lg: 1.1875rem; //19px login heading
+  --fs-xl: 1.5rem; //24px page titles
+}
+
+//----------------------------------------------------------\\
+//                              SHAPE AND SPACE
+//----------------------------------------------------------\\
+
+:root {
+  --radius-sm: 6px; //buttons, inputs
+  --radius-md: 8px; //cards, banners
+  --radius-lg: 10px; //panels, kanban columns, tables
+  --radius-xl: 12px; //login card
+  --radius-pill: 999px;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --touch-target: 2.75rem; //44px, NFR-24
+  --tab-bar-height: 3.875rem; //62px bottom bar on phones and the crew layout
+
+  --shadow-hover: 0 1px 4px rgba(22, 33, 28, 0.08);
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+}

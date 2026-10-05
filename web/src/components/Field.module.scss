@@ -1,0 +1,76 @@
+@use '@/styles/mixins' as *;
+
+//----------------------------------------------------------\\
+//                              FIELD
+//----------------------------------------------------------\\
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3125rem;
+  min-width: 0;
+
+  //controls use line-strong, the prototype's --line border was only 1.3:1 against white
+  :where(input, select, textarea) {
+    width: 100%;
+    min-height: 2.375rem;
+    padding: var(--space-2) 0.625rem;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: var(--fs-base);
+
+    &[aria-invalid='true'] {
+      border-color: var(--danger);
+    }
+
+    //16px inputs on phones, anything smaller makes ios zoom in on focus
+    @include phone {
+      min-height: var(--touch-target);
+      font-size: var(--fs-md);
+    }
+  }
+
+  //one-line controls get a set height, chrome pads date inputs a few pixels taller than
+  //selects and text boxes, which shows when they sit side by side
+  :where(input, select) {
+    height: 2.375rem;
+
+    @include phone {
+      height: var(--touch-target);
+    }
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 4.5rem;
+  }
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+.label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.required {
+  font-weight: 400;
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--danger);
+}

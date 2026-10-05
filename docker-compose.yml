@@ -24,14 +24,22 @@ services:
       retries: 12
       start_period: 30s
 
+  # Windows reserves parts of the 9914-10213 range for Hyper-V, so Azurite's
+  # default host ports are often unbindable ("bind: An attempt was made to access
+  # a socket in a way forbidden by its access permissions"). The container keeps
+  # the standard ports; only the host side is moved. Check your own machine with:
+  #   netsh interface ipv4 show excludedportrange protocol=tcp
+  #
+  # Only blob is used by the application. Queue and table are published for
+  # convenience when inspecting the emulator.
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite:latest
     container_name: carbonate-azurite
     command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data
     ports:
-      - "10000:10000"   # blob
-      - "10001:10001"   # queue
-      - "10002:10002"   # table
+      - "10010:10000"   # blob   - the only one the API uses
+      - "10011:10001"   # queue
+      - "10012:10002"   # table
     volumes:
       - azuritedata:/data
 

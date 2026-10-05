@@ -75,12 +75,15 @@ Target: a new developer gets this running in under 30 minutes (NFR-26).
 ```bash
 # 1. Dependencies: SQL Server and the Blob emulator
 docker compose up -d
+# Azurite is published on 10010-10012, not its usual 10000-10002: Windows reserves parts of
+# 9914-10213 for Hyper-V and the default ports often cannot be bound. The key below is Azurite's
+# well-known emulator key, identical on every machine — it is not a secret and is never used in Azure.
 
 # 2. Local secrets (never committed). The API will not sign anyone in without all of these.
 cd api/src/Carbonate.Api
 dotnet user-secrets init
 dotnet user-secrets set "ConnectionStrings:Sql" "Server=localhost,1433;Database=Carbonate;User Id=sa;Password=Local_Dev_Only_1!;TrustServerCertificate=True"
-dotnet user-secrets set "Storage:BlobServiceUri" "http://127.0.0.1:10000/devstoreaccount1"
+dotnet user-secrets set "Storage:ConnectionString" "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10010/devstoreaccount1;"
 dotnet user-secrets set "Jwt:Issuer" "carbonate-local"
 dotnet user-secrets set "Jwt:Audience" "carbonate-local"
 dotnet user-secrets set "Jwt:SigningKey" "<any random string of 32 or more characters>"

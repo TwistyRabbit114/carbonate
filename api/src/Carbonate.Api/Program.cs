@@ -145,10 +145,32 @@ app.MapSpaFallback();
 
 app.Run();
 
-static string? BlobHost(IConfiguration configuration) =>
-    Uri.TryCreate(configuration["Storage:BlobServiceUri"], UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps
+// The blob host the content security policy allows images from. HTTPS only, with one exception:
+// the Azurite emulator is plain HTTP on loopback, and without allowing it the SPA cannot render a
+// single incident photo locally. Loopback is required, so this cannot be pointed at a remote host.
+static string? BlobHost(IConfiguration configuration)
+{
+    var connection = configuration["Storage:ConnectionString"];
+    if (!string.IsNullOrWhiteSpace(connection))
+    {
+        const string key = "BlobEndpoint=";
+
+        var endpoint = connection
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .FirstOrDefault(part => part.StartsWith(key, StringComparison.OrdinalIgnoreCase));
+
+        if (endpoint is not null
+            && Uri.TryCreate(endpoint[key.Length..], UriKind.Absolute, out var emulator)
+            && emulator.IsLoopback)
+        {
+            return emulator.GetLeftPart(UriPartial.Authority);
+        }
+    }
+
+    return Uri.TryCreate(configuration["Storage:BlobServiceUri"], UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps
         ? uri.GetLeftPart(UriPartial.Authority)
         : null;
+}
 
 static string ClientKey(HttpContext context) => context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 

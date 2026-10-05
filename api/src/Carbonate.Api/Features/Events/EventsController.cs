@@ -105,10 +105,11 @@ public class EventsController(IEventService events, ICommercialService commercia
     public ActionResult<EventDocumentDto> UploadDocument(
         Guid eventId, [FromForm] UploadDocumentForm form) => NotYetBuilt();
 
-    /// <summary>Should have (FR-08).</summary>
+    /// <summary>Records the estimated and, after the event, the actual pack size. Only what is sent changes (FR-08).</summary>
     [HttpPatch("{eventId:guid}/pack-size")]
     [HasPermission(PermissionCodes.EventEdit)]
-    public ActionResult<EventDetail> UpdatePackSize(Guid eventId, PackSizeRequest request) => NotYetBuilt();
+    public async Task<ActionResult<EventDetail>> UpdatePackSize(Guid eventId, PackSizeRequest request, CancellationToken ct) =>
+        Ok(await events.UpdatePackSizeAsync(eventId, request, ct));
 
     /// <summary>Which stages this event can move to now. The events board uses it to enable drop targets.</summary>
     [HttpGet("{eventId:guid}/allowed-transitions")]

@@ -77,6 +77,9 @@ public interface ICommercialRepository
 
     Task<Invoice?> FindInvoiceAsync(Guid invoiceId, CancellationToken ct);
     Task<InvoiceDto?> GetInvoiceAsync(Guid invoiceId, CancellationToken ct);
+    /// <summary>Finished events with no invoice that is not void, oldest first.</summary>
+    Task<IReadOnlyList<UninvoicedEventDto>> ListUninvoicedEventsAsync(Guid? visibleToUserId, DateOnly today, CancellationToken ct);
+
     Task<PagedResult<InvoiceDto>> ListInvoicesAsync(InvoiceListQuery query, CancellationToken ct);
 
     Task<IReadOnlyList<CostHistoryRow>> CostHistoryAsync(Guid eventId, Guid clientId, CancellationToken ct);

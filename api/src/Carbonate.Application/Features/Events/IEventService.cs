@@ -13,6 +13,7 @@ public interface IEventService
     Task<EventDetail> CreateAsync(SaveEventRequest request, CancellationToken ct);
     Task<EventDetail> UpdateAsync(Guid eventId, UpdateEventRequest request, CancellationToken ct);
     Task DeleteAsync(Guid eventId, CancellationToken ct);
+    Task<EventDetail> UpdatePackSizeAsync(Guid eventId, PackSizeRequest request, CancellationToken ct);
 
     Task<IReadOnlyList<MilestoneDto>> GetMilestonesAsync(Guid eventId, CancellationToken ct);
     Task<ScheduleResultDto> RescheduleAsync(Guid eventId, Guid milestoneId, RescheduleRequest request, CancellationToken ct);

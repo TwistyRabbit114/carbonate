@@ -20,6 +20,71 @@ public class EventsEndpointTests(DatabaseApiFixture fixture)
         MilestoneType.Reconciliation,
     ];
 
+    // ---- pack size (FR-08) -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task Recording_the_actual_pack_size_keeps_the_estimate_and_gives_the_event_a_new_version()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var reference = await _scenario.ReferenceDataAsync();
+        var created = await CreateAsync(manager, reference);
+        var eventId = created.GetProperty("eventId").GetGuid();
+        var estimate = created.GetProperty("packSizeEstimated").GetInt32();
+
+        var response = await manager.PatchAsJsonAsync($"/api/events/{eventId}/pack-size",
+            new { packSizeActual = 412, rowVersion = created.GetProperty("rowVersion").GetString() });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(412, updated.GetProperty("packSizeActual").GetInt32());
+        Assert.Equal(estimate, updated.GetProperty("packSizeEstimated").GetInt32());
+        Assert.NotEqual(created.GetProperty("rowVersion").GetString(), updated.GetProperty("rowVersion").GetString());
+        Assert.True(await _scenario.WithDbAsync(db =>
+            db.AuditEntries.AnyAsync(a => a.Action == "event.pack_size" && a.EntityId == eventId.ToString())));
+    }
+
+    [Fact]
+    public async Task A_pack_size_change_on_a_stale_version_is_a_409()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var reference = await _scenario.ReferenceDataAsync();
+        var created = await CreateAsync(manager, reference);
+        var eventId = created.GetProperty("eventId").GetGuid();
+        var stale = created.GetProperty("rowVersion").GetString();
+        await manager.PatchAsJsonAsync($"/api/events/{eventId}/pack-size", new { packSizeEstimated = 150, rowVersion = stale });
+
+        var response = await manager.PatchAsJsonAsync($"/api/events/{eventId}/pack-size", new { packSizeEstimated = 999, rowVersion = stale });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_pack_size_request_with_no_size_or_a_negative_one_is_a_400()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var reference = await _scenario.ReferenceDataAsync();
+        var created = await CreateAsync(manager, reference);
+        var path = $"/api/events/{created.GetProperty("eventId").GetGuid()}/pack-size";
+        var version = created.GetProperty("rowVersion").GetString();
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await manager.PatchAsJsonAsync(path, new { rowVersion = version })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await manager.PatchAsJsonAsync(path, new { packSizeActual = -5, rowVersion = version })).StatusCode);
+    }
+
+    [Fact]
+    public async Task Crew_cannot_change_a_pack_size()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var (_, crew) = await _scenario.SignedInAsync(RoleNames.CasualCrew);
+        var reference = await _scenario.ReferenceDataAsync();
+        var created = await CreateAsync(manager, reference);
+
+        var response = await crew.PatchAsJsonAsync($"/api/events/{created.GetProperty("eventId").GetGuid()}/pack-size",
+            new { packSizeActual = 10, rowVersion = created.GetProperty("rowVersion").GetString() });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
     // ---- lookups for the event form and crew picker ----------------------------------------------
 
     [Fact]

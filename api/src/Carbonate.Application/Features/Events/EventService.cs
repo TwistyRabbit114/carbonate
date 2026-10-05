@@ -132,6 +132,33 @@ public sealed class EventService(
         return await DetailAsync(eventId, ct);
     }
 
+    public async Task<EventDetail> UpdatePackSizeAsync(Guid eventId, PackSizeRequest request, CancellationToken ct)
+    {
+        Require(PermissionCodes.EventEdit);
+
+        var ev = await events.FindAsync(eventId, VisibleTo, ct) ?? throw ProblemException.NotFound(NotFoundDetail);
+        var before = new { ev.PackSizeEstimated, ev.PackSizeActual };
+
+        events.ExpectRowVersion(ev, RowVersions.Decode(request.RowVersion));
+
+        // Only what was sent changes, so recording the actual pack size never overwrites the estimate.
+        if (request.PackSizeEstimated is { } estimated)
+        {
+            ev.PackSizeEstimated = estimated;
+        }
+
+        if (request.PackSizeActual is { } actual)
+        {
+            ev.PackSizeActual = actual;
+        }
+
+        await SaveAsync(eventId, ct);
+        await audit.RecordAsync("event.pack_size", nameof(Event), eventId.ToString(), before,
+            new { ev.PackSizeEstimated, ev.PackSizeActual }, user.UserId, ct);
+
+        return await DetailAsync(eventId, ct);
+    }
+
     public async Task DeleteAsync(Guid eventId, CancellationToken ct)
     {
         Require(PermissionCodes.EventDelete);

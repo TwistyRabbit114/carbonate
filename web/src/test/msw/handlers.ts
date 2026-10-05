@@ -1,12 +1,28 @@
 import { delay, http, HttpResponse } from 'msw';
-import type { Board, BoardColumn, CardStatus, EventStatus, TaskCard, UserRef } from '@/api/types';
+import type {
+  Board,
+  BoardColumn,
+  CardStatus,
+  CrewAssignment,
+  EventDetail,
+  EventListItem,
+  EventStatus,
+  Incident,
+  IncidentType,
+  Milestone,
+  TaskCard,
+  UserRef,
+} from '@/api/types';
 import { permissionCheck, type Permission } from '@/auth/permissions';
 import { demoAdminBoard } from '../fixtures/adminTasks';
+import { demoBudgets, demoClients, demoDivisions, demoQuotes } from '../fixtures/commercial';
 import { demoEventBoard } from '../fixtures/eventBoards';
 import { demoCrew, demoMilestones, eventDetailFor } from '../fixtures/eventDetails';
 import { demoEvents } from '../fixtures/events';
 import { mfaStep, signedInSession } from '../fixtures/sessions';
+import { demoEquipment, demoIncidents, demoStockItems, demoStockRequirements } from '../fixtures/stock';
 import { userList, users } from '../fixtures/users';
+import { demoSiteVisits, demoVenues } from '../fixtures/venues';
 
 //a stand-in for the api so screens can be built and demoed before the real endpoints exist.
 //loaded by `npm run dev:mocks` only, and never part of the production build
@@ -15,7 +31,7 @@ import { userList, users } from '../fixtures/users';
 //                              DEMO ACCOUNTS
 //----------------------------------------------------------\\
 
-type AccountKey = keyof typeof users;
+export type AccountKey = keyof typeof users;
 
 export const demoPassword = 'demo';
 export const demoMfaCode = '123456';
@@ -35,7 +51,7 @@ const mfaAccounts: Partial<Record<AccountKey, 'verify' | 'enrol'>> = {
 //----------------------------------------------------------\\
 
 //mock tokens just name the account, there is nothing secret in them
-const accessTokenFor = (key: AccountKey) => `mock-access-${key}`;
+export const accessTokenFor = (key: AccountKey) => `mock-access-${key}`;
 const mfaTokenFor = (key: AccountKey) => `mock-mfa-${key}`;
 
 function isAccount(value: string | undefined): value is AccountKey {
@@ -64,18 +80,30 @@ function accountFromMfaBearer(header: string | null) {
 //the real api keeps the session in an HttpOnly refresh cookie. msw would save a mocked cookie
 //to localStorage, so the mock holds it in memory instead and a full reload signs you out
 let mockSession: AccountKey | null = null;
-let mockEvents = demoEvents();
+let mockEvents = demoEventDetails();
+let mockMilestones = mockEvents.flatMap(demoMilestones);
 let mockAdminBoard = demoAdminBoard();
 let mockEventBoards = mockEvents.map(demoEventBoard);
 let mockCrew = mockEvents.flatMap(demoCrew);
+let mockIncidents = mockEvents.flatMap(demoIncidents);
+
+//the full records, budgets included. each response leaves out what the caller can't see
+function demoEventDetails(): EventDetail[] {
+  return demoEvents().map((event) => ({
+    ...eventDetailFor(event),
+    budgetAmount: demoBudgets[event.eventCode] ?? null,
+  }));
+}
 
 //back to signed out with the demo data as it started, tests call this before each run
 export function resetMocks() {
   mockSession = null;
-  mockEvents = demoEvents();
+  mockEvents = demoEventDetails();
+  mockMilestones = mockEvents.flatMap(demoMilestones);
   mockAdminBoard = demoAdminBoard();
   mockEventBoards = mockEvents.map(demoEventBoard);
   mockCrew = mockEvents.flatMap(demoCrew);
+  mockIncidents = mockEvents.flatMap(demoIncidents);
 }
 
 //----------------------------------------------------------\\
@@ -213,10 +241,44 @@ function canOpenEvent(eventId: string, userId: string) {
   return Boolean(account && (permissionCheck(account.permissions).can('event.view_all') || onCrew(eventId, userId)));
 }
 
+//a masked field is left out of the json altogether, not sent as null (plan section 7.3)
+function without<T extends object, K extends keyof T>(value: T, key: K) {
+  return Object.fromEntries(Object.entries(value).filter(([name]) => name !== key)) as Omit<T, K>;
+}
+
+//a retired event is gone for everyone, the api keeps the row but stops returning it (FR-09)
 function visibleEvent(who: Caller, eventId: unknown) {
-  const event = mockEvents.find((candidate) => candidate.eventId === eventId);
+  const event = mockEvents.find((candidate) => candidate.eventId === eventId && candidate.isActive);
   return event && canSeeEvent(who, event.eventId) ? event : undefined;
 }
+
+//the budget is $price: left out, not nulled, for a role without it (plan section 7.3)
+function eventFor(who: Caller, event: EventDetail): EventDetail {
+  return who.can('finance.view_client_price') ? event : without(event, 'budgetAmount');
+}
+
+const listItemOf = (event: EventDetail): EventListItem => ({
+  eventId: event.eventId,
+  eventCode: event.eventCode,
+  name: event.name,
+  status: event.status,
+  eventType: event.eventType,
+  divisionCode: event.divisionCode,
+  eventDate: event.eventDate,
+  startsAt: event.startsAt,
+  endsAt: event.endsAt,
+  venueName: event.venueName,
+  packSizeEstimated: event.packSizeEstimated,
+  packSizeActual: event.packSizeActual,
+  isConfidential: event.isConfidential,
+  rowVersion: event.rowVersion,
+});
+
+const staleEvent = (who: Caller, event: EventDetail) =>
+  problem(409, 'Someone else changed this event.', 'Reload the event to see their changes, then make yours again.', {
+    type: '/problems/concurrency-conflict',
+    current: eventFor(who, event),
+  });
 
 //----------------------------------------------------------\\
 //                              EVENTS
@@ -228,22 +290,83 @@ export const eventHandlers = [
     const who = caller(request);
     if (!who) return unauthorised();
 
-    const visible = mockEvents.filter((event) => canSeeEvent(who, event.eventId));
+    const visible = mockEvents.filter((event) => event.isActive && canSeeEvent(who, event.eventId));
     const boardOnly = new URL(request.url).searchParams.get('board') === 'true';
-    const items = boardOnly
-      ? visible.filter((event) => event.status !== 'Enquired' && event.status !== 'Cancelled')
-      : visible;
+    const items = (
+      boardOnly ? visible.filter((event) => event.status !== 'Enquired' && event.status !== 'Cancelled') : visible
+    ).map(listItemOf);
 
     return HttpResponse.json({ items, page: 1, pageSize: 200, total: items.length });
   }),
 
-  //no budget in the mock's event, it's a $price field and nothing built yet shows it
   http.get('/api/events/:eventId', async ({ request, params }) => {
     await delay();
     const who = caller(request);
     if (!who) return unauthorised();
     const event = visibleEvent(who, params.eventId);
-    return event ? HttpResponse.json(eventDetailFor(event)) : problem(404, 'Not found');
+    return event ? HttpResponse.json(eventFor(who, event)) : problem(404, 'Not found');
+  }),
+
+  http.post('/api/events', async ({ request }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('event.create')) return problem(403, 'Forbidden');
+
+    const body = await readJson(request);
+    const checked = checkEvent(who, body, null);
+    if (checked instanceof Response) return checked;
+
+    const event: EventDetail = {
+      ...checked,
+      eventId: crypto.randomUUID(),
+      status: 'Enquired',
+      createdByUserId: who.me.userId,
+      serviceSchedule: null,
+      createdAt: new Date().toISOString(),
+      isActive: true,
+      packSizeActual: null,
+      headcountConfirmed: null,
+      rowVersion: nextRowVersion(),
+    };
+    mockEvents = [...mockEvents, event];
+    mockMilestones = [...mockMilestones, ...demoMilestones(event)];
+    mockEventBoards = [...mockEventBoards, demoEventBoard(event)];
+    return HttpResponse.json(eventFor(who, event), { status: 201 });
+  }),
+
+  http.put('/api/events/:eventId', async ({ request, params }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('event.edit')) return problem(403, 'Forbidden');
+
+    const event = visibleEvent(who, params.eventId);
+    if (!event) return problem(404, 'Not found');
+    const body = await readJson(request);
+    const checked = checkEvent(who, body, event.eventId);
+    if (checked instanceof Response) return checked;
+    if (body.rowVersion !== event.rowVersion) return staleEvent(who, event);
+
+    //someone who can't see the budget can neither change nor erase it
+    const budgetAmount = who.can('finance.view_client_price') ? checked.budgetAmount : event.budgetAmount;
+    const updated = { ...event, ...checked, budgetAmount, rowVersion: nextRowVersion() };
+    mockEvents = mockEvents.map((candidate) => (candidate.eventId === event.eventId ? updated : candidate));
+    return HttpResponse.json(eventFor(who, updated));
+  }),
+
+  http.delete('/api/events/:eventId', async ({ request, params }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('event.delete')) return problem(403, 'Forbidden');
+
+    const event = visibleEvent(who, params.eventId);
+    if (!event) return problem(404, 'Not found');
+    mockEvents = mockEvents.map((candidate) =>
+      candidate.eventId === event.eventId ? { ...candidate, isActive: false } : candidate,
+    );
+    return new HttpResponse(null, { status: 204 });
   }),
 
   http.get('/api/events/:eventId/milestones', async ({ request, params }) => {
@@ -251,16 +374,117 @@ export const eventHandlers = [
     const who = caller(request);
     if (!who) return unauthorised();
     const event = visibleEvent(who, params.eventId);
-    return event ? HttpResponse.json(demoMilestones(event)) : problem(404, 'Not found');
+    if (!event) return problem(404, 'Not found');
+    return HttpResponse.json(mockMilestones.filter((milestone) => milestone.eventId === event.eventId));
   }),
 
+  //the chain is one line, recce to reconciliation, so moving one moves everything after it by the
+  //same amount (FR-04). the api's calculator handles any shape, this is enough for the screens
+  http.post('/api/events/:eventId/milestones/:milestoneId/reschedule', async ({ request, params }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('event.edit')) return problem(403, 'Forbidden');
+
+    const event = visibleEvent(who, params.eventId);
+    if (!event) return problem(404, 'Not found');
+    const chain = mockMilestones.filter((milestone) => milestone.eventId === event.eventId);
+    const index = chain.findIndex((milestone) => milestone.milestoneId === params.milestoneId);
+    const target = chain[index];
+    if (!target) return problem(404, 'Not found', 'That milestone was not found on this event.');
+
+    const body = await readJson(request);
+    const newStart = typeof body.newStart === 'string' ? new Date(body.newStart).getTime() : NaN;
+    const newEnd = typeof body.newEnd === 'string' ? new Date(body.newEnd).getTime() : NaN;
+    if (Number.isNaN(newStart) || Number.isNaN(newEnd)) return invalid({ newStart: ['Choose the new start.'] });
+    if (newEnd < newStart) return invalid({ newEnd: ['A milestone cannot end before it starts.'] });
+    if (body.rowVersion !== event.rowVersion) return staleEvent(who, event);
+
+    const shift = newStart - new Date(target.scheduledStart).getTime();
+    const moving = chain.slice(index);
+    if (moving.some((milestone) => milestone.actualStart)) {
+      return problem(422, 'Business rule', 'This milestone, or one that follows it, has already happened.');
+    }
+
+    const by = (iso: string) => new Date(new Date(iso).getTime() + shift).toISOString();
+    const moved: Milestone[] = moving.map((milestone) =>
+      milestone === target
+        ? { ...milestone, scheduledStart: new Date(newStart).toISOString(), scheduledEnd: new Date(newEnd).toISOString() }
+        : { ...milestone, scheduledStart: by(milestone.scheduledStart), scheduledEnd: by(milestone.scheduledEnd) },
+    );
+    mockMilestones = mockMilestones.map(
+      (milestone) => moved.find((change) => change.milestoneId === milestone.milestoneId) ?? milestone,
+    );
+    const rowVersion = nextRowVersion();
+    mockEvents = mockEvents.map((candidate) =>
+      candidate.eventId === event.eventId ? { ...candidate, rowVersion } : candidate,
+    );
+    return HttpResponse.json({ milestones: moved, rowVersion });
+  }),
+
+  //hourly rates are $staff: director and accounts see everyone's, anyone else only their own
   http.get('/api/events/:eventId/crew', async ({ request, params }) => {
     await delay();
     const who = caller(request);
     if (!who) return unauthorised();
     const event = visibleEvent(who, params.eventId);
     if (!event) return problem(404, 'Not found');
-    return HttpResponse.json(mockCrew.filter((shift) => shift.eventId === event.eventId));
+    return HttpResponse.json(
+      mockCrew.filter((shift) => shift.eventId === event.eventId).map((shift) => shiftFor(who, shift)),
+    );
+  }),
+
+  http.post('/api/events/:eventId/crew', async ({ request, params }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('crew.assign')) return problem(403, 'Forbidden');
+
+    const event = visibleEvent(who, params.eventId);
+    if (!event) return problem(404, 'Not found');
+    const body = await readJson(request);
+    const person = typeof body.userId === 'string' ? personRefFor(body.userId) : undefined;
+    const crewRole = trimmed(body.crewRole);
+    const shiftStart = typeof body.shiftStart === 'string' ? body.shiftStart : '';
+    const shiftEnd = typeof body.shiftEnd === 'string' ? body.shiftEnd : '';
+
+    const errors: Record<string, string[]> = {};
+    if (!person) errors.userId = ['That person does not exist or is not active.'];
+    if (!crewRole) errors.crewRole = ["'Crew Role' must not be empty."];
+    if (!shiftStart || !shiftEnd || shiftEnd <= shiftStart) errors.shiftEnd = ['The shift must end after it starts.'];
+    if (Object.keys(errors).length > 0) return invalid(errors);
+    if (body.hourlyRate != null && !who.can('finance.view_staff_cost')) {
+      return problem(403, 'Forbidden', 'Only the Director and Accounts can set an hourly rate.');
+    }
+
+    const shift: CrewAssignment = {
+      assignmentId: crypto.randomUUID(),
+      eventId: event.eventId,
+      userId: person!.userId,
+      fullName: person!.fullName,
+      crewRole,
+      shiftStart: new Date(shiftStart).toISOString(),
+      shiftEnd: new Date(shiftEnd).toISOString(),
+      confirmed: false,
+      hourlyRate: typeof body.hourlyRate === 'number' ? body.hourlyRate : null,
+    };
+    mockCrew = [...mockCrew, shift];
+    return HttpResponse.json(shiftFor(who, shift), { status: 201 });
+  }),
+
+  http.delete('/api/events/:eventId/crew/:assignmentId', async ({ request, params }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('crew.assign')) return problem(403, 'Forbidden');
+
+    const event = visibleEvent(who, params.eventId);
+    const shift = mockCrew.find(
+      (candidate) => candidate.assignmentId === params.assignmentId && candidate.eventId === event?.eventId,
+    );
+    if (!event || !shift) return problem(404, 'Not found');
+    mockCrew = mockCrew.filter((candidate) => candidate !== shift);
+    return new HttpResponse(null, { status: 204 });
   }),
 
   http.get('/api/events/:eventId/allowed-transitions', async ({ request, params }) => {
@@ -279,17 +503,11 @@ export const eventHandlers = [
     if (!who) return unauthorised();
     if (!who.can('event.transition')) return problem(403, 'Forbidden');
 
-    const index = mockEvents.findIndex((candidate) => candidate.eventId === params.eventId);
-    const event = mockEvents[index];
+    const event = visibleEvent(who, params.eventId);
     if (!event) return problem(404, 'Not found');
 
     const { to, rowVersion } = await readJson(request);
-    if (rowVersion !== event.rowVersion) {
-      return problem(409, 'Changed by someone else', undefined, {
-        type: '/problems/concurrency-conflict',
-        current: event,
-      });
-    }
+    if (rowVersion !== event.rowVersion) return staleEvent(who, event);
     if (!allowedFrom[event.status].includes(to as EventStatus)) {
       return problem(409, 'Invalid transition', invalidMoveReason(event.status), {
         type: '/problems/invalid-transition',
@@ -297,8 +515,86 @@ export const eventHandlers = [
     }
 
     const moved = { ...event, status: to as EventStatus, rowVersion: nextRowVersion() };
-    mockEvents[index] = moved;
-    return HttpResponse.json(moved);
+    mockEvents = mockEvents.map((candidate) => (candidate.eventId === event.eventId ? moved : candidate));
+    return HttpResponse.json(eventFor(who, moved));
+  }),
+
+  //a po or a deposit confirms an enquiry, which puts it on the board (FR-12)
+  http.post('/api/events/:eventId/confirmation', async ({ request, params }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('confirmation.record')) return problem(403, 'Forbidden');
+
+    const event = visibleEvent(who, params.eventId);
+    if (!event) return problem(404, 'Not found');
+    const body = await readJson(request);
+    const errors: Record<string, string[]> = {};
+    if (body.confirmationType === 'PurchaseOrder') {
+      if (!trimmed(body.clientPoNumber)) errors.clientPoNumber = ["Enter the client's PO number."];
+      if (!body.poReceivedDate) errors.poReceivedDate = ['Enter the date the PO was received.'];
+    } else if (body.confirmationType === 'Deposit') {
+      if (typeof body.depositAmount !== 'number' || body.depositAmount <= 0) {
+        errors.depositAmount = ['Enter the deposit amount.'];
+      }
+      if (!body.depositPaidDate) errors.depositPaidDate = ['Enter the date the deposit was paid.'];
+      if (!trimmed(body.depositReference)) errors.depositReference = ['Enter the payment reference.'];
+    } else {
+      errors.confirmationType = ['Choose a purchase order or a deposit.'];
+    }
+    if (Object.keys(errors).length > 0) return invalid(errors);
+    if (event.status !== 'Enquired') {
+      return problem(409, 'Invalid transition', 'This event is already confirmed.', {
+        type: '/problems/invalid-transition',
+      });
+    }
+
+    const confirmed = { ...event, status: 'ConfirmedInPlanning' as const, rowVersion: nextRowVersion() };
+    mockEvents = mockEvents.map((candidate) => (candidate.eventId === event.eventId ? confirmed : candidate));
+    return HttpResponse.json(
+      {
+        confirmationId: crypto.randomUUID(),
+        eventId: event.eventId,
+        confirmationType: body.confirmationType,
+        clientPoNumber: orNull(body.clientPoNumber),
+        poReceivedDate: orNull(body.poReceivedDate),
+        poAmount: typeof body.poAmount === 'number' ? body.poAmount : null,
+        depositAmount: typeof body.depositAmount === 'number' ? body.depositAmount : null,
+        depositPaidDate: orNull(body.depositPaidDate),
+        depositReference: orNull(body.depositReference),
+        documentId: null,
+        confirmedAt: new Date().toISOString(),
+      },
+      { status: 201 },
+    );
+  }),
+
+  //only finance roles hold quote.view, and all three money tiers come with it
+  http.get('/api/events/:eventId/quotes', async ({ request, params }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('quote.view')) return problem(403, 'Forbidden');
+    const event = visibleEvent(who, params.eventId);
+    return event ? HttpResponse.json(demoQuotes(event)) : problem(404, 'Not found');
+  }),
+
+  //TODO(plan): the event form needs these two and the contract has neither. asked of C, mocked
+  //here in the shape asked for
+  http.get('/api/clients', async ({ request }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('event.create') && !who.can('event.edit')) return problem(403, 'Forbidden');
+
+    const q = (new URL(request.url).searchParams.get('q') ?? '').trim().toLowerCase();
+    const items = demoClients().filter((client) => client.name.toLowerCase().includes(q));
+    return HttpResponse.json({ items, page: 1, pageSize: 50, total: items.length });
+  }),
+
+  http.get('/api/divisions', async ({ request }) => {
+    await delay();
+    return caller(request) ? HttpResponse.json(demoDivisions()) : unauthorised();
   }),
 ];
 
@@ -324,6 +620,233 @@ function nextRowVersion() {
   rowVersionCounter++;
   return btoa(`mock-version-${rowVersionCounter}`);
 }
+
+//staff rates go only to director and accounts, or to the person the shift belongs to
+function shiftFor(who: Caller, shift: CrewAssignment): CrewAssignment {
+  return who.can('finance.view_staff_cost') || shift.userId === who.me.userId ? shift : without(shift, 'hourlyRate');
+}
+
+//----------------------------------------------------------\\
+//                              EVENT FORM CHECKS
+//----------------------------------------------------------\\
+
+type CheckedEvent = Omit<
+  EventDetail,
+  | 'eventId'
+  | 'status'
+  | 'createdByUserId'
+  | 'serviceSchedule'
+  | 'createdAt'
+  | 'isActive'
+  | 'rowVersion'
+  | 'packSizeActual'
+  | 'headcountConfirmed'
+>;
+
+//the api's validators and reference checks, with its wording
+function checkEvent(who: Caller, body: Record<string, unknown>, exceptEventId: string | null): CheckedEvent | Response {
+  const errors: Record<string, string[]> = {};
+  const code = trimmed(body.eventCode);
+  const name = trimmed(body.name);
+  const client = demoClients().find((candidate) => candidate.clientId === body.clientId);
+  const venue = demoVenues().find((candidate) => candidate.venueId === body.venueId);
+  const division = demoDivisions().find((candidate) => candidate.divisionId === body.divisionId);
+  const startsAt = typeof body.startsAt === 'string' ? body.startsAt : '';
+  const endsAt = typeof body.endsAt === 'string' ? body.endsAt : '';
+  const whole = (value: unknown) => (typeof value === 'number' && Number.isInteger(value) ? value : NaN);
+
+  if (!/^[A-Za-z0-9-]{4,20}$/.test(code)) errors.eventCode = ['Use letters, numbers and hyphens only.'];
+  else if (mockEvents.some((event) => event.eventCode === code && event.eventId !== exceptEventId)) {
+    errors.eventCode = ['That event code is already in use.'];
+  }
+  if (!name) errors.name = ["'Name' must not be empty."];
+  if (!client) errors.clientId = ['That client does not exist or is not active.'];
+  if (!body.venueId) errors.venueId = ['Choose a venue.'];
+  else if (!venue) errors.venueId = ['That venue does not exist or is not active.'];
+  if (!division) errors.divisionId = ['That division does not exist.'];
+  if (!body.eventDate) errors.eventDate = ['Choose the event date.'];
+  if (!startsAt) errors.startsAt = ['Choose when the event starts.'];
+  if (!endsAt || (startsAt && endsAt <= startsAt)) errors.endsAt = ['The event must end after it starts.'];
+  if (!(whole(body.packSizeEstimated) >= 0)) errors.packSizeEstimated = ['Enter the expected pack size.'];
+  if (!(whole(body.staffRequired) >= 0)) errors.staffRequired = ['Enter how many staff are needed.'];
+  if (Object.keys(errors).length > 0) return invalid(errors);
+
+  const budget = typeof body.budgetAmount === 'number' ? body.budgetAmount : null;
+  if (budget !== null && !who.can('finance.view_client_price')) {
+    return problem(403, 'Forbidden', 'You cannot set the budget on an event.');
+  }
+
+  return {
+    eventCode: code,
+    name,
+    clientId: client!.clientId,
+    clientName: client!.name,
+    venueId: venue!.venueId,
+    venueName: venue!.name,
+    divisionId: division!.divisionId,
+    divisionCode: division!.code,
+    eventType: body.eventType as EventDetail['eventType'],
+    eventDate: String(body.eventDate),
+    startsAt: new Date(startsAt).toISOString(),
+    endsAt: new Date(endsAt).toISOString(),
+    packSizeEstimated: whole(body.packSizeEstimated),
+    headcountExpected: typeof body.headcountExpected === 'number' ? body.headcountExpected : null,
+    paymentMode: body.paymentMode as EventDetail['paymentMode'],
+    infrastructureMode: body.infrastructureMode as EventDetail['infrastructureMode'],
+    staffRequired: whole(body.staffRequired),
+    isConfidential: body.isConfidential === true,
+    budgetAmount: budget,
+  };
+}
+
+//----------------------------------------------------------\\
+//                              VENUES AND SITE VISITS
+//----------------------------------------------------------\\
+
+export const venueHandlers = [
+  http.get('/api/venues', async ({ request }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!seesAll(who)) return problem(403, 'Forbidden');
+
+    const q = (new URL(request.url).searchParams.get('q') ?? '').trim().toLowerCase();
+    const items = demoVenues().filter(
+      (venue) => venue.name.toLowerCase().includes(q) || venue.address.toLowerCase().includes(q),
+    );
+    return HttpResponse.json({ items, page: 1, pageSize: 50, total: items.length });
+  }),
+
+  //crew get a venue only through an event they're on (US-23)
+  http.get('/api/venues/:venueId', async ({ request, params }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    const venue = demoVenues().find((candidate) => candidate.venueId === params.venueId);
+    const reachable =
+      venue &&
+      (seesAll(who) ||
+        mockEvents.some((event) => event.venueId === venue.venueId && visibleEvent(who, event.eventId)));
+    return reachable ? HttpResponse.json(venue) : problem(404, 'Not found');
+  }),
+
+  http.get('/api/events/:eventId/site-visits', async ({ request, params }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    const event = visibleEvent(who, params.eventId);
+    return event ? HttpResponse.json(demoSiteVisits(event)) : problem(404, 'Not found');
+  }),
+];
+
+//----------------------------------------------------------\\
+//                              STOCK AND INCIDENTS
+//----------------------------------------------------------\\
+
+const incidentTypes: IncidentType[] = ['Breakage', 'EquipmentFailure', 'StockShortfall'];
+
+//replacement cost is $cost
+function incidentFor(who: Caller, incident: Incident): Incident {
+  return who.can('finance.view_internal_cost') ? incident : without(incident, 'replacementCost');
+}
+
+export const stockHandlers = [
+  //D's api takes stock.plan to read these, so crew and accounts get a 403
+  http.get('/api/events/:eventId/stock-requirements', async ({ request, params }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('stock.plan')) return problem(403, 'Forbidden');
+    const event = visibleEvent(who, params.eventId);
+    return event ? HttpResponse.json(demoStockRequirements(event)) : problem(404, 'Not found');
+  }),
+
+  http.get('/api/stock/items', async ({ request }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('stock.view')) return problem(403, 'Forbidden');
+
+    const q = (new URL(request.url).searchParams.get('q') ?? '').trim().toLowerCase();
+    const items = demoStockItems().filter(
+      (item) => item.name.toLowerCase().includes(q) || item.sku.toLowerCase().includes(q),
+    );
+    return HttpResponse.json({ items, page: 1, pageSize: 50, total: items.length });
+  }),
+
+  http.get('/api/equipment', async ({ request }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    return who.can('stock.view') ? HttpResponse.json(demoEquipment()) : problem(403, 'Forbidden');
+  }),
+
+  //desk roles see every report, a crew lead those on their events, casual crew only their own
+  http.get('/api/events/:eventId/incidents', async ({ request, params }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('incident.view')) return problem(403, 'Forbidden');
+    const event = visibleEvent(who, params.eventId);
+    if (!event) return problem(404, 'Not found');
+
+    const ownOnly = !seesAll(who) && !who.can('stock.view');
+    const items = mockIncidents
+      .filter((incident) => incident.eventId === event.eventId)
+      .filter((incident) => !ownOnly || incident.reportedByUserId === who.me.userId)
+      .map((incident) => incidentFor(who, incident));
+    return HttpResponse.json(items);
+  }),
+
+  http.post('/api/events/:eventId/incidents', async ({ request, params }) => {
+    await delay(600);
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('incident.create')) return problem(403, 'Forbidden');
+    const event = visibleEvent(who, params.eventId);
+    if (!event) return problem(404, 'Not found');
+
+    const form = await request.formData();
+    const text = (key: string) => {
+      const value = form.get(key);
+      return typeof value === 'string' ? value.trim() : '';
+    };
+    const incidentType = text('IncidentType') as IncidentType;
+    const asset = demoEquipment().find((candidate) => candidate.assetId === text('AssetId'));
+    const item = demoStockItems().find((candidate) => candidate.stockItemId === text('StockItemId'));
+    const quantity = text('Quantity') ? Number(text('Quantity')) : null;
+    const photo = form.get('Photo');
+
+    const errors: Record<string, string[]> = {};
+    if (!incidentTypes.includes(incidentType)) errors.incidentType = ['Choose what kind of problem it was.'];
+    if (!asset && !item) errors.assetId = ['Choose the equipment or the stock item this happened to.'];
+    if (quantity !== null && !(Number.isInteger(quantity) && quantity >= 1)) {
+      errors.quantity = ['A quantity must be more than zero.'];
+    }
+    if (!text('Description')) errors.description = ['Say what happened.'];
+    if (photo instanceof File && photo.size > 10 * 1024 * 1024) errors.file = ['Photos can be up to 10 MB.'];
+    if (Object.keys(errors).length > 0) return invalid(errors);
+
+    const incident: Incident = {
+      incidentId: crypto.randomUUID(),
+      eventId: event.eventId,
+      assetId: asset?.assetId ?? null,
+      stockItemId: item?.stockItemId ?? asset?.stockItemId ?? null,
+      subjectName: asset ? `${asset.stockItemName} ${asset.serialNumber}` : item!.name,
+      reportedByUserId: who.me.userId,
+      reportedByName: who.me.fullName,
+      incidentType,
+      quantity,
+      reportedAt: new Date().toISOString(),
+      description: text('Description'),
+      resolutionNotes: null,
+      replacementCost: null,
+      photoUrl: null,
+    };
+    mockIncidents = [...mockIncidents, incident];
+    return HttpResponse.json(incidentFor(who, incident), { status: 201 });
+  }),
+];
 
 //----------------------------------------------------------\\
 //                              CARDS
@@ -670,4 +1193,4 @@ async function signOff(request: Request, cardId: unknown, notes: string | null, 
   return HttpResponse.json(updated);
 }
 
-export const handlers = [...authHandlers, ...eventHandlers, ...cardHandlers];
+export const handlers = [...authHandlers, ...eventHandlers, ...venueHandlers, ...stockHandlers, ...cardHandlers];

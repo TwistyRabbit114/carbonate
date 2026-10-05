@@ -30,6 +30,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    //a test can wait up to 5s on each findBy (see setup.ts), so a form test with several waits
+    //needs longer than the 5s default when the whole suite runs at once
+    testTimeout: 15_000,
     css: { modules: { classNameStrategy: 'non-scoped' } },
   },
 });

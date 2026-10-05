@@ -10,10 +10,11 @@ import { describeCardError, moveCardInBoard, storeCard } from '@/features/boards
 //----------------------------------------------------------\\
 
 //desk roles get every admin task, crew only the ones assigned to them (FR-21)
-export function useAdminBoard() {
+export function useAdminBoard(enabled = true) {
   return useQuery({
     queryKey: queryKeys.adminBoard,
     queryFn: () => apiFetch<Board>('/boards/admin'),
+    enabled,
   });
 }
 

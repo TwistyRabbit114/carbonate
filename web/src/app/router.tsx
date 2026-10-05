@@ -32,8 +32,10 @@ const FinancePage = lazy(() => import('@/features/finance/FinancePage'));
 const CalendarPage = lazy(() => import('@/features/calendar/CalendarPage'));
 const SettingsPage = lazy(() => import('@/features/settings/SettingsPage'));
 const MyEventsPage = lazy(() => import('@/features/crew/MyEventsPage'));
+const CrewEventPage = lazy(() => import('@/features/crew/CrewEventPage'));
 const MyTasksPage = lazy(() => import('@/features/crew/MyTasksPage'));
 const ReportPage = lazy(() => import('@/features/crew/ReportPage'));
+const ReportIncidentPage = lazy(() => import('@/features/incidents/ReportIncidentPage'));
 
 //----------------------------------------------------------\\
 //                              HELPERS
@@ -74,10 +76,15 @@ export const routes: RouteObject[] = [
               { path: 'events', element: guard(access.events, <EventsBoardPage />) },
               { path: 'events/new', element: guard(access.newEvent, <EventFormPage />) },
               { path: 'events/:eventId', element: guard(access.eventDetail, <EventDetailPage />) },
+              { path: 'events/:eventId/edit', element: guard(access.editEvent, <EventFormPage />) },
               { path: 'events/:eventId/board', element: guard(access.eventDetail, <EventTaskBoardPage />) },
               {
                 path: 'events/:eventId/tasks/:cardId',
                 element: guard(access.eventDetail, <EventCardDetailPage />),
+              },
+              {
+                path: 'events/:eventId/incidents/new',
+                element: guard(access.report, <ReportIncidentPage />),
               },
               { path: 'admin-tasks', element: guard(access.adminTasks, <AdminTasksPage />) },
               { path: 'admin-tasks/:cardId', element: guard(access.adminTasks, <AdminTaskDetailPage />) },
@@ -86,6 +93,7 @@ export const routes: RouteObject[] = [
               { path: 'calendar', element: guard(access.calendar, <CalendarPage />) },
               { path: 'settings', element: guard(access.settings, <SettingsPage />) },
               { path: 'my/events', element: guard(access.myEvents, <MyEventsPage />) },
+              { path: 'my/events/:eventId', element: guard(access.myEvents, <CrewEventPage />) },
               { path: 'my/tasks', element: guard(access.myTasks, <MyTasksPage />) },
               { path: 'my/report', element: guard(access.report, <ReportPage />) },
             ],

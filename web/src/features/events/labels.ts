@@ -1,4 +1,14 @@
-import type { DivisionCode, EventStatus, EventType, MilestoneType } from '@/api/types';
+import type {
+  DivisionCode,
+  EventStatus,
+  EventType,
+  InfrastructureMode,
+  Milestone,
+  MilestoneType,
+  PaymentMode,
+} from '@/api/types';
+
+type MilestoneStatus = Milestone['status'];
 
 //the client's own words for each stage (NFR-05)
 export const stageLabels: Record<EventStatus, string> = {
@@ -34,4 +44,20 @@ export const milestoneLabels: Record<MilestoneType, string> = {
   Debrief: 'Debrief',
   Invoice: 'Invoice',
   Reconciliation: 'Reconciliation',
+};
+
+export const paymentModeLabels: Record<PaymentMode, string> = {
+  PurchaseOrder: 'Purchase order',
+  Deposit: 'Deposit',
+};
+
+export const infrastructureLabels: Record<InfrastructureMode, string> = {
+  Owned: 'Owned',
+  Rented: 'Rented',
+};
+
+export const milestoneStatusLabels: Record<MilestoneStatus, string> = {
+  Planned: 'Planned',
+  InProgress: 'Under way',
+  Done: 'Done',
 };

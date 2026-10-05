@@ -29,6 +29,13 @@ internal sealed partial class PlatformSeedHostedService(
 
             // Templates hang off divisions, so they go after the platform seed, not alongside it (D, FR-25).
             await scope.ServiceProvider.GetRequiredService<TemplateSeeder>().SeedAsync(cancellationToken);
+
+            // Demo data is opt-in and dev only: Seeding:Demo is set on carbonate-api-dev and never on
+            // production. It runs last because it seeds events from the templates above (Appendix D).
+            if (configuration.GetValue("Seeding:Demo", false))
+            {
+                await scope.ServiceProvider.GetRequiredService<DemoDataSeeder>().SeedAsync(cancellationToken);
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

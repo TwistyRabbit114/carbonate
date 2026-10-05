@@ -1,0 +1,125 @@
+@use '@/styles/mixins' as *;
+
+//----------------------------------------------------------\
+//                              FORM
+//----------------------------------------------------------\
+
+//one column, everything full width, crew fill this in one-handed
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 37.5rem;
+}
+
+.types {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.typeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-2);
+}
+
+//big toggle buttons rather than a select (NFR-24). the radio stays for keyboard and screen readers
+.type {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-height: 3.5rem;
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+
+  &:has(input:checked) {
+    border: 2px solid var(--accent-strong);
+    padding: calc(var(--space-3) - 1px);
+    background: var(--accent-tint);
+  }
+
+  &:has(input:focus-visible) {
+    @include focus-ring;
+  }
+
+  input {
+    @include visually-hidden;
+  }
+}
+
+.typeName {
+  font-weight: 700;
+}
+
+.typeHint {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+.error {
+  margin: var(--space-2) 0 0;
+  color: var(--danger);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+
+  img {
+    max-width: 10rem;
+    max-height: 10rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    object-fit: cover;
+  }
+}
+
+//----------------------------------------------------------\
+//                              SENT
+//----------------------------------------------------------\
+
+.sent {
+  max-width: 37.5rem;
+  padding: var(--space-6) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+.sentIcon {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--accent-strong);
+}
+
+.sentTitle {
+  margin: var(--space-2) 0 var(--space-4);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+}

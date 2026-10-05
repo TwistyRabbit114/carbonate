@@ -8,7 +8,7 @@ Carbonate seeds in two layers, and the difference matters.
 |---|---|---|---|
 | **Platform** | Roles, permissions, the role–permission matrix, divisions, the admin board | Every environment | `Seeding/PlatformSeeder.cs` (C) |
 | **Templates** | The checklist templates FR-25 seeds new events from | Every environment | `Seeding/TemplateSeeder.cs` (D) |
-| **Demo** | Users, clients, venues, suppliers, stock catalogue, the six demo events | Dev only | `Seeding/DemoDataSeeder.cs` (D) — not built yet |
+| **Demo** | Users, clients, venues, suppliers, stock catalogue, the six demo events | Dev only | `Seeding/DemoDataSeeder.cs` (D) |
 
 All three add only what is missing, so running them twice changes nothing and an edit made in the UI
 is never overwritten. Turn the lot off with `Seeding:Enabled=false`.
@@ -16,6 +16,14 @@ is never overwritten. Turn the lot off with `Seeding:Enabled=false`.
 **Demo data never runs in production.** The demo seeder is gated on `Seeding:Demo=true`, which is set
 on `carbonate-api-dev` and not on `carbonate-api-prod`. Demo passwords live in the README for the demo
 environment only, and have to be removed before any real client data is loaded.
+
+**The demo password is `Carbonate-Demo-2026!` for every seeded account.** That is acceptable precisely
+because the data is fictional and the environment is disposable; it would not be acceptable anywhere
+near real client data.
+
+**Boards and stock requirements are not written by the demo seeder.** It creates the events and then
+calls `IEventTemplateSeeder.SeedAsync` — the same path an event create takes — so the demo exercises
+FR-25 rather than faking its output. If the seeder breaks, the demo data notices.
 
 ---
 

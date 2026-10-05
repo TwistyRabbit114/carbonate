@@ -175,3 +175,57 @@ describe('mock boards', () => {
     expect(((await stale.json()) as { current: { cardId: string } }).current.cardId).toBe(card.cardId);
   });
 });
+
+//----------------------------------------------------------\
+//                              EVENTS
+//----------------------------------------------------------\
+
+const riverlight = demoEvents()[3]!.eventId;
+
+//the same rule the masking suite holds the real api to: a $ field a role can't see is missing
+//from the raw json, not null (NFR-17)
+describe('mock events', () => {
+  it('leaves the budget out of the json for a role without prices', async () => {
+    const ops = await (await (await as('operationsManager'))(`/api/events/${vantage}`)).text();
+    const manager = await (await (await as('eventManager'))(`/api/events/${vantage}`)).text();
+
+    expect(ops).not.toContain('budgetAmount');
+    expect(JSON.parse(manager)).toMatchObject({ budgetAmount: 130000 });
+  });
+
+  it('leaves the replacement cost out of incidents for a role without costs', async () => {
+    const ops = await (await (await as('operationsManager'))(`/api/events/${riverlight}/incidents`)).text();
+    const manager = await (await (await as('eventManager'))(`/api/events/${riverlight}/incidents`)).text();
+
+    expect(ops).not.toContain('replacementCost');
+    expect(manager).toContain('"replacementCost":1080');
+  });
+
+  it('turns an edit at a stale version away with the event as it is now, still masked', async () => {
+    const call = await as('operationsManager');
+    const event = (await (await call(`/api/events/${vantage}`)).json()) as Record<string, unknown>;
+    const save = () => call(`/api/events/${vantage}`, { method: 'PUT', body: JSON.stringify(event) });
+
+    expect((await save()).status).toBe(200);
+    const stale = await save();
+    expect(stale.status).toBe(409);
+    const body = await stale.text();
+    expect(body).toContain('"current"');
+    expect(body).not.toContain('budgetAmount');
+  });
+
+  it("keeps the budget when someone who can't see it saves the event", async () => {
+    const ops = await as('operationsManager');
+    const event = (await (await ops(`/api/events/${vantage}`)).json()) as Record<string, unknown>;
+    await ops(`/api/events/${vantage}`, {
+      method: 'PUT',
+      body: JSON.stringify({ ...event, name: 'Renamed' }),
+    });
+
+    const manager = await as('eventManager');
+    expect(await (await manager(`/api/events/${vantage}`)).json()).toMatchObject({
+      name: 'Renamed',
+      budgetAmount: 130000,
+    });
+  });
+});

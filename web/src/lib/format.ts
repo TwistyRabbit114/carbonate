@@ -9,6 +9,15 @@ export function formatMoney(value: number) {
   return zar.format(value);
 }
 
+//an amount typed in rand, "84500", "84 500" or "R 84 500,50", as a number. "12,500" could be twelve
+//thousand or twelve and a half, so a comma before exactly three digits is turned away, not guessed
+export function parseRand(value: string): number | null {
+  const cleaned = value.replace(/[\sR]/g, '');
+  if (/,\d{3}$/.test(cleaned)) return null;
+  const decimal = cleaned.replace(',', '.');
+  return /^\d+(\.\d{1,2})?$/.test(decimal) ? Number(decimal) : null;
+}
+
 //----------------------------------------------------------\\
 //                              COUNTS
 //----------------------------------------------------------\\
@@ -92,3 +101,20 @@ export const sastDateTimeInput = (iso: string) =>
 
 //and back again. SAST is UTC+2 all year with no daylight saving, so the offset is fixed
 export const fromSastDateTimeInput = (value: string) => new Date(`${value}:00+02:00`).toISOString();
+
+//----------------------------------------------------------\
+//                              TIMES
+//----------------------------------------------------------\
+
+//the SAST clock time of an instant: "15:30"
+export const formatTime = (iso: string) => clockFormat.format(new Date(iso));
+
+//a venue's opening hours and a service window come as clock times, "07:00:00" or "07:00"
+export const formatClock = (value: string) => value.slice(0, 5);
+
+//a shift or a window: "28 Nov 2026, 09:30 to 01:30", the day only once when it's the same
+//start date, and the end's date added when it runs into another day
+export function formatSpan(startIso: string, endIso: string) {
+  const sameDay = sastCalendarDate(startIso) === sastCalendarDate(endIso);
+  return `${formatDateTime(startIso)} to ${sameDay ? formatTime(endIso) : formatDateTime(endIso)}`;
+}

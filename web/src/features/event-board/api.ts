@@ -1,17 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/api/client';
 import { queryKeys } from '@/api/queryKeys';
-import type {
-  Board,
-  BoardColumn,
-  CardPriority,
-  CrewAssignment,
-  EventDetail,
-  Milestone,
-  TaskCard,
-} from '@/api/types';
+import type { Board, BoardColumn, CardPriority, CrewAssignment, Milestone, TaskCard } from '@/api/types';
 import { useToast } from '@/components/toast/ToastContext';
 import { describeCardError, moveCardInBoard, storeCard } from '@/features/boards/cards';
+import { eventQuery } from '@/features/events/api';
 import type { PersonOption } from '@/features/boards/PeoplePicker';
 
 //----------------------------------------------------------\\
@@ -29,10 +22,7 @@ export function useEventBoard(eventId: string) {
 //the event's name and confidential flag for the page around the board. the price fields in it
 //are never shown here
 export function useEventSummary(eventId: string) {
-  return useQuery({
-    queryKey: queryKeys.event(eventId),
-    queryFn: () => apiFetch<EventDetail>(`/events/${eventId}`),
-  });
+  return useQuery(eventQuery(eventId));
 }
 
 //for "2h before load-in" on cards, and to link a card to a milestone

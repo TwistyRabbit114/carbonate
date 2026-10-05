@@ -1,0 +1,63 @@
+@use '@/styles/mixins' as *;
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+//dashed between items like the field rows, so a panel reads the same either way
+.item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: var(--fs-sm);
+
+  &:first-child {
+    padding-top: 0;
+  }
+
+  &:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  @include phone {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+}
+
+.main {
+  min-width: 0;
+}
+
+.title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  font-weight: 600;
+}
+
+.meta {
+  margin: 0.125rem 0 0;
+  color: var(--muted);
+}
+
+//typed as plain text, so line breaks stay where people put them
+.body {
+  margin-top: var(--space-1);
+  white-space: pre-line;
+}
+
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

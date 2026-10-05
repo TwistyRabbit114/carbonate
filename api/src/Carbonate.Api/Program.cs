@@ -119,20 +119,36 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseSecurityHeaders();
+app.UseSecurityHeaders(BlobHost(app.Configuration));
+app.UseSpaFiles();
 app.UseStatusCodePages();
 app.UseRateLimiter();
+
+// Before the auth middleware on purpose. The Swagger UI is middleware, not an endpoint, so the
+// deny-by-default fallback policy rejects it with 401 before it ever runs — the OpenAPI document
+// itself is fine either way because MapOpenApi registers a real endpoint and allows anonymous.
+// Development-only regardless; UseCarbonateOpenApi returns immediately in any other environment.
+app.UseCarbonateOpenApi();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.UseCarbonateOpenApi();
+app.MapCspReport();
 
 // Flat 200, no dependency checks: the availability test hits this every five minutes and a
 // database query here would stop the serverless database auto-pausing (decisions D-001).
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
+// Last, so every API route wins and anything else that is not a file gets the app.
+app.MapSpaFallback();
+
 app.Run();
+
+static string? BlobHost(IConfiguration configuration) =>
+    Uri.TryCreate(configuration["Storage:BlobServiceUri"], UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps
+        ? uri.GetLeftPart(UriPartial.Authority)
+        : null;
 
 static string ClientKey(HttpContext context) => context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 

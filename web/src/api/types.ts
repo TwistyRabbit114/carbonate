@@ -118,3 +118,74 @@ export type Board = Omit<Schemas['BoardDto'], 'columns'> & { columns: BoardColum
 
 //one row of GET /api/users, which takes user.manage
 export type UserListItem = Omit<Schemas['UserListItem'], 'roles'> & { roles: RoleName[] };
+
+//----------------------------------------------------------\
+//                              EVENT FORM
+//----------------------------------------------------------\
+
+export type PaymentMode = Schemas['PaymentMode'];
+export type InfrastructureMode = Schemas['InfrastructureMode'];
+
+//POST /api/events. budgetAmount is $price: only someone who can see it may set it
+export type SaveEventRequest = Schemas['SaveEventRequest'];
+
+//PUT /api/events/{id}, the same fields plus the version they started from
+export type UpdateEventRequest = Schemas['UpdateEventRequest'];
+
+//POST /api/events/{id}/milestones/{milestoneId}/reschedule answers with every milestone that
+//moved, and the event's new version
+export type ScheduleResult = Schemas['ScheduleResultDto'];
+
+//TODO(plan): the contract has nothing that lists clients or divisions, and the event form needs
+//both. these two are the shapes asked of C, served only by the mock until the real ones exist
+export type ClientOption = { clientId: string; name: string };
+export type Division = { divisionId: string; code: DivisionCode; name: string };
+
+//----------------------------------------------------------\
+//                              VENUES AND SITE VISITS
+//----------------------------------------------------------\
+
+//GET /api/venues/{id}. crew get a venue only through an event they're on
+export type Venue = Schemas['VenueDto'];
+
+//GET /api/events/{id}/site-visits
+export type SiteVisit = Schemas['SiteVisitDto'];
+
+//----------------------------------------------------------\
+//                              STOCK
+//----------------------------------------------------------\
+
+export type SourceMode = Schemas['SourceMode'];
+
+//SHORTFALL carries expected and planned, LEAD_TIME carries leadTimeDays and requiredBy
+export type StockWarning = Schemas['StockWarningDto'];
+
+//GET /api/events/{id}/stock-requirements. quantities only, no money on these
+export type StockRequirement = Schemas['StockRequirementDto'];
+
+//GET /api/stock/items and /api/equipment, for picking what an incident is about.
+//standardUnitCost is $cost and is never shown from here
+export type StockItem = Schemas['StockItemDto'];
+export type EquipmentAsset = Schemas['EquipmentAssetDto'];
+
+//----------------------------------------------------------\
+//                              INCIDENTS
+//----------------------------------------------------------\
+
+export type IncidentType = Schemas['IncidentType'];
+
+//GET /api/events/{id}/incidents. replacementCost is $cost and left out for roles without it
+export type Incident = Schemas['IncidentDto'];
+
+//----------------------------------------------------------\
+//                              COMMERCIAL
+//----------------------------------------------------------\
+
+//GET /api/events/{id}/quotes. every total, cost and margin on it is a $ field the api leaves out
+//for roles that can't see it
+export type Quote = Schemas['QuoteDto'];
+
+export type ConfirmationType = Schemas['ConfirmationType'];
+
+//POST /api/events/{id}/confirmation, a po or a deposit (FR-12)
+export type RecordConfirmationRequest = Schemas['RecordConfirmationRequest'];

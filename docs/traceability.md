@@ -17,23 +17,23 @@ and the gap is named. *Not built* means exactly that, with a reason.
 
 | ID | Requirement | Owner | API | Screen | Tests | Status |
 |---|---|---|---|---|---|---|
-| FR-01 | Record an event with all booking fields | C | `POST /api/events` | Events board → New event | `EventsEndpointTests` | TBC |
+| FR-01 | Record an event with all booking fields | C | `POST /api/events` | Events board → New event | `EventsEndpointTests` | **Done** |
 | FR-02 | Stages, last two automatic, Cancelled only from ConfirmedInPlanning | **D** | `POST /api/events/{id}/transitions`, `GET /api/events/{id}/allowed-transitions` | Events board, drag between columns | `EventStateMachineTests` (45), `EventTransitionWorkerTests`, `EventsEndpointTests` | **Done** |
-| FR-03 | Enquired events excluded from the events board | C | `GET /api/events?board=true` | Events board | `EventsEndpointTests` | TBC |
-| FR-04 | Milestones with dependencies and lag; moving one cascades | C | `POST /api/events/{id}/milestones/{id}/reschedule` | TBC | `ScheduleCalculatorTests`, `MilestoneChainTests` | TBC |
-| FR-05 | Intra-day service schedule (JSON) | C | `PUT /api/events/{id}/service-schedule` | TBC | TBC | TBC |
-| FR-06 | Event documents; confidential flag and banner | C | `GET\|POST /api/events/{id}/documents` | TBC | TBC | TBC |
-| FR-07 | Assign named crew to an event | C | `GET\|POST /api/events/{id}/crew` | TBC | `EventsEndpointTests` | TBC |
-| FR-08 | Pack size estimate and actual | C | `PATCH /api/events/{id}/pack-size` | TBC | TBC | TBC |
-| FR-09 | Indefinite retention; compare costs with previous events | C | `GET /api/events/{id}/cost-history` | TBC | TBC | TBC |
-| FR-10 | Reject conflicting concurrent edits | C | `rowVersion` on every updatable aggregate | TBC | `EventsEndpointTests` | TBC |
-| FR-11 | Costing lines with cost and price; target margin band | C | `GET\|POST\|PUT /api/events/{id}/quotes` | TBC | `QuoteCalculatorTests`, `CommercialEndpointTests` | TBC |
-| FR-12 | Client confirmation by PO or deposit | C | `POST /api/events/{id}/confirmation` | TBC | `CommercialEndpointTests` | TBC |
-| FR-13 | Invoice carries the confirmation reference | C | `POST /api/events/{id}/invoices` | TBC | `CommercialEndpointTests` | TBC |
-| FR-14 | Cost and margin restricted; Director approval above a threshold | C | masking filter + `POST /api/quotes/{id}/approve` | TBC | `FinancialMaskerTests`, `FinancialMaskingFilterTests` | TBC |
-| FR-15 | Copy a previous costing | C | `POST /api/events/{id}/quotes/copy` | TBC | `CommercialEndpointTests` | TBC |
-| FR-16 | List delivered but uninvoiced events | C | `GET /api/invoices/uninvoiced-events` | TBC | `CommercialEndpointTests` | TBC |
-| FR-17 | Post-event reconciliation | C | `GET\|PUT /api/events/{id}/reconciliation` | TBC | `CommercialEndpointTests` | TBC |
+| FR-03 | Enquired events excluded from the events board | C | `GET /api/events?board=true` | Events board | `EventsEndpointTests` | **Done** |
+| FR-04 | Milestones with dependencies and lag; moving one cascades | C | `POST /api/events/{id}/milestones/{id}/reschedule` | TBC | `ScheduleCalculatorTests`, `MilestoneChainTests` | **API only** — cascade built and tested, no screen reschedules a milestone |
+| FR-05 | Intra-day service schedule (JSON) | C | `PUT /api/events/{id}/service-schedule` | TBC | TBC | **Not built** — endpoint answers 501; a Should, cut for time |
+| FR-06 | Event documents; confidential flag and banner | C | `GET\|POST /api/events/{id}/documents` | TBC | TBC | **Not built** — endpoint answers 501; a Should, cut for time |
+| FR-07 | Assign named crew to an event | C | `GET\|POST /api/events/{id}/crew` | TBC | `EventsEndpointTests` | **API only** |
+| FR-08 | Pack size estimate and actual | C | `PATCH /api/events/{id}/pack-size` | TBC | TBC | **Not built** — endpoint answers 501; a Should, cut for time |
+| FR-09 | Indefinite retention; compare costs with previous events | C | `GET /api/events/{id}/cost-history` | TBC | `CommercialEndpointTests` | **API only** |
+| FR-10 | Reject conflicting concurrent edits | C | `rowVersion` on every updatable aggregate | TBC | `EventsEndpointTests` | **API only** — stale `rowVersion` returns 409 with the current masked values |
+| FR-11 | Costing lines with cost and price; target margin band | C | `GET\|POST\|PUT /api/events/{id}/quotes` | TBC | `QuoteCalculatorTests`, `CommercialEndpointTests` | **API only** |
+| FR-12 | Client confirmation by PO or deposit | C | `POST /api/events/{id}/confirmation` | TBC | `CommercialEndpointTests` | **API only** |
+| FR-13 | Invoice carries the confirmation reference | C | `POST /api/events/{id}/invoices` | TBC | `CommercialEndpointTests` | **API only** |
+| FR-14 | Cost and margin restricted; Director approval above a threshold | C | masking filter + `POST /api/quotes/{id}/approve` | TBC | `FinancialMaskerTests`, `FinancialMaskingFilterTests`, `CommercialEndpointTests` | **API only** — masking by tier and Director approval above the threshold, which is a placeholder pending the client (D-011) |
+| FR-15 | Copy a previous costing | C | `POST /api/events/{id}/quotes/copy` | TBC | `CommercialEndpointTests` | **API only** |
+| FR-16 | List delivered but uninvoiced events | C | `GET /api/invoices/uninvoiced-events` | TBC | none (not built) | **Not built** — endpoint answers 501; a Should, cut for time |
+| FR-17 | Post-event reconciliation | C | `GET\|PUT /api/events/{id}/reconciliation` | TBC | none (not built) | **Not built** — endpoint answers 501; a Should, cut for time |
 | FR-18 | Events board, 3 active stages, manual and automatic moves | B | `GET /api/events?board=true` | Events Board | `EventsBoardPage.test.tsx`, `EventMoves.test.tsx` | TBC |
 | FR-19 | Admin tasks board, 3 stages | B | `GET /api/boards/admin` | Admin Tasks | `AdminTasksPage.test.tsx`, `BoardEndpointTests` | TBC |
 | FR-20 | Only the assigning manager completes or returns, with notes | B | `POST /api/cards/{id}/complete`, `/return` | Admin Tasks | `AdminTaskRulesTests`, `AdminReviewEndpointTests` | TBC |
@@ -50,11 +50,11 @@ and the gap is named. *Not built* means exactly that, with a reason.
 | FR-31 | Incident reports, asset link, photo | **D** | `POST\|GET /api/events/{id}/incidents`, `GET /api/incidents`, `PATCH /api/incidents/{id}` | Crew → Report (placeholder) | `FileValidationTests` (16), `IncidentEndpointTests` (13) | **API only** |
 | FR-32 | Persistent venue records | B | `GET\|POST\|PUT /api/venues` | TBC | `VenueEndpointTests` | TBC |
 | FR-33 | Site visit details | B | `GET\|POST /api/events/{id}/site-visits` | TBC | `SiteVisitEndpointTests` | TBC |
-| FR-34 | Authentication, multiple roles, MFA for Director and Accounts | C | `POST /api/auth/login`, `/mfa/verify`, `/mfa/enrol`, `/refresh` | Log in, MFA | `AuthServiceTests`, `ApiSecurityTests`, `LoginPage.test.tsx`, `Mfa.test.tsx` | TBC |
-| FR-35 | Server-side financial tiers | C | `IFinancialMasker` + global filter | All money fields | `FinancialMaskerTests`, masking suite | TBC |
-| FR-36 | Crew scoped to assigned events; deactivated after debrief | C | `CrewAccountExpiry` worker | TBC | `CrewExpiryTests`, `CrewExpiryServiceTests` | TBC |
-| FR-37 | Immutable audit trail viewable by the Director | C | `GET /api/audit` | TBC | `SchemaTests` (insert-only trigger) | TBC |
-| FR-38 | Director and Ops manage users and roles | C | `GET\|POST /api/users`, `PATCH /api/users/{id}` | TBC | `UsersEndpointTests`, `LastDirectorTests` | TBC |
+| FR-34 | Authentication, multiple roles, MFA for Director and Accounts | C | `POST /api/auth/login`, `/mfa/verify`, `/mfa/enrol`, `/refresh` | Log in, MFA | `AuthServiceTests`, `ApiSecurityTests`, `LoginPage.test.tsx`, `Mfa.test.tsx` | **Done** |
+| FR-35 | Server-side financial tiers | C | `IFinancialMasker` + global filter | All money fields | `FinancialMaskerTests`, masking suite | **API only** — enforced on every response, so the screens only show what they are sent |
+| FR-36 | Crew scoped to assigned events; deactivated after debrief | C | `CrewAccountExpiry` worker | TBC | `CrewExpiryTests`, `CrewExpiryServiceTests` | **API only** |
+| FR-37 | Immutable audit trail viewable by the Director | C | `GET /api/audit` | TBC | `UsersEndpointTests`, `SchemaTests` (insert-only trigger) | **API only** |
+| FR-38 | Director and Ops manage users and roles | C | `GET\|POST /api/users`, `PATCH /api/users/{id}` | TBC | `UsersEndpointTests`, `LastDirectorTests` | **API only** |
 | FR-39 | Native month/week calendar view | B | — | Calendar (placeholder) | TBC | TBC |
 | FR-40 | Push dates and milestones to Google; outbound only | **D** | `CALENDAR_OUTBOX` → `CalendarSyncWorker`; `POST /api/calendar/connect`, `GET /api/calendar/oauth/callback` | Calendar (placeholder) | `CalendarBackoffTests`, `CalendarStateTokenTests` (11) | **Partial** — outbox, retry and the signed OAuth `state` are built and tested; the Google connect flow is not (needs a Google Cloud project; D-010) |
 | FR-41 | Update the existing entry, never duplicate; queue and retry | **D** | `CalendarSyncWorker` checks `CALENDAR_LINK` before every push | — | `CalendarBackoffTests` | **Partial** — logic built and tested, not exercised against Google |

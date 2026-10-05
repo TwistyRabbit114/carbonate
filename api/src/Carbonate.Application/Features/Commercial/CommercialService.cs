@@ -266,6 +266,14 @@ public sealed class CommercialService(
 
     // ---- invoices -------------------------------------------------------------------------------
 
+    public async Task<IReadOnlyList<UninvoicedEventDto>> ListUninvoicedEventsAsync(CancellationToken ct)
+    {
+        Require(PermissionCodes.InvoiceManage);
+
+        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        return await repository.ListUninvoicedEventsAsync(VisibleTo, today, ct);
+    }
+
     public async Task<PagedResult<InvoiceDto>> ListInvoicesAsync(InvoiceListQuery query, CancellationToken ct)
     {
         Require(PermissionCodes.InvoiceView);
@@ -276,6 +284,16 @@ public sealed class CommercialService(
         var page = await repository.ListInvoicesAsync(query, ct);
         masker.Mask(page, user);
         return page;
+    }
+
+    public async Task<ConfirmationDto> GetConfirmationAsync(Guid eventId, CancellationToken ct)
+    {
+        Require(PermissionCodes.InvoiceView);
+        await FactsAsync(eventId, ct);
+
+        var confirmation = await repository.FindConfirmationForEventAsync(eventId, ct)
+            ?? throw ProblemException.NotFound("That event has no confirmation yet.");
+        return Masked(ToDto(confirmation));
     }
 
     public async Task<InvoiceDto> CreateInvoiceAsync(Guid eventId, CreateInvoiceRequest request, CancellationToken ct)

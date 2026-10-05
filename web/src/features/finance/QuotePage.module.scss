@@ -1,0 +1,132 @@
+@use '@/styles/mixins' as *;
+
+//----------------------------------------------------------\\
+//                              LAYOUT
+//----------------------------------------------------------\\
+
+//lines on the left, totals beside them on a wide screen, under them on anything smaller
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22rem;
+  gap: var(--space-4);
+  align-items: start;
+
+  @include tablet-down {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+//while the lines are being changed they get the whole width, the totals go underneath
+.stacked {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.alert {
+  margin-bottom: var(--space-4);
+}
+
+.alertText {
+  margin: 0 0 var(--space-2);
+}
+
+.lead {
+  margin: 0 0 var(--space-3);
+  color: var(--muted);
+}
+
+.hidden {
+  @include visually-hidden;
+}
+
+.sub {
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+//cost and margin in the prototype's tinted block, so they read as the sensitive part
+.cost {
+  margin-top: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.note {
+  margin: var(--space-2) 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+.hint {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+//----------------------------------------------------------\\
+//                              EDITING
+//----------------------------------------------------------\\
+
+.cellInput {
+  min-height: 2.375rem;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+
+  &[aria-invalid='true'] {
+    border-color: var(--danger);
+  }
+
+  @include phone {
+    min-height: var(--touch-target);
+    font-size: var(--fs-md);
+  }
+}
+
+.description {
+  width: 100%;
+  min-width: 12rem;
+}
+
+.amount {
+  width: 7rem;
+}
+
+.cellError {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--danger);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.editorFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.editorExtras {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.editorButtons {
+  display: flex;
+  gap: var(--space-2);
+}

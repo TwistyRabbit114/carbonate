@@ -44,6 +44,12 @@ public interface IEventRepository
 
     Task<CrewAssignmentDto?> GetCrewMemberAsync(Guid assignmentId, CancellationToken ct);
 
+    Task<PagedResult<ClientOption>> ListClientsAsync(ClientListQuery query, CancellationToken ct);
+
+    Task<IReadOnlyList<DivisionOption>> ListDivisionsAsync(CancellationToken ct);
+
+    Task<IReadOnlyList<CrewCandidate>> ListCrewCandidatesAsync(CancellationToken ct);
+
     Task<bool> UserIsActiveAsync(Guid userId, CancellationToken ct);
 
     void AddCrew(CrewAssignment assignment);

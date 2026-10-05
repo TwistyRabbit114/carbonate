@@ -300,12 +300,16 @@ public class CardEditEndpointTests(DatabaseApiFactory factory)
         await data.AssignAsync(world.Event.EventId, thabo.UserId);
 
         var response = await factory.ClientFor(world.Manager, RoleNames.EventManager).PutAsJsonAsync(
-            $"/api/cards/{world.Card.CardId}/assignees", new { userIds = new[] { thabo.UserId } });
+            $"/api/cards/{world.Card.CardId}/assignees",
+            new { userIds = new[] { thabo.UserId }, rowVersion = RowVersion(world.Card) });
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var assignees = (await Json(response)).GetProperty("assignees");
+        var card = await Json(response);
+        var assignees = card.GetProperty("assignees");
         assignees.GetArrayLength().ShouldBe(1);
         assignees[0].GetProperty("fullName").GetString().ShouldBe("Thabo N.");
+        //only TASK_ASSIGNMENT rows changed, the card still moves on to a new version
+        card.GetProperty("rowVersion").GetString().ShouldNotBe(RowVersion(world.Card));
         (await db.TaskAssignments.Where(a => a.CardId == world.Card.CardId).Select(a => a.UserId).ToListAsync())
             .ShouldBe([thabo.UserId]);
         (await db.AuditEntries.SingleAsync(a => a.EntityId == world.Card.CardId.ToString())).Action
@@ -319,9 +323,46 @@ public class CardEditEndpointTests(DatabaseApiFactory factory)
         var world = await ArrangeAsync(new TestData(db));
 
         var response = await factory.ClientFor(world.Manager, RoleNames.EventManager).PutAsJsonAsync(
-            $"/api/cards/{world.Card.CardId}/assignees", new { userIds = new[] { world.Outsider.UserId } });
+            $"/api/cards/{world.Card.CardId}/assignees",
+            new { userIds = new[] { world.Outsider.UserId }, rowVersion = RowVersion(world.Card) });
 
         response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
+    public async Task Reassigning_on_a_stale_version_is_a_409_and_changes_nobody()
+    {
+        await using var db = factory.CreateContext();
+        var data = new TestData(db);
+        var world = await ArrangeAsync(data);
+        var thabo = await data.UserAsync("Thabo N.");
+        await data.AssignAsync(world.Event.EventId, thabo.UserId);
+        var client = factory.ClientFor(world.Manager, RoleNames.EventManager);
+        var url = $"/api/cards/{world.Card.CardId}/assignees";
+        await client.PatchAsJsonAsync($"/api/cards/{world.Card.CardId}",
+            new { subject = "Pull stock for the bar", rowVersion = RowVersion(world.Card) });
+
+        var stale = await client.PutAsJsonAsync(url, new { userIds = new[] { thabo.UserId }, rowVersion = RowVersion(world.Card) });
+
+        stale.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        var current = (await Json(stale)).GetProperty("current");
+        current.GetProperty("subject").GetString().ShouldBe("Pull stock for the bar");
+        current.GetProperty("assignees")[0].GetProperty("fullName").GetString().ShouldBe("Priya R.");
+        (await db.TaskAssignments.Where(a => a.CardId == world.Card.CardId).Select(a => a.UserId).ToListAsync())
+            .ShouldBe([world.Crew.UserId]);
+    }
+
+    [Fact]
+    public async Task Reassigning_without_a_row_version_is_a_400()
+    {
+        await using var db = factory.CreateContext();
+        var world = await ArrangeAsync(new TestData(db));
+
+        var response = await factory.ClientFor(world.Manager, RoleNames.EventManager).PutAsJsonAsync(
+            $"/api/cards/{world.Card.CardId}/assignees", new { userIds = new[] { world.Crew.UserId } });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await Json(response)).GetProperty("errors").TryGetProperty("rowVersion", out _).ShouldBeTrue();
     }
 
     [Fact]
@@ -336,13 +377,14 @@ public class CardEditEndpointTests(DatabaseApiFactory factory)
         var card = await data.CardAsync(board.Columns.Single(c => c.Position == 0), ops.UserId,
             $"Update PPE stock list {TestData.Suffix()}", "Assigned", ops.UserId);
         var url = $"/api/cards/{card.CardId}/assignees";
+        var version = RowVersion(card);
 
         var byOps = await factory.ClientFor(ops, RoleNames.OperationsManager)
-            .PutAsJsonAsync(url, new { userIds = new[] { priya.UserId } });
+            .PutAsJsonAsync(url, new { userIds = new[] { priya.UserId }, rowVersion = version });
         var empty = await factory.ClientFor(ops, RoleNames.OperationsManager)
-            .PutAsJsonAsync(url, new { userIds = Array.Empty<Guid>() });
+            .PutAsJsonAsync(url, new { userIds = Array.Empty<Guid>(), rowVersion = version });
         var byEm = await factory.ClientFor(em, RoleNames.EventManager)
-            .PutAsJsonAsync(url, new { userIds = new[] { em.UserId } });
+            .PutAsJsonAsync(url, new { userIds = new[] { em.UserId }, rowVersion = version });
 
         byOps.StatusCode.ShouldBe(HttpStatusCode.OK);
         empty.StatusCode.ShouldBe(HttpStatusCode.BadRequest);

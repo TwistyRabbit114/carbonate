@@ -20,6 +20,124 @@ public class EventsEndpointTests(DatabaseApiFixture fixture)
         MilestoneType.Reconciliation,
     ];
 
+    // ---- pack size (FR-08) -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task Recording_the_actual_pack_size_keeps_the_estimate_and_gives_the_event_a_new_version()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var reference = await _scenario.ReferenceDataAsync();
+        var created = await CreateAsync(manager, reference);
+        var eventId = created.GetProperty("eventId").GetGuid();
+        var estimate = created.GetProperty("packSizeEstimated").GetInt32();
+
+        var response = await manager.PatchAsJsonAsync($"/api/events/{eventId}/pack-size",
+            new { packSizeActual = 412, rowVersion = created.GetProperty("rowVersion").GetString() });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(412, updated.GetProperty("packSizeActual").GetInt32());
+        Assert.Equal(estimate, updated.GetProperty("packSizeEstimated").GetInt32());
+        Assert.NotEqual(created.GetProperty("rowVersion").GetString(), updated.GetProperty("rowVersion").GetString());
+        Assert.True(await _scenario.WithDbAsync(db =>
+            db.AuditEntries.AnyAsync(a => a.Action == "event.pack_size" && a.EntityId == eventId.ToString())));
+    }
+
+    [Fact]
+    public async Task A_pack_size_change_on_a_stale_version_is_a_409()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var reference = await _scenario.ReferenceDataAsync();
+        var created = await CreateAsync(manager, reference);
+        var eventId = created.GetProperty("eventId").GetGuid();
+        var stale = created.GetProperty("rowVersion").GetString();
+        await manager.PatchAsJsonAsync($"/api/events/{eventId}/pack-size", new { packSizeEstimated = 150, rowVersion = stale });
+
+        var response = await manager.PatchAsJsonAsync($"/api/events/{eventId}/pack-size", new { packSizeEstimated = 999, rowVersion = stale });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_pack_size_request_with_no_size_or_a_negative_one_is_a_400()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var reference = await _scenario.ReferenceDataAsync();
+        var created = await CreateAsync(manager, reference);
+        var path = $"/api/events/{created.GetProperty("eventId").GetGuid()}/pack-size";
+        var version = created.GetProperty("rowVersion").GetString();
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await manager.PatchAsJsonAsync(path, new { rowVersion = version })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await manager.PatchAsJsonAsync(path, new { packSizeActual = -5, rowVersion = version })).StatusCode);
+    }
+
+    [Fact]
+    public async Task Crew_cannot_change_a_pack_size()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var (_, crew) = await _scenario.SignedInAsync(RoleNames.CasualCrew);
+        var reference = await _scenario.ReferenceDataAsync();
+        var created = await CreateAsync(manager, reference);
+
+        var response = await crew.PatchAsJsonAsync($"/api/events/{created.GetProperty("eventId").GetGuid()}/pack-size",
+            new { packSizeActual = 10, rowVersion = created.GetProperty("rowVersion").GetString() });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    // ---- lookups for the event form and crew picker ----------------------------------------------
+
+    [Fact]
+    public async Task The_event_form_can_read_clients_and_divisions()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var reference = await _scenario.ReferenceDataAsync();
+
+        var clients = await manager.GetFromJsonAsync<JsonElement>("/api/clients?pageSize=200");
+        var divisions = await manager.GetFromJsonAsync<JsonElement>("/api/divisions");
+
+        var first = clients.GetProperty("items").EnumerateArray().First();
+        Assert.False(string.IsNullOrEmpty(first.GetProperty("name").GetString()));
+        Assert.Contains(clients.GetProperty("items").EnumerateArray(), c => c.GetProperty("clientId").GetGuid() == reference.ClientId);
+        Assert.Contains(divisions.EnumerateArray(), d => d.GetProperty("divisionId").GetGuid() == reference.DivisionId);
+        Assert.False(string.IsNullOrEmpty(divisions.EnumerateArray().First().GetProperty("code").GetString()));
+    }
+
+    [Theory]
+    [InlineData(RoleNames.Accounts)]
+    [InlineData(RoleNames.CasualCrew)]
+    public async Task Clients_and_divisions_are_refused_to_roles_that_cannot_write_events(string role)
+    {
+        var (_, client) = await _scenario.SignedInAsync(role);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/clients")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/divisions")).StatusCode);
+    }
+
+    [Fact]
+    public async Task An_event_manager_can_pick_crew_without_seeing_contact_details()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var (crewUser, _) = await _scenario.SignedInAsync(RoleNames.CasualCrew);
+
+        var response = await manager.GetAsync("/api/crew/candidates");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var candidates = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var picked = candidates.EnumerateArray().Single(c => c.GetProperty("userId").GetGuid() == crewUser.UserId);
+        Assert.False(string.IsNullOrEmpty(picked.GetProperty("fullName").GetString()));
+        Assert.False(picked.TryGetProperty("email", out _));
+        Assert.False(picked.TryGetProperty("employeeNumber", out _));
+    }
+
+    [Fact]
+    public async Task Crew_cannot_list_crew_candidates()
+    {
+        var (_, crew) = await _scenario.SignedInAsync(RoleNames.CasualCrew);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await crew.GetAsync("/api/crew/candidates")).StatusCode);
+    }
+
     // ---- create ----------------------------------------------------------------------------------
 
     [Fact]

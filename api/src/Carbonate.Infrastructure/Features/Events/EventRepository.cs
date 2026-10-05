@@ -187,6 +187,44 @@ internal sealed class EventRepository(CemDbContext db) : IEventRepository
     public Task<CrewAssignmentDto?> GetCrewMemberAsync(Guid assignmentId, CancellationToken ct) =>
         CrewQuery().Where(c => c.AssignmentId == assignmentId).FirstOrDefaultAsync(ct);
 
+    public async Task<PagedResult<ClientOption>> ListClientsAsync(ClientListQuery query, CancellationToken ct)
+    {
+        var clients = db.Clients.AsNoTracking().Where(c => c.IsActive);
+
+        if (!string.IsNullOrWhiteSpace(query.Q))
+        {
+            var text = query.Q.Trim();
+            clients = clients.Where(c => c.Name.StartsWith(text));
+        }
+
+        var total = await clients.CountAsync(ct);
+        var items = await clients
+            .OrderBy(c => c.Name).ThenBy(c => c.ClientId)
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Select(c => new ClientOption { ClientId = c.ClientId, Name = c.Name })
+            .ToListAsync(ct);
+
+        return new PagedResult<ClientOption> { Items = items, Page = query.Page, PageSize = query.PageSize, Total = total };
+    }
+
+    public async Task<IReadOnlyList<DivisionOption>> ListDivisionsAsync(CancellationToken ct) =>
+        await db.Divisions.AsNoTracking()
+            .OrderBy(d => d.Code)
+            .Select(d => new DivisionOption { DivisionId = d.DivisionId, Code = d.Code, Name = d.Name })
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<CrewCandidate>> ListCrewCandidatesAsync(CancellationToken ct)
+    {
+        var rows = await db.Users.AsNoTracking()
+            .Where(u => u.IsActive)
+            .OrderBy(u => u.FullName).ThenBy(u => u.UserId)
+            .Select(u => new { u.UserId, u.FullName, Roles = u.UserRoles.Select(ur => ur.Role.Name).ToList() })
+            .ToListAsync(ct);
+
+        return [.. rows.Select(r => new CrewCandidate { UserId = r.UserId, FullName = r.FullName, Roles = r.Roles })];
+    }
+
     public Task<bool> UserIsActiveAsync(Guid userId, CancellationToken ct) =>
         db.Users.AnyAsync(u => u.UserId == userId && u.IsActive, ct);
 

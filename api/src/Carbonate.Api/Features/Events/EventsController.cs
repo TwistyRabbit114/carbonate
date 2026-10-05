@@ -105,10 +105,11 @@ public class EventsController(IEventService events, ICommercialService commercia
     public ActionResult<EventDocumentDto> UploadDocument(
         Guid eventId, [FromForm] UploadDocumentForm form) => NotYetBuilt();
 
-    /// <summary>Should have (FR-08).</summary>
+    /// <summary>Records the estimated and, after the event, the actual pack size. Only what is sent changes (FR-08).</summary>
     [HttpPatch("{eventId:guid}/pack-size")]
     [HasPermission(PermissionCodes.EventEdit)]
-    public ActionResult<EventDetail> UpdatePackSize(Guid eventId, PackSizeRequest request) => NotYetBuilt();
+    public async Task<ActionResult<EventDetail>> UpdatePackSize(Guid eventId, PackSizeRequest request, CancellationToken ct) =>
+        Ok(await events.UpdatePackSizeAsync(eventId, request, ct));
 
     /// <summary>Which stages this event can move to now. The events board uses it to enable drop targets.</summary>
     [HttpGet("{eventId:guid}/allowed-transitions")]
@@ -131,4 +132,26 @@ public class UploadDocumentForm
     public IFormFile File { get; set; } = null!;
     public string DocumentType { get; set; } = "";
     public Carbonate.Domain.Common.SensitivityLevel SensitivityLevel { get; set; }
+}
+
+/// <summary>Lookups the event form and crew picker read (FR-01, FR-07).</summary>
+[ApiController]
+public class EventLookupsController(IEventService events) : ApiControllerBase
+{
+    /// <summary>Active clients, for anyone who can create or edit events.</summary>
+    [HttpGet("api/clients")]
+    [HasPermission(PermissionCodes.EventCreate)]
+    public async Task<ActionResult<PagedResult<ClientOption>>> Clients([FromQuery] ClientListQuery query, CancellationToken ct) =>
+        Ok(await events.ListClientsAsync(query, ct));
+
+    [HttpGet("api/divisions")]
+    [HasPermission(PermissionCodes.EventCreate)]
+    public async Task<ActionResult<IReadOnlyList<DivisionOption>>> Divisions(CancellationToken ct) =>
+        Ok(await events.ListDivisionsAsync(ct));
+
+    /// <summary>Active people who can be assigned to a crew: name and roles only.</summary>
+    [HttpGet("api/crew/candidates")]
+    [HasPermission(PermissionCodes.CrewAssign)]
+    public async Task<ActionResult<IReadOnlyList<CrewCandidate>>> CrewCandidates(CancellationToken ct) =>
+        Ok(await events.ListCrewCandidatesAsync(ct));
 }

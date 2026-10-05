@@ -1,0 +1,74 @@
+@use '@/styles/mixins' as *;
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.task {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+
+  //buttons drop under the text on a phone so they can be full-size thumb targets (NFR-24)
+  @include phone {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.main {
+  min-width: 0;
+}
+
+.subject {
+  display: inline-block;
+  padding: var(--space-1) 0;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+//returned notes, typed as plain text, so line breaks stay
+.note {
+  margin: var(--space-2) 0 0;
+  color: var(--warning);
+  font-size: var(--fs-sm);
+  white-space: pre-line;
+}
+
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--space-2);
+
+  @include phone {
+    > * {
+      flex: 1;
+      min-height: var(--touch-target);
+    }
+  }
+}
+
+.empty {
+  margin: 0;
+  color: var(--muted);
+}

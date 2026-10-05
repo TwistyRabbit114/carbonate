@@ -132,6 +132,33 @@ public sealed class EventService(
         return await DetailAsync(eventId, ct);
     }
 
+    public async Task<EventDetail> UpdatePackSizeAsync(Guid eventId, PackSizeRequest request, CancellationToken ct)
+    {
+        Require(PermissionCodes.EventEdit);
+
+        var ev = await events.FindAsync(eventId, VisibleTo, ct) ?? throw ProblemException.NotFound(NotFoundDetail);
+        var before = new { ev.PackSizeEstimated, ev.PackSizeActual };
+
+        events.ExpectRowVersion(ev, RowVersions.Decode(request.RowVersion));
+
+        // Only what was sent changes, so recording the actual pack size never overwrites the estimate.
+        if (request.PackSizeEstimated is { } estimated)
+        {
+            ev.PackSizeEstimated = estimated;
+        }
+
+        if (request.PackSizeActual is { } actual)
+        {
+            ev.PackSizeActual = actual;
+        }
+
+        await SaveAsync(eventId, ct);
+        await audit.RecordAsync("event.pack_size", nameof(Event), eventId.ToString(), before,
+            new { ev.PackSizeEstimated, ev.PackSizeActual }, user.UserId, ct);
+
+        return await DetailAsync(eventId, ct);
+    }
+
     public async Task DeleteAsync(Guid eventId, CancellationToken ct)
     {
         Require(PermissionCodes.EventDelete);
@@ -206,6 +233,27 @@ public sealed class EventService(
         var crew = await events.GetCrewAsync(eventId, VisibleTo, ct) ?? throw ProblemException.NotFound(NotFoundDetail);
         masker.Mask(crew, user);
         return crew;
+    }
+
+    public async Task<PagedResult<ClientOption>> ListClientsAsync(ClientListQuery query, CancellationToken ct)
+    {
+        RequireEventWriter();
+
+        query.Page = Math.Max(query.Page, 1);
+        query.PageSize = Math.Clamp(query.PageSize, 1, PageQuery.MaxPageSize);
+        return await events.ListClientsAsync(query, ct);
+    }
+
+    public async Task<IReadOnlyList<DivisionOption>> ListDivisionsAsync(CancellationToken ct)
+    {
+        RequireEventWriter();
+        return await events.ListDivisionsAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<CrewCandidate>> ListCrewCandidatesAsync(CancellationToken ct)
+    {
+        Require(PermissionCodes.CrewAssign);
+        return await events.ListCrewCandidatesAsync(ct);
     }
 
     public async Task<CrewAssignmentDto> AssignCrewAsync(Guid eventId, AssignCrewRequest request, CancellationToken ct)
@@ -290,6 +338,14 @@ public sealed class EventService(
     private void Require(string permission)
     {
         if (!user.HasPermission(permission))
+        {
+            throw ProblemException.Forbidden();
+        }
+    }
+
+    private void RequireEventWriter()
+    {
+        if (!user.HasPermission(PermissionCodes.EventCreate) && !user.HasPermission(PermissionCodes.EventEdit))
         {
             throw ProblemException.Forbidden();
         }

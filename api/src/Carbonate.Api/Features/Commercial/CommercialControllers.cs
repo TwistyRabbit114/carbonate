@@ -72,6 +72,12 @@ public class QuotesController(ICommercialService commercial) : ApiControllerBase
 [ApiController]
 public class ConfirmationsController(ICommercialService commercial) : ApiControllerBase
 {
+    /// <summary>The confirmation on the event, so an invoice can be raised against its id (FR-13).</summary>
+    [HttpGet("api/events/{eventId:guid}/confirmation")]
+    [HasPermission(PermissionCodes.InvoiceView)]
+    public async Task<ActionResult<ConfirmationDto>> Get(Guid eventId, CancellationToken ct) =>
+        Ok(await commercial.GetConfirmationAsync(eventId, ct));
+
     /// <summary>Records a PO or deposit and moves the event from Enquired to ConfirmedInPlanning (FR-12).</summary>
     [HttpPost("api/events/{eventId:guid}/confirmation")]
     [HasPermission(PermissionCodes.ConfirmationRecord)]
@@ -101,10 +107,11 @@ public class InvoicesController(ICommercialService commercial) : ApiControllerBa
     public async Task<ActionResult<InvoiceDto>> Update(Guid invoiceId, UpdateInvoiceRequest request, CancellationToken ct) =>
         Ok(await commercial.UpdateInvoiceAsync(invoiceId, request, ct));
 
-    /// <summary>Should have (FR-16). Not built yet.</summary>
+    /// <summary>Finished events that have no invoice yet, oldest first, so none is forgotten (FR-16).</summary>
     [HttpGet("api/invoices/uninvoiced-events")]
     [HasPermission(PermissionCodes.InvoiceManage)]
-    public ActionResult<IReadOnlyList<UninvoicedEventDto>> Uninvoiced() => NotYetBuilt();
+    public async Task<ActionResult<IReadOnlyList<UninvoicedEventDto>>> Uninvoiced(CancellationToken ct) =>
+        Ok(await commercial.ListUninvoicedEventsAsync(ct));
 }
 
 [ApiController]

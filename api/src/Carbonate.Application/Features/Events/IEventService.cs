@@ -13,6 +13,7 @@ public interface IEventService
     Task<EventDetail> CreateAsync(SaveEventRequest request, CancellationToken ct);
     Task<EventDetail> UpdateAsync(Guid eventId, UpdateEventRequest request, CancellationToken ct);
     Task DeleteAsync(Guid eventId, CancellationToken ct);
+    Task<EventDetail> UpdatePackSizeAsync(Guid eventId, PackSizeRequest request, CancellationToken ct);
 
     Task<IReadOnlyList<MilestoneDto>> GetMilestonesAsync(Guid eventId, CancellationToken ct);
     Task<ScheduleResultDto> RescheduleAsync(Guid eventId, Guid milestoneId, RescheduleRequest request, CancellationToken ct);
@@ -20,6 +21,10 @@ public interface IEventService
     Task<IReadOnlyList<CrewAssignmentDto>> GetCrewAsync(Guid eventId, CancellationToken ct);
     Task<CrewAssignmentDto> AssignCrewAsync(Guid eventId, AssignCrewRequest request, CancellationToken ct);
     Task RemoveCrewAsync(Guid eventId, Guid assignmentId, CancellationToken ct);
+
+    Task<PagedResult<ClientOption>> ListClientsAsync(ClientListQuery query, CancellationToken ct);
+    Task<IReadOnlyList<DivisionOption>> ListDivisionsAsync(CancellationToken ct);
+    Task<IReadOnlyList<CrewCandidate>> ListCrewCandidatesAsync(CancellationToken ct);
 
     Task<AllowedTransitionsResponse> GetAllowedTransitionsAsync(Guid eventId, CancellationToken ct);
     Task<EventDetail> TransitionAsync(Guid eventId, TransitionRequest request, CancellationToken ct);

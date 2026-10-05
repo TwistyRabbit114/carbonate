@@ -94,6 +94,10 @@ internal sealed class CommercialRepository(CemDbContext db) : ICommercialReposit
 
     public void AddConfirmation(EventConfirmation confirmation) => db.EventConfirmations.Add(confirmation);
 
+    public Task<EventConfirmation?> FindConfirmationForEventAsync(Guid eventId, CancellationToken ct) =>
+        db.EventConfirmations.AsNoTracking().Where(c => c.EventId == eventId)
+            .OrderByDescending(c => c.ConfirmedAt).FirstOrDefaultAsync(ct);
+
     public Task<EventConfirmation?> FindConfirmationAsync(Guid confirmationId, CancellationToken ct) =>
         db.EventConfirmations.AsNoTracking().FirstOrDefaultAsync(c => c.ConfirmationId == confirmationId, ct);
 
@@ -187,6 +191,36 @@ internal sealed class CommercialRepository(CemDbContext db) : ICommercialReposit
                     chosen?.SubtotalExVat,
                     chosen?.TotalIncVat,
                     chosen?.Lines.Sum(l => Math.Round(l.Quantity * l.UnitCostToUs, 2, MidpointRounding.AwayFromZero)));
+            }),
+        ];
+    }
+
+    public async Task<IReadOnlyList<UninvoicedEventDto>> ListUninvoicedEventsAsync(Guid? visibleToUserId, DateOnly today, CancellationToken ct)
+    {
+        var events = db.Events.AsNoTracking().Where(e => e.IsActive && e.Status == EventStatus.Finished);
+
+        if (visibleToUserId is not null)
+        {
+            events = events.Where(e => e.CrewAssignments.Any(c => c.UserId == visibleToUserId));
+        }
+
+        var rows = await events
+            .Where(e => !db.Invoices.Any(i => i.EventId == e.EventId && i.Status != InvoiceStatus.Void))
+            .Join(db.Clients, e => e.ClientId, c => c.ClientId,
+                (e, c) => new { e.EventId, e.EventCode, e.Name, ClientName = c.Name, e.EventDate })
+            .OrderBy(r => r.EventDate).ThenBy(r => r.EventCode)
+            .ToListAsync(ct);
+
+        return
+        [
+            .. rows.Select(r => new UninvoicedEventDto
+            {
+                EventId = r.EventId,
+                EventCode = r.EventCode,
+                Name = r.Name,
+                ClientName = r.ClientName,
+                EventDate = r.EventDate,
+                DaysSinceEvent = Math.Max(today.DayNumber - r.EventDate.DayNumber, 0),
             }),
         ];
     }

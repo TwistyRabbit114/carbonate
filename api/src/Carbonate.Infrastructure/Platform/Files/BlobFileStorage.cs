@@ -84,6 +84,15 @@ internal sealed class BlobFileStorage(
         };
         builder.SetPermissions(BlobSasPermissions.Read);
 
+        // Local development against Azurite: the client was built from a connection string, so it
+        // holds a shared key and can sign the SAS itself. Azurite does not implement user delegation
+        // keys at all, so the branch below cannot work there. Never taken in Azure — see
+        // FileStorageOptions.ConnectionString.
+        if (blob.CanGenerateSasUri)
+        {
+            return blob.GenerateSasUri(builder);
+        }
+
         // Signed with a key Azure AD issues to the managed identity, not with an account key — there
         // is no account key. The delegation key cannot outlive the SAS it signs.
         var delegationKey = await service.GetUserDelegationKeyAsync(now.AddMinutes(-1), expires, ct);

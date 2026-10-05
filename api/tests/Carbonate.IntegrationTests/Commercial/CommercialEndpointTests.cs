@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Carbonate.Application.Platform.Auth;
 using Carbonate.Domain.Common;
+using Carbonate.Domain.Features.Commercial;
 using Carbonate.IntegrationTests.Support;
 using Microsoft.EntityFrameworkCore;
 
@@ -372,6 +373,106 @@ public class CommercialEndpointTests(DatabaseApiFixture fixture)
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, otherClient.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
+    }
+
+    // ---- delivered but not invoiced (FR-16) ------------------------------------------------------
+
+    [Fact]
+    public async Task Finished_events_with_no_invoice_are_listed_oldest_first_and_leave_the_list_once_invoiced()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var (_, accounts) = await _scenario.SignedInAsync(RoleNames.Accounts);
+        var older = await NewEventAsync(manager);
+        var newer = await NewEventAsync(manager);
+        var stillPlanned = await NewEventAsync(manager);
+
+        await _scenario.WithDbAsync(async db =>
+        {
+            var events = await db.Events.Where(e => e.EventId == older || e.EventId == newer).ToListAsync();
+            foreach (var ev in events)
+            {
+                ev.Status = EventStatus.Finished;
+                ev.EventDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(ev.EventId == older ? -30 : -5);
+            }
+
+            await db.SaveChangesAsync();
+        });
+
+        var listed = await ListUninvoicedAsync(accounts);
+        var mine = listed.Where(e => e.GetProperty("eventId").GetGuid() == older || e.GetProperty("eventId").GetGuid() == newer).ToList();
+        Assert.Equal([older, newer], mine.Select(e => e.GetProperty("eventId").GetGuid()));
+        Assert.Equal(30, mine[0].GetProperty("daysSinceEvent").GetInt32());
+        Assert.DoesNotContain(listed, e => e.GetProperty("eventId").GetGuid() == stillPlanned);
+
+        await _scenario.WithDbAsync(async db =>
+        {
+            var confirmation = new EventConfirmation
+            {
+                EventId = older,
+                ConfirmationType = ConfirmationType.PurchaseOrder,
+                ClientPoNumber = "PO-1",
+                ConfirmedAt = DateTime.UtcNow,
+            };
+            db.EventConfirmations.Add(confirmation);
+            db.Invoices.Add(new Invoice
+            {
+                EventId = older,
+                ConfirmationId = confirmation.ConfirmationId,
+                InvoiceNumber = $"T-{Guid.NewGuid():N}"[..16],
+                IssuedDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                DueDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30),
+                AmountIncVat = 1000,
+                Status = InvoiceStatus.Issued,
+                CreatedAt = DateTime.UtcNow,
+            });
+            await db.SaveChangesAsync();
+        });
+
+        Assert.DoesNotContain(await ListUninvoicedAsync(accounts), e => e.GetProperty("eventId").GetGuid() == older);
+        Assert.Contains(await ListUninvoicedAsync(accounts), e => e.GetProperty("eventId").GetGuid() == newer);
+    }
+
+    [Theory]
+    [InlineData(RoleNames.CasualCrew)]
+    [InlineData(RoleNames.CrewLead)]
+    [InlineData(RoleNames.OperationsManager)]
+    public async Task Only_roles_that_manage_invoices_can_see_the_uninvoiced_list(string role)
+    {
+        var (_, client) = await _scenario.SignedInAsync(role);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/invoices/uninvoiced-events")).StatusCode);
+    }
+
+    private static async Task<List<JsonElement>> ListUninvoicedAsync(HttpClient client) =>
+        [.. (await client.GetFromJsonAsync<JsonElement>("/api/invoices/uninvoiced-events")).EnumerateArray()];
+
+    // ---- reading the confirmation (FR-13) --------------------------------------------------------
+
+    [Fact]
+    public async Task The_confirmation_can_be_read_so_an_invoice_can_be_raised_against_it()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var (_, accounts) = await _scenario.SignedInAsync(RoleNames.Accounts);
+        var eventId = await NewEventAsync(manager);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await accounts.GetAsync($"/api/events/{eventId}/confirmation")).StatusCode);
+
+        var recorded = await (await manager.PostAsJsonAsync($"/api/events/{eventId}/confirmation", PoBody("PO-5150")))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        var read = await accounts.GetFromJsonAsync<JsonElement>($"/api/events/{eventId}/confirmation");
+
+        Assert.Equal(recorded.GetProperty("confirmationId").GetGuid(), read.GetProperty("confirmationId").GetGuid());
+        Assert.Equal("PO-5150", read.GetProperty("clientPoNumber").GetString());
+    }
+
+    [Fact]
+    public async Task Crew_cannot_read_a_confirmation()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var (_, crew) = await _scenario.SignedInAsync(RoleNames.CasualCrew);
+        var eventId = await NewEventAsync(manager);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await crew.GetAsync($"/api/events/{eventId}/confirmation")).StatusCode);
     }
 
     // ---- confirmation (FR-12) --------------------------------------------------------------------

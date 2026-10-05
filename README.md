@@ -4,15 +4,32 @@ Event coordination and management for **Carbon Events** and Carbon Logistics Man
 
 Task Force Carbon · INSY7315 Work Integrated Learning · The IIE
 
-> **A owns the content of this file. D owns the "Running it locally" and "Hosting" sections.**
+> **B owns the content of this file. D owns the "Running it locally" and "Hosting" sections.**
 > Everything in angle brackets is a placeholder.
 
 ---
 
 ## Overview
 
-<!-- A: two or three paragraphs. What Carbonate does, who uses it, which problem from the client
-     interviews it solves. Keep the client's vocabulary. -->
+Carbonate follows an event from the confirmed booking through costing, the recce, load-in, the event
+itself, strike, invoicing and reconciliation. It replaces the spreadsheets, chat groups and shared
+calendar that Carbon Events and Carbon Logistics Management used to run 40 to 50 costed events a
+year, with the busiest stretch in December. It has an events board, an Admin Tasks board, stock planning with
+shortfall warnings and consolidated order lists, incident reports from a phone, and a one-way push
+to the company's Google Calendar.
+
+About 15 people use it, in six roles: Director, Operations Manager, Event Manager, Accounts, Crew
+Lead and Casual Crew. The office roles work at a desk; crew use it on their phones, where it opens
+on their next event, their call time and the venue's access details.
+
+The rule the client cares about most is who sees money. Prices, costs and margins reach the
+Director, the Event Manager and Accounts only. For everyone else those fields are left out of the
+API response, not hidden on screen, and a masking test suite signs in as each role to prove it.
+Carbonate arrives set up, with roles, boards and checklist templates seeded, and uses the client's
+own words: pack size, recce, load-in, strike, costing.
+
+Built for Task 2 by Christiaan ten Velden (front end, boards and venues), Ethan Algeo (back end,
+data and security) and Ulrich Bezuidenhout (cloud, pipeline, lifecycle, stock and incidents).
 
 ## Live system
 
@@ -50,7 +67,7 @@ margins; as the Operations Manager or crew to see the same event with those fiel
 
 ## Architecture
 
-<!-- A: short summary, then link the Task 1 document. -->
+A layered monolith, as designed in the Task 1 document (section 6.2), deployed as one unit.
 
 - **API** — ASP.NET Core Web API (.NET 10), layered Controller → Service → Repository → `CemDbContext`,
   DTOs at the boundary. Background work runs as in-process hosted services.
@@ -75,12 +92,15 @@ Target: a new developer gets this running in under 30 minutes (NFR-26).
 ```bash
 # 1. Dependencies: SQL Server and the Blob emulator
 docker compose up -d
+# Azurite is published on 10010-10012, not its usual 10000-10002: Windows reserves parts of
+# 9914-10213 for Hyper-V and the default ports often cannot be bound. The key below is Azurite's
+# well-known emulator key, identical on every machine — it is not a secret and is never used in Azure.
 
 # 2. Local secrets (never committed). The API will not sign anyone in without all of these.
 cd api/src/Carbonate.Api
 dotnet user-secrets init
 dotnet user-secrets set "ConnectionStrings:Sql" "Server=localhost,1433;Database=Carbonate;User Id=sa;Password=Local_Dev_Only_1!;TrustServerCertificate=True"
-dotnet user-secrets set "Storage:BlobServiceUri" "http://127.0.0.1:10000/devstoreaccount1"
+dotnet user-secrets set "Storage:ConnectionString" "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10010/devstoreaccount1;"
 dotnet user-secrets set "Jwt:Issuer" "carbonate-local"
 dotnet user-secrets set "Jwt:Audience" "carbonate-local"
 dotnet user-secrets set "Jwt:SigningKey" "<any random string of 32 or more characters>"
@@ -113,7 +133,11 @@ The SPA is on <http://localhost:5173>, the API on <https://localhost:7108>, Swag
 ```bash
 dotnet test api/Carbonate.sln          # unit and integration; integration needs Docker running
 cd web && npm run test                 # component tests and axe checks
+dotnet test api/tests/Carbonate.IntegrationTests --filter "Category=Masking"   #the masking suite on its own (NFR-17, NFR-28)
 ```
+
+To work on the screens without the API or a database, `npm run dev:mocks` in `web/` runs the SPA
+against a mocked API that keeps the real rules: roles, masking and the approval steps.
 
 ---
 
@@ -153,7 +177,7 @@ bind, but it is the policy at handover.
 - Small PRs into `dev`, one reviewer, green CI
 - Anything touching auth, permissions, a money field or a migration needs C's approval
 - Anything touching `.github/` or infrastructure needs D's approval
-- Full rules in `docs/PROJECT_PLAN.md` section 13 and `CLAUDE.md`
+- Full rules in `docs/PROJECT_PLAN.md` section 13
 
 ## Documents
 

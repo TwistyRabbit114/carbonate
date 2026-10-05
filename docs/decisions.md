@@ -7,6 +7,44 @@ Format: date · decision · why · who · what changes in the Task 3 report.
 
 ---
 
+## D-011 — How costings, confirmation and invoices behave where the plan is silent
+
+**5 Oct 2026 · Owner: C**
+
+The plan fixes the approval rule (FR-14), versioning and the confirmation-to-lifecycle link. Where it
+stops, these are the working choices, all for the client to confirm at UAT:
+
+- **Approval threshold and margin bands are placeholders.** `Quotes:ApprovalThresholdZar` is R100 000
+  and the four margin bands are invented, in `appsettings.json`, flagged in a `_comment`. Plan section
+  15, item 10 asks B to get the real figures. Nothing in code depends on the values.
+- **Submit.** Only a draft can be submitted. If the submitter holds `quote.approve` the costing is
+  approved immediately ("a costing the Director wrote counts as approved"); otherwise it waits.
+- **Issue.** A costing at or below the threshold can be issued from Draft without anyone approving it.
+  Above it, issue is a 422 until the Director has approved it.
+- **Editing.** Draft: in place. Pending or approved: in place, and it goes back to Draft with the approval
+  removed, because the numbers changed after approval. Issued: a new version, and the old one becomes
+  Superseded. Accepted or superseded: refused. The plan only says issued; accepted is my addition.
+- **Margin** is profit on the price before VAT, because VAT is not Carbon's money.
+- **Confirmation** is allowed only while the event is Enquired, and is one transaction with the
+  `Enquired` to `ConfirmedInPlanning` move. A deposit needs amount, date and reference; a PO needs number
+  and date.
+- **Invoices** are created `Issued` (the accountant raises them with an issue date), numbered
+  `INV-<year>-<0001>` per year, and due after the client's payment terms. The amount defaults to the
+  accepted costing. They can then be marked Paid (with a date) or Void. `Draft` exists in the enum but
+  nothing creates it.
+- **Cost history** shows each earlier event's accepted costing, or its latest one if none was accepted.
+
+**Why.** Each of these is the smallest behaviour that satisfies the plan's wording and keeps the money
+rules in one place, rather than inventing workflow the client has not asked for.
+
+**Trade-off.** If the client wants a separate approval step for every costing, or invoices that start as
+drafts, those are small changes in `QuoteRules` and `CommercialService`.
+
+**Task 3 report.** List the placeholders as outstanding client confirmations, and describe the quote
+status flow as built.
+
+---
+
 ## D-010 — The Google OAuth callback is anonymous, with the user carried in a signed `state`
 
 **4 Oct 2026 · Owner: D**

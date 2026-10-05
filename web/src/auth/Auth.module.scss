@@ -1,55 +1,215 @@
 @use '@/styles/mixins' as *;
 
 //----------------------------------------------------------\\
-//                              CARD
+//                              LAYOUT
 //----------------------------------------------------------\\
 
-//the prototype's login card: 360px wide, logo on top
+//brand panel beside the form on desktop and tablet, a band above it on phones
 .page {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
   min-height: 100vh;
   min-height: 100dvh;
-  padding: var(--space-4);
-}
-
-.card {
-  width: 100%;
-  max-width: 22.5rem;
-  padding: 2.25rem 2.125rem;
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-xl);
 
   @include phone {
-    padding: 1.75rem 1.25rem;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
   }
 }
 
-.logo {
-  margin-bottom: 1.375rem;
+.main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem var(--space-6);
+
+  //top-aligned on phones so the keyboard doesn't push the fields off screen
+  @include phone {
+    align-items: flex-start;
+    padding: var(--space-6) var(--space-4) 2.5rem;
+  }
+}
+
+.panel {
+  width: 100%;
+  max-width: 23.5rem;
 }
 
 .heading {
-  font-size: var(--fs-lg);
-  margin-bottom: var(--space-1);
+  margin-bottom: var(--space-2);
+  font-size: 1.75rem;
+  letter-spacing: -0.01em;
+
+  @include phone {
+    font-size: var(--fs-xl);
+  }
 }
 
 .lead {
-  margin-bottom: 1.125rem;
+  margin-bottom: var(--space-6);
   color: var(--muted);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-base);
 }
 
 .alerts {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
 
   &:empty {
     display: none;
+  }
+}
+
+//----------------------------------------------------------\\
+//                              BRAND PANEL
+//----------------------------------------------------------\\
+
+//softer white for the smaller text, still above 4.5:1 on the lightest green behind it
+$on-brand-soft: rgba(255, 255, 255, 0.9);
+
+.brand {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: 2.5rem 3rem;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(80% 55% at 100% 0%, rgba(89, 218, 125, 0.14), transparent 70%),
+    linear-gradient(160deg, var(--accent-strong) 0%, var(--ink) 100%);
+
+  @include tablet-down {
+    padding: 2rem;
+  }
+
+  @include phone {
+    gap: var(--space-3);
+    padding: var(--space-5) var(--space-4);
+  }
+}
+
+//everything in the panel sits above the watermark
+.brand > :not(.watermark) {
+  position: relative;
+}
+
+.logo {
+  color: #fff;
+  font-size: var(--fs-xl);
+
+  @include phone {
+    font-size: var(--fs-lg);
+
+    img {
+      width: 2.5rem;
+      height: 2.5rem;
+    }
+  }
+}
+
+.pitch {
+  max-width: 26rem;
+  margin-top: auto;
+}
+
+.tagline {
+  margin: 0 0 var(--space-4);
+  font-family: var(--font-head);
+  font-size: 2.375rem;
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+
+  @include tablet-down {
+    font-size: 1.875rem;
+  }
+
+  @include phone {
+    margin: 0;
+    color: $on-brand-soft;
+    font-size: var(--fs-base);
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 0;
+  }
+}
+
+.about {
+  margin: 0;
+  color: $on-brand-soft;
+  font-size: var(--fs-md);
+  line-height: 1.6;
+
+  @include phone {
+    display: none;
+  }
+}
+
+//a dot for each stage with a line on to the next, the name underneath
+.chain {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  max-width: 28rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    position: relative;
+    padding-top: 1.375rem;
+    color: $on-brand-soft;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 0.625rem;
+      height: 0.625rem;
+      border-radius: 50%;
+      background: var(--brand-green);
+      box-shadow: 0 0 0 3px rgba(89, 218, 125, 0.25);
+    }
+
+    &:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: calc(0.3125rem - 1px);
+      right: 0.5rem;
+      left: 1.125rem;
+      height: 2px;
+      border-radius: 1px;
+      background: rgba(255, 255, 255, 0.28);
+    }
+  }
+
+  @include phone {
+    display: none;
+  }
+}
+
+//a big faint copy of the mark, cropped by the panel's edge
+.watermark {
+  position: absolute;
+  top: 16%;
+  right: -24%;
+  width: 76%;
+  max-width: 34rem;
+  opacity: 0.1;
+  pointer-events: none;
+  user-select: none;
+
+  @include phone {
+    top: -55%;
+    right: -6%;
+    width: 9.5rem;
   }
 }
 
@@ -60,7 +220,7 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
 .submit {
@@ -79,6 +239,15 @@
   margin: var(--space-4) 0 0;
   font-size: var(--fs-sm);
   text-align: center;
+}
+
+//who to ask, since there's no self-service reset: the director and ops manage accounts (FR-38)
+.help {
+  margin: var(--space-8) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--fs-sm);
 }
 
 //----------------------------------------------------------\\

@@ -82,7 +82,7 @@ export default function LoginPage() {
     <>
       <title>Log in — Carbonate</title>
       <h1 className={styles.heading}>Log in</h1>
-      <p className={styles.lead}>Carbon Events coordination</p>
+      <p className={styles.lead}>Use the email address your account was set up with.</p>
 
       <div className={styles.alerts}>
         {serverError && <Alert tone="danger">{serverError}</Alert>}
@@ -104,6 +104,8 @@ export default function LoginPage() {
           Log in
         </Button>
       </form>
+
+      <p className={styles.help}>Can't log in? Your Director or Operations Manager can check your account.</p>
     </>
   );
 }

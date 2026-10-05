@@ -14,7 +14,7 @@ export function NotFoundPage() {
     <main className={styles.page}>
       <title>Not found — Carbonate</title>
       <div className={styles.card}>
-        <Logo size={56} className={styles.logo} />
+        <Logo size={48} withName className={styles.logo} />
         <h1>We couldn't find that</h1>
         <p>It may have been removed, or it isn't shared with you.</p>
         <Link to={home}>Go to your start page</Link>

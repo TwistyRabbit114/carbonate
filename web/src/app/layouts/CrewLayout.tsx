@@ -18,7 +18,7 @@ export function CrewLayout() {
       </a>
 
       <header className={styles.topBar}>
-        <Logo size={40} />
+        <Logo size={40} withName />
         <UserBlock />
       </header>
 

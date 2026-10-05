@@ -29,7 +29,7 @@ export function DeskLayout() {
 
       <header className={styles.sidebar}>
         <div className={styles.brand}>
-          <Logo size={60} />
+          <Logo size={44} withName />
         </div>
 
         <nav aria-label="Main" className={styles.nav}>

@@ -208,6 +208,27 @@ public sealed class EventService(
         return crew;
     }
 
+    public async Task<PagedResult<ClientOption>> ListClientsAsync(ClientListQuery query, CancellationToken ct)
+    {
+        RequireEventWriter();
+
+        query.Page = Math.Max(query.Page, 1);
+        query.PageSize = Math.Clamp(query.PageSize, 1, PageQuery.MaxPageSize);
+        return await events.ListClientsAsync(query, ct);
+    }
+
+    public async Task<IReadOnlyList<DivisionOption>> ListDivisionsAsync(CancellationToken ct)
+    {
+        RequireEventWriter();
+        return await events.ListDivisionsAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<CrewCandidate>> ListCrewCandidatesAsync(CancellationToken ct)
+    {
+        Require(PermissionCodes.CrewAssign);
+        return await events.ListCrewCandidatesAsync(ct);
+    }
+
     public async Task<CrewAssignmentDto> AssignCrewAsync(Guid eventId, AssignCrewRequest request, CancellationToken ct)
     {
         Require(PermissionCodes.CrewAssign);
@@ -290,6 +311,14 @@ public sealed class EventService(
     private void Require(string permission)
     {
         if (!user.HasPermission(permission))
+        {
+            throw ProblemException.Forbidden();
+        }
+    }
+
+    private void RequireEventWriter()
+    {
+        if (!user.HasPermission(PermissionCodes.EventCreate) && !user.HasPermission(PermissionCodes.EventEdit))
         {
             throw ProblemException.Forbidden();
         }

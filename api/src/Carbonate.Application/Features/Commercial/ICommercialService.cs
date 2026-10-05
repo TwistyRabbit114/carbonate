@@ -19,6 +19,7 @@ public interface ICommercialService
     Task<QuoteDto> IssueQuoteAsync(Guid quoteId, QuoteActionRequest request, CancellationToken ct);
     Task<QuoteDto> AcceptQuoteAsync(Guid quoteId, QuoteActionRequest request, CancellationToken ct);
 
+    Task<ConfirmationDto> GetConfirmationAsync(Guid eventId, CancellationToken ct);
     Task<ConfirmationDto> RecordConfirmationAsync(Guid eventId, RecordConfirmationRequest request, CancellationToken ct);
 
     Task<PagedResult<InvoiceDto>> ListInvoicesAsync(InvoiceListQuery query, CancellationToken ct);

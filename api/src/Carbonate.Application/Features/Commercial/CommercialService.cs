@@ -278,6 +278,16 @@ public sealed class CommercialService(
         return page;
     }
 
+    public async Task<ConfirmationDto> GetConfirmationAsync(Guid eventId, CancellationToken ct)
+    {
+        Require(PermissionCodes.InvoiceView);
+        await FactsAsync(eventId, ct);
+
+        var confirmation = await repository.FindConfirmationForEventAsync(eventId, ct)
+            ?? throw ProblemException.NotFound("That event has no confirmation yet.");
+        return Masked(ToDto(confirmation));
+    }
+
     public async Task<InvoiceDto> CreateInvoiceAsync(Guid eventId, CreateInvoiceRequest request, CancellationToken ct)
     {
         Require(PermissionCodes.InvoiceManage);

@@ -94,6 +94,10 @@ internal sealed class CommercialRepository(CemDbContext db) : ICommercialReposit
 
     public void AddConfirmation(EventConfirmation confirmation) => db.EventConfirmations.Add(confirmation);
 
+    public Task<EventConfirmation?> FindConfirmationForEventAsync(Guid eventId, CancellationToken ct) =>
+        db.EventConfirmations.AsNoTracking().Where(c => c.EventId == eventId)
+            .OrderByDescending(c => c.ConfirmedAt).FirstOrDefaultAsync(ct);
+
     public Task<EventConfirmation?> FindConfirmationAsync(Guid confirmationId, CancellationToken ct) =>
         db.EventConfirmations.AsNoTracking().FirstOrDefaultAsync(c => c.ConfirmationId == confirmationId, ct);
 

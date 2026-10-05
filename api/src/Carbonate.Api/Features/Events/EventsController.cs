@@ -132,3 +132,25 @@ public class UploadDocumentForm
     public string DocumentType { get; set; } = "";
     public Carbonate.Domain.Common.SensitivityLevel SensitivityLevel { get; set; }
 }
+
+/// <summary>Lookups the event form and crew picker read (FR-01, FR-07).</summary>
+[ApiController]
+public class EventLookupsController(IEventService events) : ApiControllerBase
+{
+    /// <summary>Active clients, for anyone who can create or edit events.</summary>
+    [HttpGet("api/clients")]
+    [HasPermission(PermissionCodes.EventCreate)]
+    public async Task<ActionResult<PagedResult<ClientOption>>> Clients([FromQuery] ClientListQuery query, CancellationToken ct) =>
+        Ok(await events.ListClientsAsync(query, ct));
+
+    [HttpGet("api/divisions")]
+    [HasPermission(PermissionCodes.EventCreate)]
+    public async Task<ActionResult<IReadOnlyList<DivisionOption>>> Divisions(CancellationToken ct) =>
+        Ok(await events.ListDivisionsAsync(ct));
+
+    /// <summary>Active people who can be assigned to a crew: name and roles only.</summary>
+    [HttpGet("api/crew/candidates")]
+    [HasPermission(PermissionCodes.CrewAssign)]
+    public async Task<ActionResult<IReadOnlyList<CrewCandidate>>> CrewCandidates(CancellationToken ct) =>
+        Ok(await events.ListCrewCandidatesAsync(ct));
+}

@@ -374,6 +374,35 @@ public class CommercialEndpointTests(DatabaseApiFixture fixture)
         Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
     }
 
+    // ---- reading the confirmation (FR-13) --------------------------------------------------------
+
+    [Fact]
+    public async Task The_confirmation_can_be_read_so_an_invoice_can_be_raised_against_it()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var (_, accounts) = await _scenario.SignedInAsync(RoleNames.Accounts);
+        var eventId = await NewEventAsync(manager);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await accounts.GetAsync($"/api/events/{eventId}/confirmation")).StatusCode);
+
+        var recorded = await (await manager.PostAsJsonAsync($"/api/events/{eventId}/confirmation", PoBody("PO-5150")))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        var read = await accounts.GetFromJsonAsync<JsonElement>($"/api/events/{eventId}/confirmation");
+
+        Assert.Equal(recorded.GetProperty("confirmationId").GetGuid(), read.GetProperty("confirmationId").GetGuid());
+        Assert.Equal("PO-5150", read.GetProperty("clientPoNumber").GetString());
+    }
+
+    [Fact]
+    public async Task Crew_cannot_read_a_confirmation()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var (_, crew) = await _scenario.SignedInAsync(RoleNames.CasualCrew);
+        var eventId = await NewEventAsync(manager);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await crew.GetAsync($"/api/events/{eventId}/confirmation")).StatusCode);
+    }
+
     // ---- confirmation (FR-12) --------------------------------------------------------------------
 
     [Fact]

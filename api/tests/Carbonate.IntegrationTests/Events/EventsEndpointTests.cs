@@ -20,6 +20,59 @@ public class EventsEndpointTests(DatabaseApiFixture fixture)
         MilestoneType.Reconciliation,
     ];
 
+    // ---- lookups for the event form and crew picker ----------------------------------------------
+
+    [Fact]
+    public async Task The_event_form_can_read_clients_and_divisions()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var reference = await _scenario.ReferenceDataAsync();
+
+        var clients = await manager.GetFromJsonAsync<JsonElement>("/api/clients?pageSize=200");
+        var divisions = await manager.GetFromJsonAsync<JsonElement>("/api/divisions");
+
+        var first = clients.GetProperty("items").EnumerateArray().First();
+        Assert.False(string.IsNullOrEmpty(first.GetProperty("name").GetString()));
+        Assert.Contains(clients.GetProperty("items").EnumerateArray(), c => c.GetProperty("clientId").GetGuid() == reference.ClientId);
+        Assert.Contains(divisions.EnumerateArray(), d => d.GetProperty("divisionId").GetGuid() == reference.DivisionId);
+        Assert.False(string.IsNullOrEmpty(divisions.EnumerateArray().First().GetProperty("code").GetString()));
+    }
+
+    [Theory]
+    [InlineData(RoleNames.Accounts)]
+    [InlineData(RoleNames.CasualCrew)]
+    public async Task Clients_and_divisions_are_refused_to_roles_that_cannot_write_events(string role)
+    {
+        var (_, client) = await _scenario.SignedInAsync(role);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/clients")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/divisions")).StatusCode);
+    }
+
+    [Fact]
+    public async Task An_event_manager_can_pick_crew_without_seeing_contact_details()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var (crewUser, _) = await _scenario.SignedInAsync(RoleNames.CasualCrew);
+
+        var response = await manager.GetAsync("/api/crew/candidates");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var candidates = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var picked = candidates.EnumerateArray().Single(c => c.GetProperty("userId").GetGuid() == crewUser.UserId);
+        Assert.False(string.IsNullOrEmpty(picked.GetProperty("fullName").GetString()));
+        Assert.False(picked.TryGetProperty("email", out _));
+        Assert.False(picked.TryGetProperty("employeeNumber", out _));
+    }
+
+    [Fact]
+    public async Task Crew_cannot_list_crew_candidates()
+    {
+        var (_, crew) = await _scenario.SignedInAsync(RoleNames.CasualCrew);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await crew.GetAsync("/api/crew/candidates")).StatusCode);
+    }
+
     // ---- create ----------------------------------------------------------------------------------
 
     [Fact]

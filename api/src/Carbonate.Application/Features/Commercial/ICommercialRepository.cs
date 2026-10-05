@@ -62,6 +62,9 @@ public interface ICommercialRepository
 
     Task<bool> DocumentBelongsToEventAsync(Guid documentId, Guid eventId, CancellationToken ct);
     void AddConfirmation(EventConfirmation confirmation);
+    /// <summary>The most recent confirmation on the event, or null if it has none.</summary>
+    Task<EventConfirmation?> FindConfirmationForEventAsync(Guid eventId, CancellationToken ct);
+
     Task<EventConfirmation?> FindConfirmationAsync(Guid confirmationId, CancellationToken ct);
 
     Task<decimal?> LatestAcceptedQuoteTotalAsync(Guid eventId, CancellationToken ct);

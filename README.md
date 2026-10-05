@@ -177,7 +177,7 @@ bind, but it is the policy at handover.
 - Small PRs into `dev`, one reviewer, green CI
 - Anything touching auth, permissions, a money field or a migration needs C's approval
 - Anything touching `.github/` or infrastructure needs D's approval
-- Full rules in `docs/PROJECT_PLAN.md` section 13 and `CLAUDE.md`
+- Full rules in `docs/PROJECT_PLAN.md` section 13
 
 ## Documents
 

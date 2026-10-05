@@ -1,52 +1,64 @@
+<div align="center">
+
+<img src="docs/assets/carbonate-logo.svg" alt="Carbonate logo" width="132" />
+
 # Carbonate
 
-Event coordination and management for **Carbon Events** and Carbon Logistics Management, Cape Town.
+**Event coordination for Carbon Events and Carbon Logistics Management, Cape Town.**
 
-Task Force Carbon · INSY7315 Work Integrated Learning · The IIE
+From the confirmed booking to the final invoice, in one place, with money seen only by the people who should see it.
 
-> **B owns the content of this file. D owns the "Running it locally" and "Hosting" sections.**
-> Everything in angle brackets is a placeholder.
+[![CI](https://github.com/TwistyRabbit114/carbonate/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/TwistyRabbit114/carbonate/actions/workflows/ci.yml)
+![.NET 10](https://img.shields.io/badge/.NET-10-512BD4)
+![React](https://img.shields.io/badge/React-TypeScript-3178C6)
+![Azure](https://img.shields.io/badge/Azure-South%20Africa%20North-0078D4)
+
+[Try it live](#live-system) · [What is built](#what-is-built) · [Security](#security-in-brief) · [Run it locally](#running-it-locally) · [Hosting](#hosting)
+
+</div>
+
+Task Force Carbon · INSY7315 Work Integrated Learning · Task 2 · The IIE
 
 ---
 
 ## Overview
 
-Carbonate follows an event from the confirmed booking through costing, the recce, load-in, the event
-itself, strike, invoicing and reconciliation. It replaces the spreadsheets, chat groups and shared
-calendar that Carbon Events and Carbon Logistics Management used to run 40 to 50 costed events a
-year, with the busiest stretch in December. It has an events board, an Admin Tasks board, stock planning with
-shortfall warnings and consolidated order lists, incident reports from a phone, and a one-way push
-to the company's Google Calendar.
+Carbon Events and Carbon Logistics Management run 40 to 50 costed events a year, with the busiest stretch in
+December, on spreadsheets, chat groups and a shared calendar. Carbonate replaces that. It follows an event from
+the confirmed booking through costing, the recce, load-in, the event itself, strike, invoicing and reconciliation.
 
-About 15 people use it, in six roles: Director, Operations Manager, Event Manager, Accounts, Crew
-Lead and Casual Crew. The office roles work at a desk; crew use it on their phones, where it opens
-on their next event, their call time and the venue's access details.
+It has an events board, an Admin Tasks board, stock planning with shortfall warnings and consolidated order
+lists, incident reports from a phone, and a one-way push to the company's Google Calendar. About 15 people use
+it, in six roles: Director, Operations Manager, Event Manager, Accounts, Crew Lead and Casual Crew. Office roles
+work at a desk; crew use it on their phones, where it opens on their next event, their call time and the venue's
+access details. It uses the client's own words: pack size, recce, load-in, strike, costing.
 
-The rule the client cares about most is who sees money. Prices, costs and margins reach the
-Director, the Event Manager and Accounts only. For everyone else those fields are left out of the
-API response, not hidden on screen, and a masking test suite signs in as each role to prove it.
-Carbonate arrives set up, with roles, boards and checklist templates seeded, and uses the client's
-own words: pack size, recce, load-in, strike, costing.
+**The rule the client cares about most is who sees money.** Prices, costs and margins reach the Director, the
+Event Manager and Accounts only. For everyone else those fields are left out of the API response, not hidden on
+screen, and a masking test suite signs in as each role to prove it.
 
-Built for Task 2 by Christiaan ten Velden (front end, boards and venues), Ethan Algeo (back end,
-data and security) and Ulrich Bezuidenhout (cloud, pipeline, lifecycle, stock and incidents).
+Built for Task 2 by **Christiaan ten Velden** (front end, boards and venues), **Ethan Algeo** (back end, data and
+security) and **Ulrich Bezuidenhout** (cloud, pipeline, lifecycle, stock and incidents).
 
 ## Live system
 
 | Environment | URL | Use |
 |---|---|---|
-| Dev (the demo) | <https://carbonate-api-dev-bgahazhtddayg3c8.southafricanorth-01.azurewebsites.net> | Seeded with the demo data below. Use this one. |
+| **Dev (the demo)** | <https://carbonate-api-dev-bgahazhtddayg3c8.southafricanorth-01.azurewebsites.net> | Seeded with the demo data below. **Use this one.** |
 | Production | <https://carbonate-api-prod-ewhfe4a8chdsgnbe.southafricanorth-01.azurewebsites.net> | Deployed from `main` behind a manual approval. Deliberately has **no demo data and no accounts**. |
+
+> The database sleeps when idle to save cost, so the **first sign-in after a quiet spell can take up to a minute**.
+> Later requests answer in a few seconds.
 
 **Demo logins** (dev only, fictional people, never in production). Every account uses the same password:
 `Carbonate-Demo-2026!`
 
 | Role | Email | Sign-in |
 |---|---|---|
-| Director | `director@carbon.demo` | Password, then a two-step code (see below) |
+| Director | `director@carbon.demo` | Password, then a two-step code (below) |
 | Operations Manager | `ops@carbon.demo` | Password only |
 | Event Manager | `sarah@carbon.demo` | Password only |
-| Accounts | `accounts@carbon.demo` | Password, then a two-step code (see below) |
+| Accounts | `accounts@carbon.demo` | Password, then a two-step code (below) |
 | Crew Lead | `thabo@carbon.demo` | Password only |
 | Casual Crew | `priya@carbon.demo` | Password only |
 
@@ -61,19 +73,64 @@ CARBONATEDEMOSECRETFORTOTPAPPS23
 The app then shows the 6-digit code to type after the password. Demo secret only: it belongs to these two
 fictional accounts on the dev environment.
 
-What each role sees is the point of the demo. Sign in as the Event Manager or Accounts to see prices, costs and
-margins; as the Operations Manager or crew to see the same event with those fields absent from the response
-(not hidden on screen).
+**A good tour.** Sign in as the Event Manager (`sarah@`) and open the events board, then an event: you see its
+prices, costs and margins, its costings and its crew. Sign in as the Operations Manager or crew and open the same
+event: the money is absent from the response, not just hidden. Sign in as the Director for user administration
+and the audit trail, and as Accounts for invoices.
+
+## What is built
+
+All the **Must** requirements are built, tested and deployed. The full requirement-by-requirement table, with the
+endpoint, screen, tests and status for each, is in [`docs/traceability.md`](docs/traceability.md).
+
+| Area | What works |
+|---|---|
+| **Events** | Booking record with every field, stages (Enquired to Finished) with automatic moves, the events board, milestones that cascade when one moves, crew assignment, cost comparison with earlier events, pack size, conflict detection on every edit |
+| **Costing and invoices** | Costing lines with cost and price, margin bands, Director approval above a threshold, copy a previous costing, client confirmation by PO or deposit, invoices that carry the confirmation reference, list of finished events not yet invoiced |
+| **Boards** | Admin Tasks board where only the assigning manager can complete or return a task, per-event task boards, crew see only their own cards, WIP limits |
+| **Stock and orders** | Catalogue, requirements per event with shortfall and lead-time warnings, consolidated order list approved by a different person |
+| **Incidents, venues** | Incident reports with an asset link and photo, persistent venue records, site visits |
+| **People and security** | Sign-in with two-step codes for Director and Accounts, six roles with a permission matrix, user administration with safeguards, casual crew accounts that expire after the event, an insert-only audit trail |
+| **Calendar** | Outbound push with retry, de-duplication and redaction is built and tested; the Google connection itself is not (see below) |
+
+**Not built, and why** (also listed in the traceability file): the native calendar view (a Should, front end only),
+card attachments, the intra-day service schedule, event documents and post-event reconciliation (Shoulds), and the
+Google connect flow, which needs a Google Cloud project we do not have. Row-Level Security was a stretch goal and
+is not built; object-level access is enforced in the queries instead.
+
+## Security in brief
+
+- **Sign-in:** short-lived access token (15 minutes) plus a single-use refresh cookie that is HttpOnly,
+  SameSite=Strict and scoped to `/api/auth`. Replaying a used cookie revokes the whole chain. Passwords are hashed
+  with PBKDF2, checked against known breaches, and the account locks for 15 minutes after five wrong attempts.
+- **Two-step codes** (TOTP) for the Director and Accounts, with the secret encrypted at rest.
+- **Authorisation:** deny by default. Every endpoint declares the permission it needs, and a test fails if one
+  does not. An event you cannot see answers 404, never 403.
+- **Financial masking:** done on the server, on every response, and again as a safety net. Staff hourly rates show
+  only on your own row unless you are the Director or Accounts.
+- **Other:** rate limiting, security headers and a strict content security policy, RFC 7807 problem details,
+  input validation, and an audit trail the database refuses to alter.
+
+Measured results for each non-functional requirement are in [`docs/nfr-results.md`](docs/nfr-results.md).
 
 ## Architecture
 
 A layered monolith, as designed in the Task 1 document (section 6.2), deployed as one unit.
 
-- **API** — ASP.NET Core Web API (.NET 10), layered Controller → Service → Repository → `CemDbContext`,
-  DTOs at the boundary. Background work runs as in-process hosted services.
-- **SPA** — React and TypeScript on Vite, served from the API's `wwwroot` so it is same-origin.
-- **Data** — Azure SQL Database (serverless), Blob Storage for files, Key Vault for secrets.
-- **Region** — South Africa North.
+```
+ Browser  ──►  React + TypeScript SPA  (served from the API's wwwroot, same origin)
+                     │
+                     ▼
+        ASP.NET Core API (.NET 10)   Controller → Service → Repository → EF Core
+                     │                 Domain rules are pure and unit tested
+                     ▼
+     Azure SQL (serverless) · Blob Storage · Key Vault        South Africa North
+```
+
+- **API:** DTOs at the boundary, background work as in-process hosted services (stage moves, crew expiry,
+  calendar outbox).
+- **SPA:** React and TypeScript on Vite, so the refresh cookie works without CORS.
+- **Data:** Azure SQL Database (serverless), Blob Storage for files, Key Vault for secrets.
 
 ---
 
@@ -181,9 +238,9 @@ bind, but it is the policy at handover.
 
 ## Documents
 
-- `docs/PROJECT_PLAN.md` — the build plan, and the source of truth for agents
-- `docs/decisions.md` — every deviation from Task 1, with reasoning
-- `docs/traceability.md` — requirement → endpoint → screen → test → status
-- `docs/api/openapi.json` — the API contract
-- Task 1 document: <link>
-- Presentation slides: <link>
+- [`docs/traceability.md`](docs/traceability.md): requirement to endpoint to screen to test to status
+- [`docs/nfr-results.md`](docs/nfr-results.md): measured results for the non-functional requirements
+- [`docs/decisions.md`](docs/decisions.md): every deviation from Task 1, with reasoning
+- [`docs/hosting.md`](docs/hosting.md): hosting rationale, cost model and known limitations
+- [`docs/api/openapi.json`](docs/api/openapi.json): the API contract
+- [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md): the build plan and rules the team and its coding assistants worked to

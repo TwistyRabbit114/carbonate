@@ -6689,6 +6689,7 @@ export interface components {
         };
         AssigneesRequest: {
             userIds: null | string[];
+            rowVersion: null | string;
         };
         AuditEntryDto: {
             /** Format: int64 */

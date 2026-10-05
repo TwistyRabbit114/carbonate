@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { isApiError } from '@/api/problem';
 import { useSignedIn } from '@/auth/AuthContext';
 import { describeRoles } from '@/auth/roles';
 import { Alert } from '@/components/Alert';
 import { Button } from '@/components/Button';
+import { DescriptionEditor, formattingHint } from '@/components/DescriptionEditor';
 import { Dialog, DialogFooter } from '@/components/Dialog';
 import { Field } from '@/components/Field';
 import { useToast } from '@/components/toast/ToastContext';
+import { cardPriorities, endOfWorkingDay } from '@/features/boards/cards';
 import { sentence } from '@/lib/format';
-import { plainTextToHtml } from '@/lib/plainTextHtml';
+import { markupToHtml } from '@/lib/richText';
 import { useActiveUsers, useAssignTask } from './api';
 import styles from './TaskDialogs.module.scss';
 
@@ -19,7 +21,7 @@ import styles from './TaskDialogs.module.scss';
 //                              FORM
 //----------------------------------------------------------\\
 
-const priorities = ['Low', 'Normal', 'High', 'Critical'] as const;
+const priorities = cardPriorities;
 
 const assignSchema = z.object({
   subject: z.string().trim().min(1, 'Give the task a subject.').max(200, 'Keep the subject under 200 characters.'),
@@ -39,10 +41,6 @@ const formFieldFor: Record<string, keyof AssignValues> = {
   dueAt: 'dueDate',
   assigneeIds: 'assigneeId',
 };
-
-//TODO(plan): due dates are picked as a day and sent as 17:00 SAST, the end of the working day.
-//confirm with D whether the calendar should show admin task due dates as all-day entries instead
-const dueAtFor = (date: string) => (date ? `${date}T17:00:00+02:00` : null);
 
 function describeAssignError(error: unknown) {
   if (!isApiError(error)) return "Something went wrong, so the task wasn't assigned. Try again.";
@@ -91,9 +89,9 @@ function AssignForm({ boardId, onClose }: { boardId: string; onClose: () => void
     try {
       const card = await assign.mutateAsync({
         subject: values.subject,
-        description: plainTextToHtml(values.description),
+        description: markupToHtml(values.description),
         priority: values.priority,
-        dueAt: dueAtFor(values.dueDate),
+        dueAt: endOfWorkingDay(values.dueDate),
         assigneeIds: [values.assigneeId],
       });
       const name = people.data?.find((person) => person.userId === values.assigneeId)?.fullName;
@@ -116,7 +114,7 @@ function AssignForm({ boardId, onClose }: { boardId: string; onClose: () => void
     assigneeId === me ? "You won't be able to sign off a task you assign to yourself." : undefined;
 
   return (
-    <Dialog open title="Assign a task" onClose={onClose}>
+    <Dialog open wide title="Assign a task" onClose={onClose}>
       {serverError && (
         <div className={styles.alert}>
           <Alert tone="danger">{serverError}</Alert>
@@ -134,8 +132,16 @@ function AssignForm({ boardId, onClose }: { boardId: string; onClose: () => void
             {(field) => <input {...field} {...register('subject')} maxLength={200} autoComplete="off" />}
           </Field>
 
-          <Field label="Description" full error={errors.description?.message}>
-            {(field) => <textarea {...field} {...register('description')} rows={3} maxLength={5000} />}
+          <Field label="Description" full hint={formattingHint} error={errors.description?.message}>
+            {(field) => (
+              <Controller
+                control={control}
+                name="description"
+                render={({ field: description }) => (
+                  <DescriptionEditor {...field} {...description} maxLength={5000} />
+                )}
+              />
+            )}
           </Field>
 
           <Field label="Priority" error={errors.priority?.message}>

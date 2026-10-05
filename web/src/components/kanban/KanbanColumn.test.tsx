@@ -65,4 +65,29 @@ describe('KanbanColumn', () => {
 
     expect(screen.getByText('No events')).toBeInTheDocument();
   });
+
+  it('shows the count against a work-in-progress limit (FR-23)', () => {
+    render(
+      <KanbanColumn title="Doing" count={2} limit={3}>
+        <li>Set up the bar</li>
+      </KanbanColumn>,
+    );
+
+    expect(screen.getByText('2 / 3')).toBeInTheDocument();
+    expect(screen.getByText('2 cards, limit 3')).toBeInTheDocument();
+  });
+
+  it('says so in words when a column is over its limit, and still shows every card', () => {
+    render(
+      <KanbanColumn title="Doing" count={3} limit={2}>
+        <li>Set up the bar</li>
+        <li>Brief the bar team</li>
+        <li>Print the run sheet</li>
+      </KanbanColumn>,
+    );
+
+    expect(screen.getByText('3 / 2')).toBeInTheDocument();
+    expect(screen.getByText('3 cards, limit 2, over the limit')).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+  });
 });

@@ -77,6 +77,18 @@ export type EventListItem = Schemas['EventListItem'];
 //GET /api/events/{id}/allowed-transitions
 export type AllowedTransitions = Schemas['AllowedTransitionsResponse'];
 
+//GET /api/events/{id}. budgetAmount is a $price field the api leaves out for roles without it
+export type EventDetail = Schemas['EventDetail'];
+
+export type MilestoneType = Schemas['MilestoneType'];
+
+//GET /api/events/{id}/milestones
+export type Milestone = Schemas['MilestoneDto'];
+
+//GET /api/events/{id}/crew. hourlyRate is $staff: everyone's for director and accounts, only
+//their own for anyone else, and left out otherwise
+export type CrewAssignment = Schemas['CrewAssignmentDto'];
+
 //----------------------------------------------------------\\
 //                              BOARDS
 //----------------------------------------------------------\\

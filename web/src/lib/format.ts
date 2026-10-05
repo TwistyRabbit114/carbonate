@@ -78,3 +78,17 @@ const isoDateFormat = new Intl.DateTimeFormat('en-CA', { timeZone });
 
 //the SAST calendar day a UTC instant falls on, "2026-11-28T23:30:00Z" is the 29th in Cape Town
 export const sastCalendarDate = (iso: string) => isoDateFormat.format(new Date(iso));
+
+const clockFormat = new Intl.DateTimeFormat('en-GB', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+  timeZone,
+});
+
+//an instant as a datetime-local input wants it, in SAST: "2026-11-28T09:00"
+export const sastDateTimeInput = (iso: string) =>
+  `${sastCalendarDate(iso)}T${clockFormat.format(new Date(iso))}`;
+
+//and back again. SAST is UTC+2 all year with no daylight saving, so the offset is fixed
+export const fromSastDateTimeInput = (value: string) => new Date(`${value}:00+02:00`).toISOString();

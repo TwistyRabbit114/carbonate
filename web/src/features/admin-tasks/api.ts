@@ -3,7 +3,7 @@ import { apiFetch } from '@/api/client';
 import { queryKeys } from '@/api/queryKeys';
 import type { Board, BoardColumn, CardPriority, PagedResult, TaskCard, UserListItem } from '@/api/types';
 import { useToast } from '@/components/toast/ToastContext';
-import { describeTaskError } from './rules';
+import { describeCardError, moveCardInBoard, storeCard } from '@/features/boards/cards';
 
 //----------------------------------------------------------\\
 //                              BOARD
@@ -66,21 +66,6 @@ export type TaskStep = {
   to: BoardColumn;
 };
 
-//the cached board with one card moved to the bottom of another column
-function moveInBoard(board: Board, cardId: string, toColumnId: string): Board {
-  const card = board.columns.flatMap((column) => column.cards).find((candidate) => candidate.cardId === cardId);
-  if (!card) return board;
-
-  return {
-    ...board,
-    columns: board.columns.map((column) => {
-      const others = column.cards.filter((candidate) => candidate.cardId !== cardId);
-      if (column.columnId !== toColumnId) return { ...column, cards: others };
-      return { ...column, cards: [...others, { ...card, columnId: toColumnId }] };
-    }),
-  };
-}
-
 //the card jumps straight away (NFR-07) and goes back with a reason if the api says no (NFR-15).
 //handing in is a plain move into review. signing off has its own endpoint, so the api can check
 //it's the manager who handed the task out (FR-20)
@@ -105,17 +90,18 @@ export function useTaskStep() {
       const previous = queryClient.getQueryData<Board>(queryKeys.adminBoard);
       queryClient.setQueryData<Board>(
         queryKeys.adminBoard,
-        (board) => board && moveInBoard(board, card.cardId, to.columnId),
+        (board) => board && moveCardInBoard(board, card.cardId, to.columnId),
       );
       return { previous };
     },
 
     onError: (error, { card }, context) => {
       if (context?.previous) queryClient.setQueryData(queryKeys.adminBoard, context.previous);
-      toast.error(describeTaskError(error, card.subject));
+      toast.error(describeCardError(error, card.subject));
     },
 
-    onSuccess: (_result, { card, action }) => {
+    onSuccess: (updated, { card, action }) => {
+      storeCard(queryClient, updated);
       toast.success(
         action === 'handIn'
           ? `${card.subject} was handed in to ${card.createdBy.fullName} for review.`
@@ -123,8 +109,11 @@ export function useTaskStep() {
       );
     },
 
-    //either way, reload so the board has the server's version and fresh row versions
-    onSettled: () => void queryClient.invalidateQueries({ queryKey: queryKeys.adminBoard }),
+    //either way, reload so the board and the task's page have the server's version
+    onSettled: (_result, _error, { card }) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.adminBoard });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.card(card.cardId) });
+    },
   });
 }
 
@@ -148,7 +137,13 @@ export function useReturnTask() {
         method: 'POST',
         json: { reviewNotes, rowVersion: card.rowVersion },
       }),
-    onSuccess: (_result, { card }) => toast.success(`${card.subject} went back to Assigned with your notes.`),
-    onSettled: () => void queryClient.invalidateQueries({ queryKey: queryKeys.adminBoard }),
+    onSuccess: (updated, { card }) => {
+      storeCard(queryClient, updated);
+      toast.success(`${card.subject} went back to Assigned with your notes.`);
+    },
+    onSettled: (_result, _error, { card }) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.adminBoard });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.card(card.cardId) });
+    },
   });
 }

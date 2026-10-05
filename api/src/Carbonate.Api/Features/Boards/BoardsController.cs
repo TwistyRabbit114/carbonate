@@ -55,7 +55,7 @@ public sealed class CardsController(IBoardService boards) : ApiControllerBase
     public Task<CardDto> Update(Guid cardId, UpdateCardRequest request, CancellationToken ct) =>
         boards.UpdateCardAsync(cardId, request, ct);
 
-    /// <summary>Replaces who the card is assigned to.</summary>
+    /// <summary>Replaces who the card is assigned to. Needs the card's rowVersion, and the card gets a new one.</summary>
     [HttpPut("{cardId:guid}/assignees")]
     [HasPermission(PermissionCodes.EventViewAssigned)]
     public Task<CardDto> SetAssignees(Guid cardId, AssigneesRequest request, CancellationToken ct) =>

@@ -1,0 +1,26 @@
+//paragraphs and lists spaced like the rest of the page, with nothing after the last one so the
+//panel's own padding decides the gap
+.description {
+  overflow-wrap: anywhere;
+
+  :where(p, ul, ol) {
+    margin: 0 0 var(--space-2);
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  :where(ul, ol) {
+    padding-left: 1.25rem;
+  }
+
+  li + li {
+    margin-top: 0.125rem;
+  }
+
+  //underlined, so a link is never told apart by colour alone
+  a {
+    text-decoration: underline;
+  }
+}

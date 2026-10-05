@@ -8,9 +8,9 @@ import { Alert } from '@/components/Alert';
 import { Button } from '@/components/Button';
 import { Dialog, DialogFooter } from '@/components/Dialog';
 import { Field } from '@/components/Field';
+import { describeCardError } from '@/features/boards/cards';
 import { formatList } from '@/lib/format';
 import { useReturnTask } from './api';
-import { describeTaskError } from './rules';
 import styles from './TaskDialogs.module.scss';
 
 //----------------------------------------------------------\\
@@ -60,7 +60,7 @@ function ReturnForm({ card, onClose }: { card: TaskCard; onClose: () => void }) 
     } catch (error) {
       const fieldError = isApiError(error) && error.status === 400 ? error.problem.errors?.reviewNotes?.[0] : undefined;
       if (fieldError) setError('reviewNotes', { message: fieldError });
-      else setServerError(describeTaskError(error, card.subject));
+      else setServerError(describeCardError(error, card.subject));
     }
   }
 

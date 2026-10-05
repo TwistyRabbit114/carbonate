@@ -84,8 +84,9 @@ public record UpdateCardRequest(
     Guid? MilestoneId,
     string? RowVersion);
 
-//the full set of people on the card, replacing whoever was there
-public record AssigneesRequest(IReadOnlyList<Guid>? UserIds);
+//the full set of people on the card, replacing whoever was there. rowVersion as for any other edit,
+//so two people reassigning the same card can't quietly undo each other (NFR-15)
+public record AssigneesRequest(IReadOnlyList<Guid>? UserIds, string? RowVersion);
 
 //----------------------------------------------------------\\
 //                              ADMIN REVIEW (FR-20)
@@ -145,7 +146,7 @@ public interface IBoardRepository
 
     /// <summary>
     /// Saves, checking the card still has <paramref name="expectedRowVersion"/>. False when someone
-    /// changed it in the meantime.
+    /// changed it in the meantime. The card always gets a new version, even when only its assignees changed.
     /// </summary>
     Task<bool> TrySaveCardAsync(TaskCard card, byte[] expectedRowVersion, CancellationToken ct);
 

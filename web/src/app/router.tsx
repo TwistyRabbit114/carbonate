@@ -23,7 +23,10 @@ const MfaEnrolPage = lazy(() => import('@/auth/MfaEnrolPage'));
 const EventsBoardPage = lazy(() => import('@/features/events/EventsBoardPage'));
 const EventFormPage = lazy(() => import('@/features/events/EventFormPage'));
 const EventDetailPage = lazy(() => import('@/features/events/EventDetailPage'));
+const EventTaskBoardPage = lazy(() => import('@/features/event-board/EventTaskBoardPage'));
+const EventCardDetailPage = lazy(() => import('@/features/event-board/EventCardDetailPage'));
 const AdminTasksPage = lazy(() => import('@/features/admin-tasks/AdminTasksPage'));
+const AdminTaskDetailPage = lazy(() => import('@/features/admin-tasks/AdminTaskDetailPage'));
 const StockPage = lazy(() => import('@/features/stock/StockPage'));
 const FinancePage = lazy(() => import('@/features/finance/FinancePage'));
 const CalendarPage = lazy(() => import('@/features/calendar/CalendarPage'));
@@ -71,7 +74,13 @@ export const routes: RouteObject[] = [
               { path: 'events', element: guard(access.events, <EventsBoardPage />) },
               { path: 'events/new', element: guard(access.newEvent, <EventFormPage />) },
               { path: 'events/:eventId', element: guard(access.eventDetail, <EventDetailPage />) },
+              { path: 'events/:eventId/board', element: guard(access.eventDetail, <EventTaskBoardPage />) },
+              {
+                path: 'events/:eventId/tasks/:cardId',
+                element: guard(access.eventDetail, <EventCardDetailPage />),
+              },
               { path: 'admin-tasks', element: guard(access.adminTasks, <AdminTasksPage />) },
+              { path: 'admin-tasks/:cardId', element: guard(access.adminTasks, <AdminTaskDetailPage />) },
               { path: 'stock', element: guard(access.stock, <StockPage />) },
               { path: 'finance', element: guard(access.finance, <FinancePage />) },
               { path: 'calendar', element: guard(access.calendar, <CalendarPage />) },

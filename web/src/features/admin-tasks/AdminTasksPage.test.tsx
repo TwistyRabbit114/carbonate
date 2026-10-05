@@ -116,6 +116,15 @@ describe('the admin tasks board', () => {
     expect(column('Complete').getByText(/^Signed off /)).toBeInTheDocument();
   });
 
+  it("links each card to the task's own page", async () => {
+    openAdminBoard();
+
+    expect(await screen.findByRole('link', { name: iceMachine })).toHaveAttribute(
+      'href',
+      '/admin-tasks/ad000000-0000-0000-0000-000000000003',
+    );
+  });
+
   it('gives the Assign task button to the director and ops, not the event manager', async () => {
     openAdminBoard({ me: users.eventManager });
 

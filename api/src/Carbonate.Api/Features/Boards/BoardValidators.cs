@@ -93,5 +93,10 @@ internal sealed class AssigneesRequestValidator : AbstractValidator<AssigneesReq
         RuleFor(x => x.UserIds).Must(ids => ids is null || ids.Count <= CardRules.MaxAssignees)
             .WithMessage($"A card can have at most {CardRules.MaxAssignees} people on it.");
         RuleForEach(x => x.UserIds).NotEmpty();
+        RuleFor(x => x.RowVersion)
+            .NotEmpty().WithMessage("Send the card's rowVersion, so a change made meanwhile isn't overwritten.");
+        RuleFor(x => x.RowVersion)
+            .Must(CardRules.BeBase64).When(x => !string.IsNullOrEmpty(x.RowVersion))
+            .WithMessage("rowVersion isn't valid.");
     }
 }

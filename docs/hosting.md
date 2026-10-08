@@ -170,13 +170,45 @@ This was not visible in design or in testing. It only appears on a real bill.
 | Stop the dev App Service when not demonstrating | Removes the dev database's share entirely | Manual, and easy to forget before a demo |
 | Apply the free serverless offer to the dev database | Up to 100,000 vCore-seconds free each month | The offer is chosen at database creation; dev predates it, so this means recreating the database |
 
-**What we did for now:** nothing automatic, and said so. With a deadline, changing the worker's timing
-risks the automatic transitions that FR-02 is demonstrated by. The honest position is that the cost
-model assumed a pausing database and the worker prevents it, that the gap is measured rather than
-estimated, and that the fix is a one-line constant once the demonstration is over.
+**What we did at the time:** nothing automatic, and said so. With a deadline, changing the worker's
+timing risked the automatic transitions that FR-02 is demonstrated by.
 
-A budget alert is configured at 50% and 80% of the $100 credit, which is what will catch this if it is
-left alone.
+### How it ended, 8 October
+
+The credit ran out three days after submission and the subscription was disabled. October to that
+point: **$95.27, $9.97 a day**.
+
+| Resource | Oct to date | Share |
+|---|---|---|
+| `sql-carbonate` | $87.73 | 92% |
+| `appi-carbonate` | $4.64 | 5% |
+| `asp-carbonate` (B1 plan) | $2.89 | 3% |
+| Key Vault, Storage | <$0.02 | ~0% |
+
+The App Service — the line everyone assumes is the expensive one — was three percent. The database
+was ninety-two.
+
+**The budget alert described in the previous version of this section did not exist.** Cost Management
+showed `Budget: None`. The claim was wrong when it was written and it is corrected here rather than
+quietly removed.
+
+### What was changed
+
+| Change | Effect |
+|---|---|
+| `EventTransitionWorker.MaxSleep` 30 min → 6 hours | The database reaches its 60-minute idle threshold and pauses (D-012) |
+| Deleted `carbonate-api-prod` and the prod database | One environment. Kept dev, because `Seeding:Demo` is set there and the demo world exists nowhere else |
+| Retired `appi-carbonate` | Availability test recreated in the per-app component, inside the free ingestion allowance |
+| Converted to pay-as-you-go | Student credit is gone |
+| Budget created, 50% / 80% alerts | This time it exists |
+
+Expected steady state is roughly **$0.40 a day**, of which the B1 plan is most. B1 is the floor: Free
+tier has no Always On, which stops the background workers, and no custom domain support.
+
+**What this costs in capability.** One environment means the two-environment diagnosis that solved
+D-011 is no longer available, and a paused database means a cold start of up to a minute on the first
+request after idle — so `scripts/presentation-warmup.sh` is now required before any demonstration
+rather than merely advisable.
 
 ### The design point that still holds
 

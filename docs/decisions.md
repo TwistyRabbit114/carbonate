@@ -155,17 +155,40 @@ is correct, the queries are efficient, the design is the one the plan asked for.
 bill, which is the first time anyone looks at the interaction between a sleep interval and an
 auto-pause delay.
 
-**Decision: leave it, and document it.** With the submission due, changing the worker's timing risks
-the automatic transitions that FR-02 is demonstrated by — an event becoming due while the worker sleeps
-longer would not move. The options and their trade-offs are written up in `docs/hosting.md` section 3.
-The fix after the demonstration is a one-line constant, or a signal from the event-create path.
+**Decision at submission: leave it, and document it.** With the submission due, changing the worker's
+timing risked the automatic transitions that FR-02 is demonstrated by. The options and their
+trade-offs are written up in `docs/hosting.md` section 3.
 
-**Trade-off accepted.** The project runs over its cost estimate until that change is made. The budget
-alert at 50% and 80% of the $100 credit is what catches it.
+### Update, 8 Oct 2026 — it ran out of credit
 
-**Task 3 report.** Worth a section of its own. The cost argument in Task 1 section 5 rests on
-auto-pause, and this is a concrete case of an implementation detail quietly invalidating an
-architectural assumption — found by looking at the bill rather than the code.
+The $100 Azure for Students credit was exhausted three days after submission and the subscription was
+disabled. October's bill to that point was **$95.27, averaging $9.97 a day**, of which **$87.73 — 92%
+— was the SQL server**. The App Service plan was $2.89.
+
+**The budget alert this record relied on did not exist.** Cost Management showed `Budget: None`. It
+was either never created or created at a scope nobody was watching. That is the second failure here
+and the more avoidable one: the first was a design interaction nobody could see, the second was a
+control we said we had and did not.
+
+**What changed.** `MaxSleep` is now **6 hours**. That clears the 60-minute auto-pause threshold, so
+the database idles and pauses between events.
+
+**The trade-off is narrower than first described.** `SleepUntil` computes the wait from the next due
+event and only applies the cap when nothing is due inside it, so an event already scheduled still
+transitions at its own time. What the longer cap delays is **noticing an event created or rescheduled
+after the worker went to sleep** — by up to 6 hours. For events planned weeks ahead that is no
+practical change. The proper fix, if responsiveness ever matters, is signalling the worker from the
+event-create path.
+
+**Also done:** dropped to a single environment (`carbonate-api-dev`, which holds the demo data —
+`Seeding:Demo` was never set on prod), retired the standalone `appi-carbonate`, moved to
+pay-as-you-go, and created a real budget with alerts at 50% and 80%.
+
+**Task 3 report.** Worth a section of its own, and it now has an ending. The cost argument in Task 1
+section 5 rests on auto-pause; a 30-minute sleep cap in one background worker quietly invalidated it,
+and the system exhausted a $100 credit in under two weeks. It was invisible in design, code review
+and testing, because nothing about the worker is wrong — it only appears where a sleep interval meets
+an auto-pause delay, which is to say on a bill. The fix was one constant.
 
 ---
 

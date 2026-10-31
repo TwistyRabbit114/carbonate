@@ -147,10 +147,26 @@ internal static class OpenApiSetup
         return services;
     }
 
+    /// <summary>
+    /// Serves the OpenAPI document and the Swagger explorer when running locally, or when
+    /// <c>Api:ExposeOpenApi</c> is set.
+    /// </summary>
+    /// <remarks>
+    /// The flag exists so the hosted dev environment can show the explorer without running as
+    /// <c>Development</c>. Tying the two together meant dev also got the developer exception page,
+    /// which returns stack traces, internal paths and the caller's address on any unhandled error,
+    /// and it suppressed HSTS, which an OWASP ZAP baseline scan picked up on 31 Oct 2026. One
+    /// setting was controlling three unrelated things (decisions D-011 and D-015).
+    ///
+    /// Never set in production. The document lists the whole API surface and is served anonymously,
+    /// because the explorer cannot render without reading it.
+    /// </remarks>
     public static WebApplication UseCarbonateOpenApi(this WebApplication app)
     {
-        // The contract and the explorer are for development only (plan section 5, T1 section 7.3).
-        if (!app.Environment.IsDevelopment())
+        var exposed = app.Environment.IsDevelopment()
+            || app.Configuration.GetValue<bool>("Api:ExposeOpenApi");
+
+        if (!exposed)
         {
             return app;
         }

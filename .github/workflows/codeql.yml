@@ -1,0 +1,59 @@
+name: CodeQL
+
+# Static analysis for both languages in the repository. Task 2 feedback asked for more
+# automation around version control; dependency scanning (in ci.yml) catches a vulnerable
+# package, and this catches a vulnerable pattern we wrote ourselves.
+#
+# Runs on pull requests so a finding is attached to the change that introduced it, and on a
+# weekly schedule so a newly published rule is applied to code that has not changed.
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev]
+  schedule:
+    # 03:00 UTC on Mondays, which is outside any demonstration window.
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyse:
+    name: Analyse ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: csharp
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # build-mode none uses CodeQL's own extractor rather than watching a real build.
+      # The alternative is building the solution a second time on every pull request,
+      # which the API job already does, and this is a 15-user system on free runners.
+      - name: Initialise CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-extended
+
+      - name: Analyse
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}

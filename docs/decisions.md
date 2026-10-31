@@ -7,6 +7,47 @@ Format: date · decision · why · who · what changes in the Task 3 report.
 
 ---
 
+## D-015 — The hosted dev environment stops running as `Development`
+
+**31 Oct 2026 · Owner: D**
+
+An OWASP ZAP baseline scan against hosted dev (feedback F-04) returned no failures, 61 passing
+rules and 7 warnings. The only warning that was not informational was **Strict-Transport-Security
+not set**, on four responses.
+
+**Why it was missing.** `Program.cs` calls `UseHsts()` only when the environment is not
+`Development`, and `carbonate-api-dev` was running with `ASPNETCORE_ENVIRONMENT=Development`. That
+setting was introduced in D-011 for one reason only: to make the Swagger explorer reachable while
+there was no SPA to demonstrate.
+
+**The real problem is that one setting controlled three unrelated things.** Running as
+`Development` also enabled the developer exception page, which returns a stack trace, internal file
+paths, request headers and the caller's address on any unhandled error, and it served
+`/openapi/v1.json` anonymously. D-011 recorded both of those as accepted for a demonstration
+environment holding fictional data. The ZAP finding showed a third consequence nobody had
+connected to it.
+
+**Decision.** Separate the explorer from the environment name. `UseCarbonateOpenApi` now serves the
+document and the Swagger UI when the environment is `Development` **or** when
+`Api:ExposeOpenApi` is set. `ASPNETCORE_ENVIRONMENT=Development` is removed from the dev App
+Service and `Api:ExposeOpenApi=true` is set in its place.
+
+Three things change at once: HSTS is sent, the developer exception page is gone and unhandled errors
+return the ordinary problem-details response, and the explorer still works for demonstrations.
+
+**Never set in production.** The document lists the whole API surface and is served anonymously,
+because the explorer cannot render without reading it.
+
+**Why this is worth recording.** The fault was not the Swagger decision. It was binding a
+capability we wanted to a framework switch that carries unrelated behaviour, which is the kind of
+coupling that is invisible until something external looks at the running system. A scanner found in
+one pass what three code reviews had not.
+
+**Task 3 report.** Report section 7 (ZAP result and triage), section 6.3 (environment
+configuration) and the feedback log against F-04.
+
+---
+
 ## D-014 — The content security policy allows `data:` for fonts
 
 **5 Oct 2026 · Owner: C**

@@ -1,0 +1,74 @@
+name: ZAP baseline scan
+
+# OWASP ZAP baseline scan against the hosted dev environment (Task 2 feedback F-04).
+#
+# Baseline, not full: ZAP spiders the site and analyses the traffic passively. It sends no
+# attack payloads, so it is safe to run against a live environment. A full active scan would
+# attempt injection and is not run against shared infrastructure.
+#
+# Manual by default. The weekly schedule catches a regression in a security header or a
+# cookie attribute that nobody would otherwise look for.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 04:00 UTC on Mondays, after the scheduled tests and CodeQL.
+    - cron: '0 4 * * 1'
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: zap-baseline
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    name: Baseline scan against dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: vars.DEV_URL != ''
+    steps:
+      - uses: actions/checkout@v7
+
+      # The database auto-pauses (D-012), so the first request can take up to a minute.
+      # Without this the spider starts against a sleeping environment and finds nothing.
+      - name: Wake the environment
+        run: |
+          echo "Warming ${{ vars.DEV_URL }} ..."
+          for i in $(seq 1 18); do
+            code=$(curl -s -m 20 -o /dev/null -w "%{http_code}" "${{ vars.DEV_URL }}/health" || echo "000")
+            if [ "$code" = "200" ]; then
+              echo "Awake after $(( i * 10 ))s."
+              break
+            fi
+            echo "Attempt $i: $code"
+            sleep 10
+          done
+          # One authenticated-looking request so the database itself is resumed, not just the app.
+          curl -s -m 60 -o /dev/null "${{ vars.DEV_URL }}/api/auth/login" -X POST \
+            -H "Content-Type: application/json" -d '{"email":"warm@example.invalid","password":"x"}' || true
+
+      - name: ZAP baseline
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: ${{ vars.DEV_URL }}
+          # -I reports findings without failing the job. The scan is evidence for the report,
+          # and a warning here should start a conversation rather than block a merge.
+          cmd_options: '-I -j'
+          # Findings are triaged by hand into report section 7, so an auto-filed issue would
+          # duplicate that and clutter the tracker.
+          allow_issue_writing: false
+          artifact_name: zap-baseline-report
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: zap-baseline-report-files
+          path: |
+            report_html.html
+            report_md.md
+            report_json.json
+          if-no-files-found: warn

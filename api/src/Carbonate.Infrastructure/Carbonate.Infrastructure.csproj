@@ -23,6 +23,12 @@
     <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="10.0.12" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
     <PackageReference Include="Otp.NET" Version="1.4.1" />
+    <!-- Not used directly. Pinned because it arrives transitively at 9.0.11, which carries
+         CVE-2026-84008 (GHSA-846f-f764-76mx): SignedCms.CheckSignature reparses attacker-controlled
+         X.509 data, so an unauthenticated caller can exhaust CPU. 10.0.13 is the patched release on
+         the 10.x line and matches the rest of the solution. Lifting it here also lifts
+         Carbonate.Api and both test projects, which reference this one. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -34,6 +34,7 @@ const FinancePage = lazy(() => import('@/features/finance/FinancePage'));
 const QuotePage = lazy(() => import('@/features/finance/QuotePage'));
 const CalendarPage = lazy(() => import('@/features/calendar/CalendarPage'));
 const SettingsPage = lazy(() => import('@/features/settings/SettingsPage'));
+const AccountPage = lazy(() => import('@/features/account/AccountPage'));
 const MyEventsPage = lazy(() => import('@/features/crew/MyEventsPage'));
 const CrewEventPage = lazy(() => import('@/features/crew/CrewEventPage'));
 const MyTasksPage = lazy(() => import('@/features/crew/MyTasksPage'));
@@ -98,6 +99,7 @@ export const routes: RouteObject[] = [
               { path: 'quotes/:quoteId', element: guard(access.quotes, <QuotePage />) },
               { path: 'calendar', element: guard(access.calendar, <CalendarPage />) },
               { path: 'settings', element: guard(access.settings, <SettingsPage />) },
+              { path: 'account', element: <AccountPage /> }, //everyone's own, so no guard
               { path: 'my/events', element: guard(access.myEvents, <MyEventsPage />) },
               { path: 'my/events/:eventId', element: guard(access.myEvents, <CrewEventPage />) },
               { path: 'my/tasks', element: guard(access.myTasks, <MyTasksPage />) },

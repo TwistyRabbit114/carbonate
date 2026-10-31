@@ -91,6 +91,13 @@
   &:hover {
     background: var(--wash);
   }
+
+  //a full 44px target on phones, pulled into the padding so the toast doesn't grow (NFR-24)
+  @include phone {
+    width: var(--touch-target);
+    height: var(--touch-target);
+    margin: -0.75rem -0.5rem -0.75rem 0;
+  }
 }
 
 @keyframes slide-in {

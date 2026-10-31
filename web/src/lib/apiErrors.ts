@@ -5,7 +5,8 @@ import { isApiError } from '@/api/problem';
 
 //a 400's field errors put against the form's own fields. fieldFor maps the api's key (which can
 //be "lines[2].quantity") to a field, or to nothing when the form has no such field. true if any
-//landed, so the form knows whether it still needs a message of its own
+//landed, so the form knows whether it still needs a message of its own. focus goes to the first
+//one, the same as the form's own checks, so a screen reader reads out what was refused
 export function applyFieldErrors<T extends FieldValues>(
   error: unknown,
   setError: UseFormSetError<T>,
@@ -16,7 +17,7 @@ export function applyFieldErrors<T extends FieldValues>(
   for (const [key, messages] of Object.entries(error.problem.errors ?? {})) {
     const field = fieldFor(key);
     if (field && messages[0]) {
-      setError(field, { message: messages[0] });
+      setError(field, { message: messages[0] }, { shouldFocus: !applied });
       applied = true;
     }
   }

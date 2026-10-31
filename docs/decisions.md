@@ -7,6 +7,44 @@ Format: date · decision · why · who · what changes in the Task 3 report.
 
 ---
 
+## D-016 — One hosted environment, not two
+
+**31 Oct 2026 · Owner: D**
+
+The Task 3 plan section 5.3 expects production and dev both healthy as evidence for the deployment
+and CI/CD marks. **Production is not being restored before submission.** This records why, because
+an absence with a reason is a decision and an absence without one is an oversight.
+
+**What happened.** The production App Service and its database were deleted on 8 Oct 2026 when the
+Azure for Students credit was exhausted and the subscription was disabled (D-012, hosting.md
+section 3). Deleting them was the largest single cost reduction available while restoring service on
+pay-as-you-go.
+
+**Why it was not restored.** Recreating it was reconsidered on 31 Oct. The App Service plan is
+already paid for, so a second application on it adds no compute charge, and the first assessment was
+that restoration would be close to free. **That assessment was wrong**, for the same reason D-012's
+first fix was wrong: it did not price an awake hour. Production would run the same application and
+therefore the same background services, so its database would be woken on the same schedule as dev's.
+At $0.35 an awake hour that is roughly **$32 a month for an environment with no users and no data**,
+on a subscription the team funds personally.
+
+**What is kept.** `cd-prod.yml`, the `production` GitHub environment and its required reviewer all
+remain, and the Actions history holds successful production deployments with recorded approvals from
+before 8 Oct. The approval gate is a mechanism that has been exercised, not a design intention.
+
+**What is lost.** No pre-production verification; no clean environment; and most significantly, no
+comparison diagnosis. The fault in D-011 was only isolable because production ran the identical
+artefact and was healthy, which proved the code innocent in a single request.
+
+**Restoration** is a provisioning exercise rather than a code change: create the App Service and
+database, grant the managed identity its roles, set the repository variables and the publish profile
+secret, and re-enable the workflow. If the database is recreated, the Azure SQL free offer should be
+selected at creation (section 9.5), which would cover its compute entirely.
+
+**Task 3 report.** Sections 4, 6.3.5, 8.4 and 9.
+
+---
+
 ## D-015 — The hosted dev environment stops running as `Development`
 
 **31 Oct 2026 · Owner: D**

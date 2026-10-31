@@ -1,4 +1,6 @@
 /// <reference types="vitest/config" />
+//the build and test tools, kept in step with package.json (exact ones are in package-lock):
+//vite 8, typescript 6, vitest 5, msw 2, sass 1, node 24 in ci
 import { rmSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 import react from '@vitejs/plugin-react';

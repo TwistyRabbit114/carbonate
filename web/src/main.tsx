@@ -1,3 +1,5 @@
+//the versions the app is built on, kept in step with package.json (exact ones are in package-lock):
+//react 19, react router 8, tanstack query 5, react-hook-form 7, zod 4, dnd-kit 6, dompurify 3
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';

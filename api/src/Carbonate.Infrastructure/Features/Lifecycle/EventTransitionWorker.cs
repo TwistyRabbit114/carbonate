@@ -23,7 +23,7 @@ namespace Carbonate.Infrastructure.Features.Lifecycle;
 /// (decision D-012). The cap only governs the wait when nothing is due within it; an event already
 /// scheduled still transitions at its own time, because the wait is computed from the next due
 /// event. What the cap delays is noticing an event created or rescheduled after the worker went to
-/// sleep, by at most 6 hours.
+/// sleep, by at most the cap.
 /// </para>
 /// <para>Needs <b>Always On</b> on the App Service, which is why the plan is B1 and not F1.</para>
 /// </remarks>
@@ -34,7 +34,11 @@ internal sealed class EventTransitionWorker(
 {
     // Must stay comfortably above Azure SQL serverless's 60-minute auto-pause threshold, or the
     // database never idles long enough to pause. See the remarks above and D-012.
-    private static readonly TimeSpan MaxSleep = TimeSpan.FromHours(6);
+    //
+    // Every wake costs a full awake hour, because the pause delay restarts from the last query:
+    // 0.5 vCores for 3600 seconds at $0.000194 per vCore-second is about $0.35. Twelve hours means
+    // two wakes a day rather than four, which halves the floor.
+    private static readonly TimeSpan MaxSleep = TimeSpan.FromHours(12);
     private static readonly TimeSpan MinSleep = TimeSpan.FromSeconds(5);
 
     /// <summary>How long to wait after a failure, so a database that is down is not hammered.</summary>

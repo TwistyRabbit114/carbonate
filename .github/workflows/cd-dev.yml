@@ -105,3 +105,41 @@ jobs:
           done
           echo "::error::/health never returned 200 within six minutes"
           exit 1
+
+      # /health proves the process is listening. It deliberately does not touch the database
+      # (D-001), so on its own it cannot tell a working deployment from one that cannot reach
+      # SQL or read its secrets. One sign-in exercises the database, the Key Vault references
+      # and the token pipeline, which is the smallest request that proves the deploy is real.
+      - name: Sign-in check
+        env:
+          EMAIL: ${{ vars.SMOKE_TEST_EMAIL }}
+          PASSWORD: ${{ secrets.SMOKE_TEST_PASSWORD }}
+        run: |
+          set -e
+          if [ -z "$EMAIL" ] || [ -z "$PASSWORD" ]; then
+            echo "::notice::SMOKE_TEST_EMAIL or SMOKE_TEST_PASSWORD not set - sign-in check skipped"
+            exit 0
+          fi
+
+          echo "Signing in to ${{ vars.DEV_URL }} ..."
+          # Two attempts: the first request after the health check can still lose a race with
+          # the startup seeder on a database that has just resumed.
+          for i in 1 2; do
+            code=$(curl -s -m 60 -o response.json -w "%{http_code}" \
+              -X POST "${{ vars.DEV_URL }}/api/auth/login" \
+              -H "Content-Type: application/json" \
+              -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}" || echo "000")
+
+            if [ "$code" = "200" ] && grep -q '"accessToken"' response.json; then
+              echo "Sign-in succeeded: the database, configuration and token pipeline are working."
+              rm -f response.json
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $code - retrying in 15s"
+            sleep 15
+          done
+
+          # Never print the response body: it would be a token in a public log.
+          echo "::error::Sign-in failed after deployment (last status $code)"
+          rm -f response.json
+          exit 1

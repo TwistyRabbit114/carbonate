@@ -1,0 +1,121 @@
+name: Scheduled full test run
+
+# ci.yml runs on a change. This runs when nothing has changed, which is the point: it catches
+# breakage that arrives from outside the repository - a new advisory against a package we
+# already use, a runner image update, a base image change, an expired credential.
+#
+# It also runs the performance tests that ci.yml excludes for time, so NFR-08 and NFR-09 are
+# re-measured weekly rather than only when someone remembers.
+
+on:
+  schedule:
+    # 02:00 UTC on Mondays. Before the CodeQL run, and well outside any demonstration.
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '24.x'
+
+jobs:
+  api:
+    name: API, every test including performance
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore and build
+        run: |
+          dotnet restore api/Carbonate.sln
+          dotnet build api/Carbonate.sln --no-restore --configuration Release
+
+      - name: Unit tests
+        run: >
+          dotnet test api/tests/Carbonate.UnitTests/Carbonate.UnitTests.csproj
+          --no-build --configuration Release
+          --logger "trx;LogFileName=unit.trx" --results-directory TestResults
+
+      # No filter, unlike ci.yml: the masking suite and the performance tests both run here.
+      - name: Integration tests, unfiltered
+        run: >
+          dotnet test api/tests/Carbonate.IntegrationTests/Carbonate.IntegrationTests.csproj
+          --no-build --configuration Release
+          --logger "trx;LogFileName=integration.trx" --results-directory TestResults
+
+      - name: Dependency vulnerability scan
+        run: |
+          dotnet list api/Carbonate.sln package --vulnerable --include-transitive 2>&1 | tee vulnerable.txt
+          if grep -Eq '(Critical|High)' vulnerable.txt; then
+            echo "::error::High or critical vulnerability found in NuGet dependencies"
+            exit 1
+          fi
+          echo "No high or critical NuGet vulnerabilities."
+
+      - name: Publish results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: scheduled-api-results
+          path: TestResults/*.trx
+          if-no-files-found: ignore
+
+  web:
+    name: Web, every test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        working-directory: web
+        run: npm ci
+
+      - name: Test
+        working-directory: web
+        run: npm run test -- --run
+
+      - name: Build
+        working-directory: web
+        run: npm run build
+
+      - name: Dependency audit
+        working-directory: web
+        run: npm audit --audit-level=high
+
+  environment:
+    name: Dev environment still healthy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: vars.DEV_URL != ''
+    steps:
+      # Nothing has been deployed, so a failure here means the environment degraded on its own:
+      # a lapsed payment method, an expired secret, a stopped App Service. Those are exactly the
+      # failures nobody notices until a demonstration.
+      - name: Health
+        run: |
+          set -e
+          for i in $(seq 1 18); do
+            code=$(curl -s -m 20 -o /dev/null -w "%{http_code}" "${{ vars.DEV_URL }}/health" || echo "000")
+            if [ "$code" = "200" ]; then
+              echo "Dev healthy after $(( i * 10 ))s."
+              exit 0
+            fi
+            echo "Attempt $i: $code - retrying in 10s"
+            sleep 10
+          done
+          echo "::error::Dev /health never returned 200 within three minutes"
+          exit 1

@@ -1,0 +1,290 @@
+@use '@/styles/mixins' as *;
+
+//----------------------------------------------------------\\
+//                              TOOLBAR
+//----------------------------------------------------------\\
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.views,
+.steps {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.alert {
+  margin-bottom: var(--space-3);
+}
+
+.quiet {
+  margin: 0 0 var(--space-3);
+  color: var(--muted);
+}
+
+//----------------------------------------------------------\\
+//                              MONTH GRID
+//----------------------------------------------------------\\
+
+//every column the same width whatever's in it, like a paper calendar
+.grid {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+
+  th {
+    padding: var(--space-2) var(--space-1);
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    color: var(--muted);
+    font-size: var(--fs-2xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+}
+
+.cell {
+  position: relative;
+  height: 7.5rem;
+  padding: var(--space-1);
+  vertical-align: top;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+
+  &:last-child {
+    border-right: 0;
+  }
+
+  tr:last-child & {
+    border-bottom: 0;
+  }
+}
+
+//days from the months either side are there to square the grid off, so they step back
+.outside {
+  background: var(--paper);
+
+  .day {
+    color: var(--muted);
+  }
+}
+
+//the chosen day: an inset ring so the cell doesn't grow
+.selected {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.day {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--accent-tint);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+.today {
+  background: var(--accent-strong);
+  color: #fff;
+
+  &:hover {
+    background: var(--accent-strong);
+  }
+}
+
+.chips {
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+//the prototype's chips: green for events, amber for milestones. the text still says which is
+//which, so the colour is never the only clue. 24px tall, wcag's smallest target size
+.chip {
+  display: block;
+  margin-bottom: 2px;
+  padding: 2px 6px;
+  line-height: 1.25rem;
+  overflow: hidden;
+  border-radius: 4px;
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-decoration: none;
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+.event {
+  background: var(--accent-tint);
+  color: var(--accent-strong);
+}
+
+.milestone {
+  background: var(--warning-tint);
+  color: var(--warning);
+}
+
+.more {
+  min-height: 1.5rem;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--ink);
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+//only on a phone, where the chips don't fit
+.count {
+  display: none;
+}
+
+//on a phone each day is one 44px button with a count, and the chosen day's list sits under the
+//grid instead of chips in the cells (NFR-23, NFR-24)
+@include phone {
+  .cell {
+    height: auto;
+    padding: 0;
+  }
+
+  .day {
+    width: 100%;
+    min-height: var(--touch-target);
+    border-radius: 0;
+  }
+
+  .chips,
+  .more {
+    display: none;
+  }
+
+  .count {
+    display: block;
+    position: absolute;
+    right: 3px;
+    bottom: 2px;
+    color: var(--accent-strong);
+    font-size: var(--fs-2xs);
+    font-weight: 700;
+    pointer-events: none;
+  }
+
+  .today + .count {
+    color: #fff;
+  }
+}
+
+//----------------------------------------------------------\\
+//                              DAY LISTS
+//----------------------------------------------------------\\
+
+.agenda {
+  margin-top: var(--space-4);
+}
+
+.dayName {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  font-size: var(--fs-base);
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+.items {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+//a full touch target per row, so the lists work with a thumb
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-target);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  text-decoration: none;
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+.time {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+//----------------------------------------------------------\\
+//                              WEEK
+//----------------------------------------------------------\\
+
+.week {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.weekDay {
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+
+  .quiet {
+    margin: 0;
+  }
+}
+
+.isToday {
+  border-color: var(--accent);
+}

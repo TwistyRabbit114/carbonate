@@ -187,8 +187,17 @@ export const eventHandlers = [
     const who = caller(request);
     if (!who) return unauthorised();
 
-    const visible = mock.events.filter((event) => event.isActive && canSeeEvent(who, event.eventId));
-    const boardOnly = new URL(request.url).searchParams.get('board') === 'true';
+    //from and to filter on the event's date, as the real api does
+    const query = new URL(request.url).searchParams;
+    const [from, to] = [query.get('from'), query.get('to')];
+    const visible = mock.events.filter(
+      (event) =>
+        event.isActive &&
+        canSeeEvent(who, event.eventId) &&
+        (!from || event.eventDate >= from) &&
+        (!to || event.eventDate <= to),
+    );
+    const boardOnly = query.get('board') === 'true';
     const items = (
       boardOnly
         ? visible.filter((event) => event.status !== 'Enquired' && event.status !== 'Cancelled')

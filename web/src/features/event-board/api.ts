@@ -25,13 +25,18 @@ export function useEventSummary(eventId: string) {
   return useQuery(eventQuery(eventId));
 }
 
-//for "2h before load-in" on cards, and to link a card to a milestone
-export function useMilestones(eventId: string) {
-  return useQuery({
+//one event's milestones. shared with the calendar, so both read the same cache
+export function milestonesQuery(eventId: string) {
+  return {
     queryKey: queryKeys.milestones(eventId),
     queryFn: () => apiFetch<Milestone[]>(`/events/${eventId}/milestones`),
     staleTime: 60_000,
-  });
+  };
+}
+
+//for "2h before load-in" on cards, and to link a card to a milestone
+export function useMilestones(eventId: string) {
+  return useQuery(milestonesQuery(eventId));
 }
 
 //the people a card can go to: the api only lets a card go to someone on the event's crew

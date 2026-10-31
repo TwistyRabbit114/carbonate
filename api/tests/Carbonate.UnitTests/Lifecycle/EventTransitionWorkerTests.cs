@@ -17,13 +17,13 @@ public class EventTransitionWorkerTests
         EventTransitionWorker.SleepUntil(Now.AddMinutes(7), Now).ShouldBe(TimeSpan.FromMinutes(7));
 
     [Fact]
-    public void Caps_a_long_wait_at_six_hours()
+    public void Caps_a_long_wait_at_twelve_hours()
     {
         // An event three weeks out must not mean three weeks of blindness: a new event created in the
-        // meantime has to be picked up without a restart. Six hours rather than thirty minutes so the
-        // database can reach its 60-minute auto-pause threshold between wakes (D-012) — at thirty
-        // minutes it never paused and database compute was 92% of the bill.
-        EventTransitionWorker.SleepUntil(Now.AddDays(21), Now).ShouldBe(TimeSpan.FromHours(6));
+        // meantime has to be picked up without a restart. Twelve hours rather than thirty minutes so
+        // the database reaches its 60-minute auto-pause threshold between wakes (D-012). Each wake
+        // costs a full awake hour, so the cap sets the floor on what the database costs at rest.
+        EventTransitionWorker.SleepUntil(Now.AddDays(21), Now).ShouldBe(TimeSpan.FromHours(12));
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class EventTransitionWorkerTests
 
     [Fact]
     public void Waits_the_cap_when_nothing_is_scheduled() =>
-        EventTransitionWorker.SleepUntil(null, Now).ShouldBe(TimeSpan.FromHours(6));
+        EventTransitionWorker.SleepUntil(null, Now).ShouldBe(TimeSpan.FromHours(12));
 
     [Theory]
     [InlineData(0)]
@@ -68,7 +68,7 @@ public class EventTransitionWorkerTests
 
         foreach (var next in cases)
         {
-            EventTransitionWorker.SleepUntil(next, Now).ShouldBeLessThanOrEqualTo(TimeSpan.FromHours(6));
+            EventTransitionWorker.SleepUntil(next, Now).ShouldBeLessThanOrEqualTo(TimeSpan.FromHours(12));
         }
     }
 }

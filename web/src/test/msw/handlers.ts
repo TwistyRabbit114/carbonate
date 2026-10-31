@@ -493,8 +493,7 @@ export const eventHandlers = [
     );
   }),
 
-  //TODO(plan): the event form needs these two and the contract has neither. asked of C, mocked
-  //here in the shape asked for
+  //the event form's lookups, in the shape the real api serves them
   http.get('/api/clients', async ({ request }) => {
     await delay();
     const who = caller(request);

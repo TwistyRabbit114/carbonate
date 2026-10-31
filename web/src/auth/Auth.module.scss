@@ -67,9 +67,6 @@
 //                              BRAND PANEL
 //----------------------------------------------------------\\
 
-//softer white for the smaller text, still above 4.5:1 on the lightest green behind it
-$on-brand-soft: rgba(255, 255, 255, 0.9);
-
 .brand {
   position: relative;
   display: flex;
@@ -77,9 +74,9 @@ $on-brand-soft: rgba(255, 255, 255, 0.9);
   gap: var(--space-8);
   padding: 2.5rem 3rem;
   overflow: hidden;
-  color: #fff;
+  color: var(--on-accent);
   background:
-    radial-gradient(80% 55% at 100% 0%, rgba(89, 218, 125, 0.14), transparent 70%),
+    radial-gradient(80% 55% at 100% 0%, var(--brand-glow), transparent 70%),
     linear-gradient(160deg, var(--accent-strong) 0%, var(--ink) 100%);
 
   @include tablet-down {
@@ -98,7 +95,7 @@ $on-brand-soft: rgba(255, 255, 255, 0.9);
 }
 
 .logo {
-  color: #fff;
+  color: var(--on-accent);
   font-size: var(--fs-xl);
 
   @include phone {
@@ -130,7 +127,7 @@ $on-brand-soft: rgba(255, 255, 255, 0.9);
 
   @include phone {
     margin: 0;
-    color: $on-brand-soft;
+    color: var(--on-brand-soft);
     font-size: var(--fs-base);
     font-weight: 600;
     line-height: 1.4;
@@ -140,7 +137,7 @@ $on-brand-soft: rgba(255, 255, 255, 0.9);
 
 .about {
   margin: 0;
-  color: $on-brand-soft;
+  color: var(--on-brand-soft);
   font-size: var(--fs-md);
   line-height: 1.6;
 
@@ -161,7 +158,7 @@ $on-brand-soft: rgba(255, 255, 255, 0.9);
   li {
     position: relative;
     padding-top: 1.375rem;
-    color: $on-brand-soft;
+    color: var(--on-brand-soft);
     font-size: var(--fs-xs);
     font-weight: 600;
     letter-spacing: 0.02em;
@@ -175,7 +172,7 @@ $on-brand-soft: rgba(255, 255, 255, 0.9);
       height: 0.625rem;
       border-radius: 50%;
       background: var(--brand-green);
-      box-shadow: 0 0 0 3px rgba(89, 218, 125, 0.25);
+      box-shadow: 0 0 0 3px var(--brand-halo);
     }
 
     &:not(:last-child)::after {
@@ -186,7 +183,7 @@ $on-brand-soft: rgba(255, 255, 255, 0.9);
       left: 1.125rem;
       height: 2px;
       border-radius: 1px;
-      background: rgba(255, 255, 255, 0.28);
+      background: var(--on-brand-line);
     }
   }
 

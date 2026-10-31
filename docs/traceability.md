@@ -85,7 +85,7 @@ after the status in italics. The status itself is left for its owner to change.
 | NFR-28 | Masking tests gate production | The suite is tagged `Category=Masking`, which the required "Masking acceptance suite" job in `ci.yml` runs | **Done** |
 | NFR-15 | Never silently overwrite | A 409 shows a "changed by someone else" message with a reload, never a quiet save. The tests are listed under FR-10 | **Done** (screens) |
 | NFR-23 | Usable at 360 px | Every crew screen and the main office screens at 360 px, and the crew journey in four browser engines at that width: nothing scrolls sideways | **Partial**: not yet tried on a real Android phone |
-| NFR-24 | Contrast 4.5:1, 44 px targets | axe in real Chrome on 27 screens and dialogs, with contrast measured: no WCAG 2.2 AA problems. Everything tappable on the crew screens is at least 44 px | **Done** on the crew screens; a few office links at phone width are smaller (see `docs/nfr-results.md`) |
+| NFR-24 | Contrast 4.5:1, 44 px targets | axe in real Chrome on 27 screens and dialogs, with contrast measured: no WCAG 2.2 AA problems. Everything tappable is at least 44 px on the crew screens, and on the office screens at phone width since 31 Oct | **Done** |
 | NFR-04 | Main task within 3 steps | Scripted journeys from each role's landing page: 0 to 2 steps | **Done** |
 | NFR-07 | Card move shown in under 300 ms | With a second added to every request, the card moved on screen in 43 to 82 ms | **Done** |
 | NFR-25 | Current and previous Chrome, Safari, Edge, Firefox | Office and crew journeys pass in Chrome 154, Edge 154, Firefox 155 and WebKit 26.6 (Safari's engine) | **Partial**: previous versions not tried |

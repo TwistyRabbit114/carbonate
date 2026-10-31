@@ -109,7 +109,7 @@
 
 .today {
   background: var(--accent-strong);
-  color: #fff;
+  color: var(--on-accent);
 
   &:hover {
     background: var(--accent-strong);
@@ -208,7 +208,7 @@
   }
 
   .today + .count {
-    color: #fff;
+    color: var(--on-accent);
   }
 }
 

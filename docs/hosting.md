@@ -196,14 +196,40 @@ quietly removed.
 
 | Change | Effect |
 |---|---|
-| `EventTransitionWorker.MaxSleep` 30 min → 6 hours | The database reaches its 60-minute idle threshold and pauses (D-012) |
+| `EventTransitionWorker.MaxSleep` 30 min → 6 hours, then → 12 hours on 31 Oct | The database reaches its 60-minute idle threshold and pauses (D-012) |
+| Database max size 32 GB → 2 GB, on 31 Oct | Storage is billed on allocated size, not used size: $6.41 a month → about $0.39 |
 | Deleted `carbonate-api-prod` and the prod database | One environment. Kept dev, because `Seeding:Demo` is set there and the demo world exists nowhere else |
 | Retired `appi-carbonate` | Availability test recreated in the per-app component, inside the free ingestion allowance |
 | Converted to pay-as-you-go | Student credit is gone |
 | Budget created, 50% / 80% alerts | This time it exists |
 
-Expected steady state is roughly **$0.40 a day**, of which the B1 plan is most. B1 is the floor: Free
-tier has no Always On, which stops the background workers, and no custom domain support.
+### What it actually costs, corrected 31 Oct
+
+The first version of this section predicted roughly $0.40 a day. That was wrong, and the error is
+worth keeping rather than quietly editing out.
+
+The two rates, from the database's own cost summary: **$0.000194 per vCore-second** and **$0.15 per
+GB per month**. With a 0.5 vCore floor, **one awake hour costs $0.35**. Serverless billing is
+described as paying only for what you use, which invites the assumption that a short query costs
+little. It does not: any query wakes the database and the auto-pause delay has to elapse in full,
+with one hour the minimum. **One query costs an hour**, so the driver is how many times a day
+something touches the database, not how much work it does.
+
+| | Per day | Per month |
+|---|---|---|
+| SQL compute, 2 wakes a day at 12-hour cap | ~$1.05 | ~$32 |
+| SQL storage, 2 GB | ~$0.01 | ~$0.39 |
+| App Service plan B1 | ~$0.53 | $16.07 measured |
+| Everything else | under $0.01 | under $0.30 |
+| **Total** | **~$1.60** | **~$49** |
+
+Still an 80 per cent reduction on October's $9.97 a day, but four times what the first correction
+claimed. B1 remains the floor on the compute side: the Free tier has no Always On, which stops the
+background workers, and no custom domain support.
+
+**The remaining lever** is the Azure SQL free offer, 100 000 vCore-seconds a month, which would
+cover roughly 55 awake hours and therefore all of the compute above. It is selected when a database
+is created, so it can only be taken if the database is ever recreated.
 
 **What this costs in capability.** One environment means the two-environment diagnosis that solved
 D-011 is no longer available, and a paused database means a cold start of up to a minute on the first

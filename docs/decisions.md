@@ -211,8 +211,33 @@ was either never created or created at a scope nobody was watching. That is the 
 and the more avoidable one: the first was a design interaction nobody could see, the second was a
 control we said we had and did not.
 
-**What changed.** `MaxSleep` is now **6 hours**. That clears the 60-minute auto-pause threshold, so
-the database idles and pauses between events.
+**What changed.** `MaxSleep` was raised from 30 minutes to **6 hours**. That clears the 60-minute
+auto-pause threshold, so the database idles and pauses between events.
+
+### Second update, 31 Oct 2026 — the first fix was half right
+
+Checked the bill rather than assuming. Between 8 and 31 Oct the resource group cost **$81.48 over
+23 days, about $3.54 a day**, against an expectation of well under a dollar. Two things were wrong,
+and only one of them was in the code.
+
+**The cost of a wake was never calculated.** The database's own cost summary gives $0.000194 per
+vCore-second and a 0.5 vCore floor, so **one awake hour costs $0.35**. Any query wakes the database
+and the auto-pause delay must then elapse in full, and one hour is the minimum that delay can be
+set to. **One query therefore costs an hour.** A 6-hour cap means four wakes a day, which is roughly
+$1.40 before anything else happens. The cap is raised to **12 hours**, halving that.
+
+**Storage is billed on allocated size, not used size.** The database was provisioned at 32 GB with
+9.6 GB of log space, billed at **$6.41 a month**, while holding a demo dataset using **0%** of it.
+Reduced to 2 GB, which brings storage to about **$0.39 a month**.
+
+**What the first fix got wrong, stated plainly.** It identified the right mechanism and it stopped a
+database that ran continuously, which was worth doing. But it reasoned about pausing without ever
+pricing an awake hour, so it predicted "roughly $0.40 a day" when the arithmetic of a 6-hour cap
+gives four times that. The error was not caught by rereading the reasoning. It was caught by
+comparing the bill against the prediction three weeks later.
+
+That is the same failure twice: a cost claim that nobody measured. The first instance was in the
+design, the second in the fix for the design.
 
 **The trade-off is narrower than first described.** `SleepUntil` computes the wait from the next due
 event and only applies the cap when nothing is due inside it, so an event already scheduled still

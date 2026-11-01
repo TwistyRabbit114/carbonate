@@ -33,7 +33,7 @@ Results for the requirements C owns (plan section 8: NFR-09 and NFR-15 to NFR-21
 - **OWASP ZAP baseline scan:** not run (D).
 - **Row-Level Security** (plan stretch): not built. Object-level access is enforced in the queries (404 for an event the caller cannot see) instead.
 - **NFR-09 on the hosted database:** the figures above are from a local container. The hosted serverless database is slower on its first request after idle.
-- **Password reset:** the API is built (D-017); the screens for issuing and using a reset are with B.
+- **Password reset:** the API is built (D-018); the screens for issuing and using a reset are with B.
 
 ## The screens (role B)
 

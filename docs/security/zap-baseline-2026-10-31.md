@@ -38,12 +38,20 @@ obvious next step for a system going into real use.
 |---|---|---|
 | **Strict-Transport-Security Header Not Set** [10035] | 4 | **Fixed.** `UseHsts()` was skipped because the dev App Service ran with `ASPNETCORE_ENVIRONMENT=Development`. That setting existed only to expose the Swagger explorer. The explorer now has its own flag and the environment variable is removed, so HSTS is sent. Decision D-015 |
 
-### Offered to the security owner
+### Acted on by the security owner, 1 Nov
 
-| Finding | Instances | Position |
+| Finding | Instances | Action |
 |---|---|---|
-| **Cross-Origin-Embedder-Policy missing or invalid** [90004] | 7 | Optional hardening. COEP, and normally COOP and CORP with it, are a small addition to the security headers middleware. Not required for any threat in the model, but cheap, and it accounts for the largest share of the warning count |
+| **Cross-Origin-Embedder-Policy missing or invalid** [90004] | 7 | **Partly acted on, and the remainder deliberately accepted.** `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Resource-Policy: same-origin` are now sent. COEP is **not**: `require-corp` would block incident photographs and attachments, which load from the blob storage host without a resource policy header of their own, and `credentialless` is unsupported in Safari. ZAP will continue to report this. Decision D-016 |
 | **CSP: Notices** [10055] | 1 | A policy is present and enforced. ZAP has advisory notes on it. Reviewed against the policy in `SecurityHeaders`; no change made |
+
+### Related change in the same pass
+
+`/health/ready` was added, opening a database connection with a five second limit and answering 200
+or 503 with no detail in the body. `/health` is unchanged and still queries nothing, because the
+availability test and the deployment smoke test call it on a timer and a query there would prevent
+the serverless database from ever pausing (D-001, D-012). **Nothing is scheduled against
+`/health/ready`**, by design. Decision D-016.
 
 ### Accepted, with reasons
 

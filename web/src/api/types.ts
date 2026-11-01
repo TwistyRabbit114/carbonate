@@ -150,10 +150,10 @@ export type UpdateEventRequest = Schemas['UpdateEventRequest'];
 //moved, and the event's new version
 export type ScheduleResult = Schemas['ScheduleResultDto'];
 
-//TODO(plan): the contract has nothing that lists clients or divisions, and the event form needs
-//both. these two are the shapes asked of C, served only by the mock until the real ones exist
-export type ClientOption = { clientId: string; name: string };
-export type Division = { divisionId: string; code: DivisionCode; name: string };
+//GET /api/clients and GET /api/divisions, for the event form. the contract only says string for a
+//division's code, the api sends CE or CLM
+export type ClientOption = Schemas['ClientOption'];
+export type Division = Omit<Schemas['DivisionOption'], 'code'> & { code: DivisionCode };
 
 //----------------------------------------------------------\\
 //                              VENUES AND SITE VISITS

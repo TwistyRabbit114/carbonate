@@ -63,12 +63,15 @@ export type ApiRequest = Omit<RequestInit, 'body'> & {
   body?: FormData; //uploads, the browser sets the multipart boundary itself
 };
 
+//the sign-in steps answer 401 for a wrong password or code, and logging out doesn't need a live
+//session, so these never try a refresh. changing a password does, it needs a signed-in user
+const noRefresh = /^\/auth\/(login|mfa\/|refresh|logout)/;
+
 //paths are relative to /api, so apiFetch('/me') calls /api/me on the same origin
 export async function apiFetch<T>(path: string, request: ApiRequest = {}): Promise<T> {
   const res = await send(path, request);
 
-  //auth endpoints answer 401 for wrong credentials, so only other calls try a refresh
-  if (res.status === 401 && !path.startsWith('/auth/')) {
+  if (res.status === 401 && !noRefresh.test(path)) {
     if (await refreshSession()) return read<T>(await send(path, request));
 
     sessionExpiredHandler?.();

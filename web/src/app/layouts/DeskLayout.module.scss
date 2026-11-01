@@ -109,7 +109,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: 0 4px 16px rgba(22, 33, 28, 0.12);
+  box-shadow: var(--shadow-raised);
 }
 
 .moreList {

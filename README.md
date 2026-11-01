@@ -99,11 +99,11 @@ endpoint, screen, tests and status for each, is in [`docs/traceability.md`](docs
 | **Stock and orders** | Catalogue, requirements per event with shortfall and lead-time warnings, consolidated order list approved by a different person |
 | **Incidents, venues** | Incident reports with an asset link and photo, persistent venue records, site visits |
 | **People and security** | Sign-in with two-step codes for Director and Accounts, six roles with a permission matrix, user administration with safeguards, casual crew accounts that expire after the event, an insert-only audit trail |
-| **Calendar** | Outbound push with retry, de-duplication and redaction is built and tested; the Google connection itself is not (see below) |
+| **Calendar** | A month and week calendar in the app with every event and its milestones, recce to reconciliation; crew see only their own. The outbound push to Google, with retry, de-duplication and redaction, is built and tested; the Google connection itself is not (see below) |
 | **Front end** | One app for all six roles. Office roles get a sidebar; crew get a phone layout with a bottom tab bar that works at 360 px. Every card can be moved by drag and drop or from a "Move to…" menu with the keyboard. Every screen has loading, empty and error states, and an edit someone else got to first shows a message with a reload instead of overwriting. Money columns and rows only appear when the API sends them. axe accessibility checks run in the component tests |
 
-**Not built, and why** (also listed in the traceability file): the native calendar view (a Should, front end only),
-card attachments, the intra-day service schedule, event documents and post-event reconciliation (Shoulds), and the
+**Not built, and why** (also listed in the traceability file): card attachments, the intra-day service schedule,
+event documents and post-event reconciliation (Shoulds), and the
 Google connect flow, which needs a Google Cloud project we do not have. Row-Level Security was a stretch goal and
 is not built; object-level access is enforced in the queries instead.
 

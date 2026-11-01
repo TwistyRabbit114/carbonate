@@ -259,8 +259,7 @@ export function useRemoveCrew(eventId: string) {
 //                              LOOKUPS
 //----------------------------------------------------------\\
 
-//TODO(plan): GET /api/clients and GET /api/divisions aren't in the contract yet. these are the
-//shapes asked of C, so the form works against the mock until the real ones land.
+//the clients and divisions the event form picks from, for anyone who can create or edit events.
 //a select of every client is fine at about 40 clients, a search can come if the list grows
 export function useClients() {
   return useQuery({

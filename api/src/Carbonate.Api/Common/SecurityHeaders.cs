@@ -33,6 +33,10 @@ internal static class SecurityHeaders
             headers["X-Frame-Options"] = "DENY";
             headers["Referrer-Policy"] = "no-referrer";
             headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()";
+            headers["Cross-Origin-Opener-Policy"] = "same-origin";
+            headers["Cross-Origin-Resource-Policy"] = "same-origin";
+            // No Cross-Origin-Embedder-Policy on purpose: require-corp would block the incident photos,
+            // which come from the blob storage host without a resource policy header (decisions D-016).
 
             if (context.Request.Path.StartsWithSegments("/api"))
             {

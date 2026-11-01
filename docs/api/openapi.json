@@ -45,6 +45,18 @@
         }
       }
     },
+    "/health/ready": {
+      "get": {
+        "tags": [
+          "Carbonate.Api"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/users": {
       "get": {
         "tags": [

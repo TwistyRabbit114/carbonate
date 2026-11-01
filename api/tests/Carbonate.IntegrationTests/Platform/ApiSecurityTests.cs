@@ -16,6 +16,15 @@ public class ApiSecurityTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Readiness_is_503_when_the_database_cannot_be_reached()
+    {
+        var response = await factory.CreateClient().GetAsync("/health/ready");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.DoesNotContain("Server=", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task An_endpoint_with_no_declared_rule_requires_sign_in()
     {
         var response = await factory.CreateClient().GetAsync("/api/test/no-declaration");
@@ -130,6 +139,9 @@ public class ApiSecurityTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal("DENY", response.Headers.GetValues("X-Frame-Options").Single());
         Assert.True(response.Headers.Contains("Referrer-Policy"));
         Assert.True(response.Headers.Contains("Permissions-Policy"));
+        Assert.Equal("same-origin", response.Headers.GetValues("Cross-Origin-Opener-Policy").Single());
+        Assert.Equal("same-origin", response.Headers.GetValues("Cross-Origin-Resource-Policy").Single());
+        Assert.False(response.Headers.Contains("Cross-Origin-Embedder-Policy"));
         Assert.Equal("no-store", response.Headers.CacheControl?.NoStore == true ? "no-store" : "");
     }
 

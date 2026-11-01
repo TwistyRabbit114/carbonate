@@ -7,6 +7,22 @@ Format: date · decision · why · who · what changes in the Task 3 report.
 
 ---
 
+## D-016 — `/health/ready` checks the database; `/health` stays flat; no Cross-Origin-Embedder-Policy
+
+**1 Nov 2026 · Owner: C**
+
+Task 2 feedback asked for the health check to look at the database. `/health/ready` now does: it opens a connection with a 5 second limit and answers 200 `ready` or 503, with no detail in the body. `/health` is unchanged and still touches nothing, because the availability test and the deploy smoke test hit it on a timer and a query there would stop the serverless database pausing (D-001, D-012). Nothing is scheduled against `/health/ready`. It is anonymous and covered by the global rate limit.
+
+The security headers now also send `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Resource-Policy: same-origin`, from the ZAP baseline. `Cross-Origin-Embedder-Policy` is deliberately **not** sent: `require-corp` would block incident photos and attachments, which load from the blob storage host without a resource policy header, and `credentialless` is not supported in Safari. ZAP will keep reporting it as a warning.
+
+**Why.** Real readiness signal without giving up the cost control; low-risk headers that clear most of the ZAP warnings without breaking images.
+
+**Trade-off.** One ZAP warning stays, with the reason written down. A person or monitor must call `/health/ready` on purpose; it is for checking by hand and for the demo, not for scheduled probes.
+
+**Task 3 report.** §7 security (headers, ZAP result and its limits: the scan was unauthenticated and reached 10 public URLs), §8 DevOps (two health routes and why), §6.3.
+
+---
+
 ## D-015 — The hosted dev environment stops running as `Development`
 
 **31 Oct 2026 · Owner: D**

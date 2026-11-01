@@ -54,6 +54,20 @@ public class SessionSecurityTests(DatabaseApiFixture fixture) : IClassFixture<Da
         return header[(RefreshCookie.Length + 1)..].Split(';')[0];
     }
 
+    // ---- readiness -------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Readiness_is_200_when_the_database_answers_and_plain_health_stays_flat()
+    {
+        var client = _factory.CreateClient();
+
+        var ready = await client.GetAsync("/health/ready");
+        var health = await client.GetAsync("/health");
+
+        Assert.Equal(HttpStatusCode.OK, ready.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, health.StatusCode);
+    }
+
     // ---- lockout ---------------------------------------------------------------------------------
 
     [Fact]

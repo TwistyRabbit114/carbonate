@@ -10,6 +10,9 @@ public class AuthOptions
     public int LockoutMinutes { get; set; } = 15;
     public int MfaTokenMinutes { get; set; } = 5;
 
+    /// <summary>How long an issued password reset stays usable.</summary>
+    public int PasswordResetMinutes { get; set; } = 60;
+
     /// <summary>Base64 of a 32-byte key that encrypts TOTP secrets at rest. Comes from Key Vault in Azure.</summary>
     public string MfaEncryptionKey { get; set; } = "";
 }

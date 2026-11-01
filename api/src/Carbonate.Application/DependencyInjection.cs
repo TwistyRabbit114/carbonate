@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<ICommercialService, CommercialService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IPasswordResetService, PasswordResetService>();
 
         // Incidents (D, FR-31)
         services.AddScoped<IIncidentService, IncidentService>();

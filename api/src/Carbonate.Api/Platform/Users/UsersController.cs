@@ -9,7 +9,7 @@ namespace Carbonate.Api.Platform.Users;
 
 /// <summary>Users and roles (FR-38). The Director and the Operations Manager administer accounts.</summary>
 [Route("api/users")]
-public class UsersController(IUserService users) : ApiControllerBase
+public class UsersController(IUserService users, IPasswordResetService passwordResets) : ApiControllerBase
 {
     [HttpGet]
     [HasPermission(PermissionCodes.UserManage)]
@@ -30,6 +30,16 @@ public class UsersController(IUserService users) : ApiControllerBase
     [HasPermission(PermissionCodes.UserManage)]
     public async Task<ActionResult<UserListItem>> Update(Guid userId, UpdateUserRequest request, CancellationToken ct) =>
         Ok(await users.UpdateAsync(userId, request, ct));
+
+    /// <summary>
+    /// Issues a single-use password reset for someone who is locked out or has forgotten their password.
+    /// The token is shown once, here; hand it to the person. Only the Director can reset a Director.
+    /// </summary>
+    [HttpPost("{userId:guid}/password-reset")]
+    [HasPermission(PermissionCodes.UserManage)]
+    [ProducesResponseType<PasswordResetIssued>(StatusCodes.Status201Created)]
+    public async Task<ActionResult<PasswordResetIssued>> IssuePasswordReset(Guid userId, CancellationToken ct) =>
+        StatusCode(StatusCodes.Status201Created, await passwordResets.IssueAsync(userId, ct));
 }
 
 /// <summary>The audit trail (FR-37). Read only; entries are never changed.</summary>

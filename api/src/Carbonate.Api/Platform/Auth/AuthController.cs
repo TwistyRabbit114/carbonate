@@ -7,7 +7,7 @@ namespace Carbonate.Api.Platform.Auth;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController(IAuthService auth, ICurrentUser currentUser) : ControllerBase
+public class AuthController(IAuthService auth, IPasswordResetService passwordResets, ICurrentUser currentUser) : ControllerBase
 {
     private const string RefreshCookie = "carbonate.refresh";
 
@@ -35,6 +35,20 @@ public class AuthController(IAuthService auth, ICurrentUser currentUser) : Contr
     [Authorize(Policy = AuthPolicies.MfaPending)]
     public async Task<ActionResult<SessionResponse>> ConfirmMfa(MfaConfirmRequest request, CancellationToken ct) =>
         Respond(await auth.ConfirmMfaAsync(currentUser.UserId, request.Code, currentUser.IpAddress, ct));
+
+    /// <summary>
+    /// Sets a new password with a reset an administrator issued. Single use; signs the person out
+    /// everywhere and clears any lockout. Two-step sign-in is unchanged.
+    /// </summary>
+    [HttpPost("password/reset")]
+    [AllowAnonymous]
+    [EnableRateLimiting("login")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ResetPassword(ResetPasswordRequest request, CancellationToken ct)
+    {
+        await passwordResets.ResetAsync(request, ct);
+        return NoContent();
+    }
 
     /// <summary>Swaps the refresh cookie for a new access token. The cookie is single-use and rotates.</summary>
     [HttpPost("refresh")]

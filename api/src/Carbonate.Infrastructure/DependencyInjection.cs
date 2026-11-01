@@ -59,6 +59,7 @@ public static class DependencyInjection
         services.AddHostedService<CrewAccountExpiryWorker>();
         services.AddScoped<ITransactionRunner, TransactionRunner>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IPasswordResetRepository, PasswordResetRepository>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddSingleton<ITokenService, TokenService>();
         services.AddSingleton<IPasswordService, PasswordService>();

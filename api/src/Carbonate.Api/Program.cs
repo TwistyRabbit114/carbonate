@@ -7,6 +7,7 @@ using Carbonate.Application;
 using Carbonate.Application.Common;
 using Carbonate.Application.Platform.Auth;
 using Carbonate.Infrastructure;
+using Carbonate.Infrastructure.Persistence;
 using Carbonate.Infrastructure.Platform.Auth;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -139,6 +140,25 @@ app.MapCspReport();
 // Flat 200, no dependency checks: the availability test hits this every five minutes and a
 // database query here would stop the serverless database auto-pausing (decisions D-001).
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
+
+// Readiness: asks the database, with a short timeout, and says only yes or no. Nothing is scheduled
+// against this one, so it never keeps the serverless database awake (decisions D-016).
+app.MapGet("/health/ready", async (CemDbContext db, CancellationToken ct) =>
+{
+    using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+    timeout.CancelAfter(TimeSpan.FromSeconds(5));
+
+    try
+    {
+        return await db.Database.CanConnectAsync(timeout.Token)
+            ? Results.Ok(new { status = "ready" })
+            : Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (Exception)
+    {
+        return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+}).AllowAnonymous();
 
 // Last, so every API route wins and anything else that is not a file gets the app.
 app.MapSpaFallback();

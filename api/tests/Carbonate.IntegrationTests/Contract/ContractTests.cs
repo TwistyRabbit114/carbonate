@@ -84,7 +84,7 @@ public class ContractTests : IClassFixture<ContractTests.ContractFactory>
 
         Assert.Empty(undeclared);
         Assert.Equivalent(
-            new[] { "api/auth/login", "api/auth/mfa/verify", "api/auth/refresh", "api/csp-report", "health" },
+            new[] { "api/auth/login", "api/auth/mfa/verify", "api/auth/refresh", "api/csp-report", "health", "health/ready" },
             anonymous);
     }
 

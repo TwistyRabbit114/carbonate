@@ -78,6 +78,19 @@ internal class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken
     }
 }
 
+internal class PasswordResetTokenConfiguration : IEntityTypeConfiguration<PasswordResetToken>
+{
+    public void Configure(EntityTypeBuilder<PasswordResetToken> b)
+    {
+        b.HasKey(x => x.ResetId);
+        b.Property(x => x.TokenHash).HasMaxLength(128);
+        b.HasIndex(x => x.TokenHash).IsUnique();
+        b.HasIndex(x => x.UserId);
+        b.Ref<AppUser>(nameof(PasswordResetToken.UserId));
+        b.Ref<AppUser>(nameof(PasswordResetToken.IssuedByUserId));
+    }
+}
+
 internal class DocumentConfiguration : IEntityTypeConfiguration<Document>
 {
     public void Configure(EntityTypeBuilder<Document> b)

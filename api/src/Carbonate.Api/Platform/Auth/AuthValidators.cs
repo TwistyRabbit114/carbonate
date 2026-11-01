@@ -21,6 +21,15 @@ internal sealed class MfaVerifyRequestValidator : AbstractValidator<MfaVerifyReq
     }
 }
 
+internal sealed class ResetPasswordRequestValidator : AbstractValidator<ResetPasswordRequest>
+{
+    public ResetPasswordRequestValidator()
+    {
+        RuleFor(x => x.Token).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.NewPassword).NotEmpty().MaximumLength(128);
+    }
+}
+
 internal sealed class MfaConfirmRequestValidator : AbstractValidator<MfaConfirmRequest>
 {
     public MfaConfirmRequestValidator()

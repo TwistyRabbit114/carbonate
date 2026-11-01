@@ -7,6 +7,25 @@ Format: date · decision · why · who · what changes in the Task 3 report.
 
 ---
 
+## D-017 — Password reset is issued by an administrator, not sent by email
+
+**1 Nov 2026 · Owner: C**
+
+Task 2 feedback asked for the password reset flow. Carbonate has no email service, and the client is about 15 people in one office, so a reset is issued by someone who manages users and handed to the person, who then sets their own password.
+
+- `POST /api/users/{id}/password-reset` (`user.manage`) returns a single-use token once, valid for 60 minutes (`Auth:PasswordResetMinutes`). Issuing a new one ends any older one. Only the Director can reset a Director, and a deactivated account cannot be reset.
+- `POST /api/auth/password/reset` (anonymous, sign-in rate limit) takes the token and the new password. The password must pass the same policy as any other (12 characters, not breached). It ends every session for that person, clears a lockout, and leaves two-step sign-in as it was.
+- Only a SHA-256 hash of the token is stored, in a new `PasswordResetTokens` table (its own migration, per the Task 2 database feedback). Neither the token nor the password reaches the audit trail.
+- Every bad token (unknown, used, expired, replaced, or for a deactivated account) gets the same 400, so the endpoint reveals nothing.
+
+**Why.** It closes the gap without adding an email provider, and the administrator never learns the new password.
+
+**Trade-off.** Someone has to hand the token over. A self-service "forgot password" email can be added later on top of the same redeem endpoint.
+
+**Task 3 report.** §7 security (account recovery), user guide (how an administrator issues a reset and how a person uses it), §5 data schema (new table and incremental migration).
+
+---
+
 ## D-016 — `/health/ready` checks the database; `/health` stays flat; no Cross-Origin-Embedder-Policy
 
 **1 Nov 2026 · Owner: C**

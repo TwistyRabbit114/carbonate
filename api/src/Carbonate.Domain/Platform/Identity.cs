@@ -67,6 +67,18 @@ public class RefreshToken
     public Guid? ReplacedByTokenId { get; set; }
 }
 
+/// <summary>A single-use password reset an administrator issued. Only the hash of the token is kept.</summary>
+public class PasswordResetToken
+{
+    public Guid ResetId { get; set; } = Guid.NewGuid();
+    public Guid UserId { get; set; }
+    public string TokenHash { get; set; } = "";
+    public DateTime CreatedAt { get; set; }
+    public DateTime ExpiresAt { get; set; }
+    public DateTime? UsedAt { get; set; }
+    public Guid IssuedByUserId { get; set; }
+}
+
 public class Document
 {
     public Guid DocumentId { get; set; } = Guid.NewGuid();

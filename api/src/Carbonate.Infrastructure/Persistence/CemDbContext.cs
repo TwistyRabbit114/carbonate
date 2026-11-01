@@ -18,6 +18,7 @@ public class CemDbContext(DbContextOptions<CemDbContext> options) : DbContext(op
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
 

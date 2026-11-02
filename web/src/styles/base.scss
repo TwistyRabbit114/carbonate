@@ -90,7 +90,7 @@ a {
   z-index: 100;
   padding: var(--space-2) var(--space-4);
   background: var(--accent-strong);
-  color: #fff;
+  color: var(--on-accent);
   border-radius: var(--radius-sm);
   font-weight: 600;
   transform: translateY(-200%);
@@ -106,6 +106,14 @@ a {
 
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+//a name that links on from a table row wraps to two lines on a phone, so the padding makes it a
+//44px target and the margin takes it back out so the row doesn't grow (NFR-24)
+.row-link {
+  display: inline-block;
+  padding-block: 0.25rem;
+  margin-block: -0.25rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

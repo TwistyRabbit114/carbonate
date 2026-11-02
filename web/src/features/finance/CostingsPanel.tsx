@@ -67,7 +67,9 @@ export function CostingsPanel() {
               return (
                 <tr key={event.eventId}>
                   <th scope="row">
-                    <Link to={`/events/${event.eventId}`}>{event.name}</Link>
+                    <Link to={`/events/${event.eventId}`} className="row-link">
+                      {event.name}
+                    </Link>
                     <span className={styles.sub}>{event.eventCode}</span>
                   </th>
                   <td className={styles.nowrap}>{formatDateOnly(event.eventDate)}</td>

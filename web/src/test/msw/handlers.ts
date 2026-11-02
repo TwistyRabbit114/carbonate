@@ -59,6 +59,9 @@ export { accessTokenFor, resetMocks, type AccountKey } from './mockCore';
 export const demoPassword = 'demo';
 export const demoMfaCode = '123456';
 
+//stands in for the api's breach check, which asks pwned passwords
+export const breachedPassword = 'password1234';
+
 const accountByEmail = new Map(
   (Object.keys(users) as AccountKey[]).map((key) => [users[key].user.email.toLowerCase(), key]),
 );
@@ -143,6 +146,26 @@ export const authHandlers = [
     const key = accountFromBearer(request.headers.get('Authorization'));
     return key ? HttpResponse.json(users[key]) : new HttpResponse(null, { status: 401 });
   }),
+
+  //not in the contract yet, this is the shape asked of C. nothing is stored, every demo account
+  //keeps the demo password so the mock stays easy to sign in to
+  http.post('/api/auth/password', async ({ request }) => {
+    await delay();
+    if (!caller(request)) return unauthorised();
+    const { currentPassword, newPassword } = await readJson(request);
+    if (currentPassword !== demoPassword) {
+      return invalid({ currentPassword: ['That is not your current password.'] });
+    }
+    if (typeof newPassword !== 'string' || newPassword.length < 12) {
+      return invalid({ newPassword: ['Use at least 12 characters.'] });
+    }
+    if (newPassword === breachedPassword) {
+      return invalid({
+        newPassword: ['That password has appeared in a data breach. Choose a different one.'],
+      });
+    }
+    return new HttpResponse(null, { status: 204 });
+  }),
 ];
 
 //----------------------------------------------------------\\
@@ -187,8 +210,17 @@ export const eventHandlers = [
     const who = caller(request);
     if (!who) return unauthorised();
 
-    const visible = mock.events.filter((event) => event.isActive && canSeeEvent(who, event.eventId));
-    const boardOnly = new URL(request.url).searchParams.get('board') === 'true';
+    //from and to filter on the event's date, as the real api does
+    const query = new URL(request.url).searchParams;
+    const [from, to] = [query.get('from'), query.get('to')];
+    const visible = mock.events.filter(
+      (event) =>
+        event.isActive &&
+        canSeeEvent(who, event.eventId) &&
+        (!from || event.eventDate >= from) &&
+        (!to || event.eventDate <= to),
+    );
+    const boardOnly = query.get('board') === 'true';
     const items = (
       boardOnly
         ? visible.filter((event) => event.status !== 'Enquired' && event.status !== 'Cancelled')
@@ -484,8 +516,7 @@ export const eventHandlers = [
     );
   }),
 
-  //TODO(plan): the event form needs these two and the contract has neither. asked of C, mocked
-  //here in the shape asked for
+  //the event form's lookups, in the shape the real api serves them
   http.get('/api/clients', async ({ request }) => {
     await delay();
     const who = caller(request);

@@ -82,7 +82,7 @@
 
 .overlay {
   border-color: var(--accent);
-  box-shadow: 0 8px 24px rgba(22, 33, 28, 0.18);
+  box-shadow: var(--shadow-lifted);
   cursor: grabbing;
 }
 

@@ -38,7 +38,9 @@ export function ApprovalsPanel() {
             {lists.data.map((list) => (
               <tr key={list.orderListId}>
                 <th scope="row">
-                  <Link to={`/stock/order-lists/${list.orderListId}`}>{list.supplierName}</Link>
+                  <Link to={`/stock/order-lists/${list.orderListId}`} className="row-link">
+                    {list.supplierName}
+                  </Link>
                 </th>
                 <td className={styles.nowrap}>{formatDateOnly(list.requiredByDate)}</td>
                 <NumberCell>{list.lines.length}</NumberCell>

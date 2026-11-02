@@ -4,7 +4,10 @@
 //                              TABLE
 //----------------------------------------------------------\\
 
+//positioned, so hidden column labels (which are absolutely positioned) scroll and clip with the
+//table instead of stretching the whole page sideways on a phone
 .scroll {
+  position: relative;
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);

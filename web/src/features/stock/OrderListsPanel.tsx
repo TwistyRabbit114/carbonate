@@ -67,7 +67,9 @@ function OrderListTable({ lists }: { lists: OrderList[] }) {
         {lists.map((list) => (
           <tr key={list.orderListId}>
             <th scope="row">
-              <Link to={`/stock/order-lists/${list.orderListId}`}>{list.supplierName}</Link>
+              <Link to={`/stock/order-lists/${list.orderListId}`} className="row-link">
+                {list.supplierName}
+              </Link>
               {list.warnings.length > 0 && (
                 <>
                   {' '}

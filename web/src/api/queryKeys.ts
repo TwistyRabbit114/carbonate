@@ -3,6 +3,7 @@
 export const queryKeys = {
   eventsBoard: ['events', 'board'] as const,
   myEvents: ['events', 'mine'] as const,
+  calendarEvents: (from: string, to: string) => ['events', 'calendar', from, to] as const,
   event: (eventId: string) => ['events', eventId] as const,
   allowedTransitions: (eventId: string) => ['events', eventId, 'allowed-transitions'] as const,
   milestones: (eventId: string) => ['events', eventId, 'milestones'] as const,

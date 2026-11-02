@@ -51,7 +51,7 @@ jobs:
             -H "Content-Type: application/json" -d '{"email":"warm@example.invalid","password":"x"}' || true
 
       - name: ZAP baseline
-        uses: zaproxy/action-baseline@v0.14.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: ${{ vars.DEV_URL }}
           # -I reports findings without failing the job. The scan is evidence for the report,

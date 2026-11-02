@@ -47,13 +47,13 @@ jobs:
       # The alternative is building the solution a second time on every pull request,
       # which the API job already does, and this is a 15-user system on free runners.
       - name: Initialise CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
           queries: security-extended
 
       - name: Analyse
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: /language:${{ matrix.language }}

@@ -21,6 +21,9 @@ public interface IRefreshTokenRepository
     Task RevokeChainAsync(RefreshToken token, DateTime now, CancellationToken ct);
 
     Task RevokeAllForUserAsync(Guid userId, DateTime now, CancellationToken ct);
+
+    /// <summary>Signs the user out everywhere except the session this token belongs to.</summary>
+    Task RevokeOthersForUserAsync(Guid userId, Guid keepTokenId, DateTime now, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 

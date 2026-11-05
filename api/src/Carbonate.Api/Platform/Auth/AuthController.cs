@@ -7,7 +7,11 @@ namespace Carbonate.Api.Platform.Auth;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController(IAuthService auth, IPasswordResetService passwordResets, ICurrentUser currentUser) : ControllerBase
+public class AuthController(
+    IAuthService auth,
+    IPasswordResetService passwordResets,
+    IPasswordChangeService passwordChanges,
+    ICurrentUser currentUser) : ControllerBase
 {
     private const string RefreshCookie = "carbonate.refresh";
 
@@ -47,6 +51,20 @@ public class AuthController(IAuthService auth, IPasswordResetService passwordRes
     public async Task<IActionResult> ResetPassword(ResetPasswordRequest request, CancellationToken ct)
     {
         await passwordResets.ResetAsync(request, ct);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Changes the signed-in person's own password. Needs the current one; every other device is signed
+    /// out and this one stays in. Under /api/auth so the refresh cookie comes with it.
+    /// </summary>
+    [HttpPost("password")]
+    [Authorize]
+    [EnableRateLimiting("login")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request, CancellationToken ct)
+    {
+        await passwordChanges.ChangeAsync(request, Request.Cookies[RefreshCookie], ct);
         return NoContent();
     }
 

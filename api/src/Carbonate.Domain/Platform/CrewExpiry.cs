@@ -46,4 +46,24 @@ public static class CrewExpiry
         // An event with no Debrief milestone cannot be shown to be over, so it keeps the account open.
         return assignments.All(a => a.DebriefEnd is { } debriefEnd && now - debriefEnd > grace);
     }
+
+    /// <summary>
+    /// When the same rule will let the account close, for the users list. Null while it cannot be known:
+    /// not a casual-only account, nothing assigned yet, or an event with no Debrief milestone. The nightly
+    /// check closes the account at its first run after this time.
+    /// </summary>
+    public static DateTime? AccessEndsAt(
+        bool holdsOnlyCasualCrewRole,
+        IReadOnlyCollection<CrewAssignmentFact> assignments,
+        TimeSpan grace)
+    {
+        if (!holdsOnlyCasualCrewRole || assignments.Count == 0 || assignments.Any(a => a.DebriefEnd is null))
+        {
+            return null;
+        }
+
+        var lastShift = assignments.Max(a => a.ShiftEnd);
+        var lastDebrief = assignments.Max(a => a.DebriefEnd!.Value) + grace;
+        return lastShift > lastDebrief ? lastShift : lastDebrief;
+    }
 }

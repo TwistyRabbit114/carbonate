@@ -10,7 +10,7 @@ Results for the requirements C owns (plan section 8: NFR-09 and NFR-15 to NFR-21
 
 | NFR | Requirement | Result | Evidence |
 |---|---|---|---|
-| NFR-09 | A past costing and the cost comparison open in under 2 s on ten years of history | **Met locally.** 600 events (10 years at 60 a year) for one client, each with an accepted costing of 8 lines: the cost comparison took 120 ms and opening an old costing took 332 ms. Not yet timed on the hosted Azure SQL serverless database | `CostHistoryPerformanceTests` (fails above 2 s) |
+| NFR-09 | A past costing and the cost comparison open in under 2 s on ten years of history | **Met locally.** 600 events (10 years at 60 a year) for one client, each with an accepted costing of 8 lines: the cost comparison took 120 ms and opening an old costing took 332 ms. **Hosted**, 2 Nov on the dev environment against the five demo events with a costing, five runs each: the cost comparison had a median of 73 ms (slowest 109 ms) and opening a costing a median of 58 ms (slowest 849 ms), with the database awake | `CostHistoryPerformanceTests` (fails above 2 s) |
 | NFR-15 | A conflicting edit is rejected, not overwritten | **Met.** A stale `rowVersion` returns 409 with the current, masked values; covered for events, costings and task cards | `EventsEndpointTests`, `CommercialEndpointTests`, `CardEditEndpointTests` |
 | NFR-16 | The audit trail cannot be changed or deleted | **Met.** The database refuses UPDATE and DELETE on audit rows (insert-only trigger); every write endpoint tested writes its audit entry | `SchemaTests`, the `audit` assertions in the endpoint tests |
 | NFR-17 | Cost fields never reach a role that may not see them | **Met.** Absent from the JSON, not null, on every listed endpoint for every role, and present for the finance roles; a test fails if a new money field is not on the list | masking suite (`MaskingTests`, required check), `FinancialMaskerTests`, `FinancialMaskingFilterTests` |
@@ -32,7 +32,7 @@ Results for the requirements C owns (plan section 8: NFR-09 and NFR-15 to NFR-21
 
 - **OWASP ZAP baseline scan:** not run (D).
 - **Row-Level Security** (plan stretch): not built. Object-level access is enforced in the queries (404 for an event the caller cannot see) instead.
-- **NFR-09 on the hosted database:** the figures above are from a local container. The hosted serverless database is slower on its first request after idle.
+- **NFR-09 on the hosted database:** the ten-year volume was only tested locally; the hosted demo holds far less history. The first request after the serverless database has paused can take up to a minute.
 - **Password reset:** the API is built (D-018); the screens for issuing and using a reset are with B.
 
 ## The screens (role B)

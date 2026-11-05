@@ -14,6 +14,9 @@ public class UserListItem
     public bool MfaEnabled { get; set; }
     public IReadOnlyList<string> Roles { get; set; } = [];
     public DateTime? LastLoginAt { get; set; }
+
+    /// <summary>For an active casual crew account, when its access runs out (FR-36). Null otherwise, or if not yet known.</summary>
+    public DateTime? CrewAccessEndsAt { get; set; }
 }
 
 public class UserListQuery : PageQuery

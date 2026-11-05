@@ -213,6 +213,12 @@ public class UninvoicedEventDto
     public string ClientName { get; set; } = "";
     public DateOnly EventDate { get; set; }
     public int DaysSinceEvent { get; set; }
+
+    /// <summary>The latest client confirmation, which a new invoice is raised against. Null if none was recorded.</summary>
+    public Guid? ConfirmationId { get; set; }
+
+    /// <summary>Its PO number or deposit reference, to show beside the event.</summary>
+    public string? ConfirmationReference { get; set; }
 }
 
 /// <summary>Post-event reconciliation (FR-17, should have).</summary>

@@ -7,6 +7,7 @@ import type {
   ConnectCalendarResponse,
   CreateUserRequest,
   PagedResult,
+  PasswordResetIssued,
   UpdateUserRequest,
   UserListItem,
 } from '@/api/types';
@@ -43,6 +44,13 @@ export function useUpdateUser(userId: string) {
     mutationFn: (change: UpdateUserRequest) =>
       apiFetch<UserListItem>(`/users/${userId}`, { method: 'PATCH', json: change }),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['users'] }),
+  });
+}
+
+//a single-use token for someone who has lost their password. it's only shown once, so nothing is cached
+export function useIssuePasswordReset(userId: string) {
+  return useMutation({
+    mutationFn: () => apiFetch<PasswordResetIssued>(`/users/${userId}/password-reset`, { method: 'POST' }),
   });
 }
 

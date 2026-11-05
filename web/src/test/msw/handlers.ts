@@ -147,8 +147,7 @@ export const authHandlers = [
     return key ? HttpResponse.json(users[key]) : new HttpResponse(null, { status: 401 });
   }),
 
-  //not in the contract yet, this is the shape asked of C. nothing is stored, every demo account
-  //keeps the demo password so the mock stays easy to sign in to
+  //nothing is stored, every demo account keeps the demo password so the mock stays easy to sign in to
   http.post('/api/auth/password', async ({ request }) => {
     await delay();
     if (!caller(request)) return unauthorised();
@@ -164,6 +163,28 @@ export const authHandlers = [
         newPassword: ['That password has appeared in a data breach. Choose a different one.'],
       });
     }
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  //spends a token from the users panel. the demo accounts still sign in with the demo password
+  http.post('/api/auth/password/reset', async ({ request }) => {
+    await delay();
+    const { token, newPassword } = await readJson(request);
+    const reset = mock.passwordResets.find((candidate) => candidate.token === token);
+    if (!reset || reset.used || reset.expiresAt <= new Date().toISOString()) {
+      return invalid({
+        token: ['This reset link is not valid or has expired. Ask an administrator for a new one.'],
+      });
+    }
+    if (typeof newPassword !== 'string' || newPassword.length < 12) {
+      return invalid({ newPassword: ['Use at least 12 characters.'] });
+    }
+    if (newPassword === breachedPassword) {
+      return invalid({
+        newPassword: ['That password has appeared in a data breach. Choose a different one.'],
+      });
+    }
+    reset.used = true;
     return new HttpResponse(null, { status: 204 });
   }),
 ];
@@ -282,6 +303,30 @@ export const eventHandlers = [
     //someone who can't see the budget can neither change nor erase it
     const budgetAmount = who.can('finance.view_client_price') ? checked.budgetAmount : event.budgetAmount;
     const updated = { ...event, ...checked, budgetAmount, rowVersion: nextRowVersion() };
+    mock.events = mock.events.map((candidate) => (candidate.eventId === event.eventId ? updated : candidate));
+    return HttpResponse.json(eventFor(who, updated));
+  }),
+
+  //only what's sent changes, so recording the actual never touches the estimate (FR-08)
+  http.patch('/api/events/:eventId/pack-size', async ({ request, params }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('event.edit')) return problem(403, 'Forbidden');
+
+    const event = visibleEvent(who, params.eventId);
+    if (!event) return problem(404, 'Not found');
+    const body = await readJson(request);
+    const actual = typeof body.packSizeActual === 'number' ? body.packSizeActual : null;
+    if (actual === null) {
+      return invalid({ packSize: ['Send the estimated pack size, the actual pack size, or both.'] });
+    }
+    if (!Number.isInteger(actual) || actual < 0 || actual > 100_000) {
+      return invalid({ packSizeActual: ["'Pack Size Actual' must be between 0 and 100000."] });
+    }
+    if (body.rowVersion !== event.rowVersion) return staleEvent(who, event);
+
+    const updated = { ...event, packSizeActual: actual, rowVersion: nextRowVersion() };
     mock.events = mock.events.map((candidate) => (candidate.eventId === event.eventId ? updated : candidate));
     return HttpResponse.json(eventFor(who, updated));
   }),

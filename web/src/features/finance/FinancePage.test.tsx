@@ -46,6 +46,7 @@ describe('FinancePage panels', () => {
     await within(invoices).findByText('INV-2026-0042');
     expect(screen.queryByRole('region', { name: 'Order list approvals' })).not.toBeInTheDocument();
     expect(within(invoices).queryByRole('button', { name: /Mark .* paid/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Delivered, not invoiced' })).not.toBeInTheDocument();
   });
 
   it('keeps operations out, they hold no finance permissions', async () => {
@@ -202,5 +203,85 @@ describe('FinancePage starting a costing', () => {
 
     expect(await within(dialog).findByText('Stopped here on purpose.')).toBeInTheDocument();
     expect(sent).toEqual({ sourceQuoteId: naidooQuote });
+  });
+});
+
+//----------------------------------------------------------\\
+//                              DELIVERED, NOT INVOICED
+//----------------------------------------------------------\\
+
+describe('FinancePage delivered, not invoiced', () => {
+  it('raises an invoice from the accepted costing, and the event moves to the invoices', async () => {
+    let sent: unknown;
+    const user = userEvent.setup();
+    renderMockedApp('accounts', '/finance');
+    server.use(
+      http.post('/api/events/:eventId/invoices', async ({ request }) => {
+        sent = await request.clone().json();
+        return undefined;
+      }),
+    );
+    const waiting = await panel('Delivered, not invoiced');
+
+    const kloof = await rowOf(waiting, 'Kloof Street 40th');
+    expect(within(kloof).getByText('No PO or deposit recorded')).toBeInTheDocument();
+    expect(within(kloof).queryByRole('button')).not.toBeInTheDocument();
+
+    const gala = await rowOf(waiting, 'Harbour Charity Gala');
+    expect(within(gala).getByText('PO 5520-HT')).toBeInTheDocument();
+    expect(within(gala).getByText('9 days ago')).toBeInTheDocument();
+    await user.click(within(gala).getByRole('button', { name: 'Raise an invoice for HAR-GALA-26' }));
+    const form = await screen.findByRole('dialog', { name: 'Raise an invoice for HAR-GALA-26' });
+    await user.click(within(form).getByRole('button', { name: 'Raise invoice' }));
+
+    expect(await screen.findByText(/^INV-2026-0043 is raised, due /)).toBeInTheDocument();
+    expect(sent).toEqual(
+      expect.objectContaining({ confirmationId: 'cf000000-0000-0000-0000-000000000091', amountIncVat: null }),
+    );
+    await waitFor(() => expect(within(waiting).queryByText('Harbour Charity Gala')).not.toBeInTheDocument());
+    const raised = await rowOf(await panel('Invoices'), 'INV-2026-0043');
+    expect(within(raised).getByText('PO 5520-HT')).toBeInTheDocument();
+    expect(within(raised).getByText('R 61 525,00')).toBeInTheDocument();
+  });
+
+  it('checks a typed amount, and shows the api refusing when there is no costing to fall back on', async () => {
+    const user = userEvent.setup();
+    renderMockedApp('director', '/finance');
+    const gala = await rowOf(await panel('Delivered, not invoiced'), 'Harbour Charity Gala');
+    await user.click(within(gala).getByRole('button', { name: 'Raise an invoice for HAR-GALA-26' }));
+    const form = await screen.findByRole('dialog', { name: 'Raise an invoice for HAR-GALA-26' });
+
+    await user.type(within(form).getByLabelText(/^Amount incl. VAT/), '12,500');
+    await user.click(within(form).getByRole('button', { name: 'Raise invoice' }));
+    expect(await within(form).findByText('Enter the amount in rand, like 61 525.')).toBeInTheDocument();
+
+    server.use(
+      http.post('/api/events/:eventId/invoices', () =>
+        HttpResponse.json(
+          {
+            status: 422,
+            title: 'Business rule',
+            detail: 'There is no accepted costing for this event, so enter the invoice amount.',
+          },
+          { status: 422, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+      ),
+    );
+    await user.clear(within(form).getByLabelText(/^Amount incl. VAT/));
+    await user.click(within(form).getByRole('button', { name: 'Raise invoice' }));
+    expect(
+      await within(form).findByText(
+        'There is no accepted costing for this event, so enter the invoice amount.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('says so when every finished event has an invoice', async () => {
+    renderMockedApp('accounts', '/finance');
+    server.use(http.get('/api/invoices/uninvoiced-events', () => HttpResponse.json([])));
+
+    expect(
+      await within(await panel('Delivered, not invoiced')).findByText('Every finished event has an invoice.'),
+    ).toBeInTheDocument();
   });
 });

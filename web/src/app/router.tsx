@@ -19,6 +19,7 @@ import { RouteErrorPage } from './pages/RouteErrorPage';
 const LoginPage = lazy(() => import('@/auth/LoginPage'));
 const MfaVerifyPage = lazy(() => import('@/auth/MfaVerifyPage'));
 const MfaEnrolPage = lazy(() => import('@/auth/MfaEnrolPage'));
+const ResetPasswordPage = lazy(() => import('@/auth/ResetPasswordPage'));
 
 const EventsBoardPage = lazy(() => import('@/features/events/EventsBoardPage'));
 const EventFormPage = lazy(() => import('@/features/events/EventFormPage'));
@@ -68,6 +69,7 @@ export const routes: RouteObject[] = [
           { index: true, element: <LoginPage /> },
           { path: 'mfa', element: <MfaVerifyPage /> },
           { path: 'mfa-setup', element: <MfaEnrolPage /> },
+          { path: 'reset', element: <ResetPasswordPage /> },
         ],
       },
       {

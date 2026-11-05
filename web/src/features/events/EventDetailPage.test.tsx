@@ -128,6 +128,36 @@ describe('EventDetailPage', () => {
     expect(await screen.findByText('Confirmed / In Planning', { exact: false })).toBeInTheDocument();
   });
 
+  it('records the actual pack size, keeping the estimate', async () => {
+    const user = userEvent.setup();
+    renderMockedApp('eventManager', `/events/${naidoo}`);
+    const overview = await panel('Overview');
+
+    await user.click(within(overview).getByRole('button', { name: 'Record actual pack size' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Actual pack size' });
+    expect(within(dialog).getByText(/Booked as 180 guests/)).toBeInTheDocument();
+    const guests = within(dialog).getByLabelText(/^Confirmed guests/);
+    await user.type(guests, 'about 200');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+    expect(await within(dialog).findByText('Enter the number of guests, like 180.')).toBeInTheDocument();
+
+    await user.clear(guests);
+    await user.type(guests, '196');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Naidoo Wedding is down for 196 guests.')).toBeInTheDocument();
+    expect(await within(overview).findByText('196 guests (confirmed)')).toBeInTheDocument();
+    expect(within(overview).getByRole('button', { name: 'Change pack size' })).toBeInTheDocument();
+  });
+
+  it('leaves the pack size alone for roles that cannot edit the event', async () => {
+    renderMockedApp('accounts', `/events/${naidoo}`);
+    const overview = await panel('Overview');
+
+    expect(within(overview).getByText('180 guests (estimated)')).toBeInTheDocument();
+    expect(within(overview).queryByRole('button', { name: /pack size/ })).not.toBeInTheDocument();
+  });
+
   it('sends crew to their own view of the event', async () => {
     const { router } = renderMockedApp('crewLead', `/events/${naidoo}`);
 

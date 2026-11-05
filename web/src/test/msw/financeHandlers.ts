@@ -9,7 +9,6 @@ import {
   invalidTransition,
   mock,
   nextRowVersion,
-  notBuilt,
   notFound,
   numberOrNull,
   readJson,
@@ -424,6 +423,58 @@ export const financeHandlers = [
     return HttpResponse.json(invoiceFor(who, updated));
   }),
 
-  //FR-16 is still a placeholder on the api
-  http.get('/api/invoices/uninvoiced-events', () => notBuilt()),
+  //finished events with nothing raised, oldest first (FR-16)
+  http.get('/api/invoices/uninvoiced-events', async ({ request }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('invoice.manage')) return forbidden();
+    const items = mock.uninvoiced
+      .filter(
+        (event) =>
+          !mock.invoices.some((invoice) => invoice.eventId === event.eventId && invoice.status !== 'Void'),
+      )
+      .sort((a, b) => a.eventDate.localeCompare(b.eventDate))
+      .map((event) => withoutKeys(event, ['acceptedTotal']));
+    return HttpResponse.json(items);
+  }),
+
+  //raised against the event's confirmation. no amount means the accepted costing's total
+  http.post('/api/events/:eventId/invoices', async ({ request, params }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('invoice.manage')) return forbidden();
+    const event = mock.uninvoiced.find((candidate) => candidate.eventId === params.eventId);
+    if (!event) return notFound('That event was not found.');
+
+    const body = await readJson(request);
+    if (!event.confirmationId || body.confirmationId !== event.confirmationId) {
+      return invalid({ confirmationId: ["An invoice needs the event's PO or deposit confirmation."] });
+    }
+    const issuedDate = trimmed(body.issuedDate);
+    if (!issuedDate) return invalid({ issuedDate: ['Enter the date it was sent.'] });
+    const amount = numberOrNull(body.amountIncVat) ?? event.acceptedTotal;
+    if (amount === null) {
+      return businessRule('There is no accepted costing for this event, so enter the invoice amount.');
+    }
+
+    const due = new Date(`${issuedDate}T12:00:00Z`);
+    due.setUTCDate(due.getUTCDate() + 30);
+    const invoice: Invoice = {
+      invoiceId: crypto.randomUUID(),
+      eventId: event.eventId,
+      eventCode: event.eventCode,
+      confirmationId: event.confirmationId,
+      confirmationReference: event.confirmationReference ?? '',
+      invoiceNumber: `INV-2026-${String(41 + mock.invoices.length).padStart(4, '0')}`,
+      issuedDate,
+      dueDate: due.toISOString().slice(0, 10),
+      amountIncVat: amount,
+      status: 'Issued',
+      paidDate: null,
+    };
+    mock.invoices = [...mock.invoices, invoice];
+    return HttpResponse.json(invoiceFor(who, invoice), { status: 201 });
+  }),
 ];

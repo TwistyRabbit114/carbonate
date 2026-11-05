@@ -38,8 +38,6 @@ const emptyForm: ChangePasswordValues = { currentPassword: '', newPassword: '', 
 
 function describeError(error: unknown) {
   if (isApiError(error) && error.status === 429) return 'Too many attempts. Wait a minute and try again.';
-  //what the server answers until the endpoint is on it
-  if (isApiError(error) && error.status === 404) return "Changing your password isn't switched on yet.";
   return problemMessage(error, "Your password wasn't changed.");
 }
 

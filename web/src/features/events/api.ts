@@ -10,6 +10,7 @@ import type {
   EventDetail,
   EventListItem,
   EventStatus,
+  PackSizeRequest,
   PagedResult,
   SaveEventRequest,
   ScheduleResult,
@@ -178,6 +179,20 @@ export function useUpdateEvent(eventId: string) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.event(eventId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.eventsBoard });
       void queryClient.invalidateQueries({ queryKey: queryKeys.myEvents });
+    },
+  });
+}
+
+//the actual number once it's known, without touching the estimate (FR-08). the board shows it too
+export function useRecordPackSize(eventId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (packSize: PackSizeRequest) =>
+      apiFetch<EventDetail>(`/events/${eventId}/pack-size`, { method: 'PATCH', json: packSize }),
+    onSuccess: (saved) => {
+      queryClient.setQueryData(queryKeys.event(eventId), saved);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.eventsBoard });
     },
   });
 }

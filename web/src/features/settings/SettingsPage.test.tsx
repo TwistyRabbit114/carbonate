@@ -135,6 +135,55 @@ describe('SettingsPage users', () => {
     expect(sent).toEqual({ isActive: false });
     const row = (await within(await panel('Users')).findByText('Priya R.')).closest('tr')!;
     expect(within(row).getByText('Switched off')).toBeInTheDocument();
+    expect(within(row).queryByRole('button', { name: "Reset Priya R.'s password" })).not.toBeInTheDocument();
+  });
+
+  it('shows when a casual crew account closes', async () => {
+    renderMockedApp('director', '/settings');
+    const row = (await within(await panel('Users')).findByText('Priya R.')).closest('tr')!;
+
+    expect(within(row).getByText(/^Access ends /)).toBeInTheDocument();
+  });
+});
+
+//----------------------------------------------------------\\
+//                              PASSWORD RESET
+//----------------------------------------------------------\\
+
+describe('SettingsPage password reset', () => {
+  it('makes a single-use link with the token after the #, shown once', async () => {
+    const user = userEvent.setup();
+    renderMockedApp('operationsManager', '/settings');
+    const users = await panel('Users');
+    await within(users).findByText('Thabo N.');
+
+    await user.click(within(users).getByRole('button', { name: "Reset Thabo N.'s password" }));
+    const form = await dialog("Reset Thabo N.'s password");
+    expect(within(form).getByText(/Any link made for them before stops working/)).toBeInTheDocument();
+    await user.click(within(form).getByRole('button', { name: 'Make reset link' }));
+
+    const link = await within(form).findByLabelText('Reset link');
+    expect((link as HTMLInputElement).value).toMatch(/\/login\/reset#token=mock-reset-/);
+    expect(link).toHaveAttribute('readonly');
+    expect(within(form).getByText(/It works once, until/)).toBeInTheDocument();
+
+    await user.click(within(form).getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it("passes on the api's refusal when operations tries to reset the director", async () => {
+    const user = userEvent.setup();
+    renderMockedApp('operationsManager', '/settings');
+    const users = await panel('Users');
+
+    await user.click(await within(users).findByRole('button', { name: "Reset Director's password" }));
+    const form = await dialog("Reset Director's password");
+    await user.click(within(form).getByRole('button', { name: 'Make reset link' }));
+
+    expect(await within(form).findByRole('alert')).toHaveTextContent(
+      "Only the Director can reset a Director's password.",
+    );
+    expect(within(form).queryByLabelText('Reset link')).not.toBeInTheDocument();
   });
 });
 

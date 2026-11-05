@@ -35,6 +35,7 @@ import {
 import { MilestonesPanel } from './MilestonesPanel';
 import { MissingEvent } from './MissingEvent';
 import { MoveEventDialog } from './MoveEventDialog';
+import { PackSizeDialog } from './PackSizeDialog';
 import { RecordConfirmationDialog } from './RecordConfirmationDialog';
 import { ServiceSchedulePanel } from './ServiceSchedulePanel';
 import styles from './EventDetailPage.module.scss';
@@ -124,7 +125,7 @@ function EventDetail({ event }: { event: EventDetail }) {
       <DetailColumns
         main={
           <>
-            <OverviewPanel event={event} />
+            <OverviewPanel event={event} canRecordPackSize={canEdit} />
             <ServiceSchedulePanel schedule={event.serviceSchedule} />
             <MilestonesPanel event={event} canReschedule={check.can('event.edit')} />
             <VenuePanel eventId={event.eventId} venueId={event.venueId} />
@@ -169,9 +170,20 @@ function packSize(event: EventDetail) {
   return `${formatCount(event.packSizeEstimated)} guests (estimated)`;
 }
 
-function OverviewPanel({ event }: { event: EventDetail }) {
+function OverviewPanel({ event, canRecordPackSize }: { event: EventDetail; canRecordPackSize: boolean }) {
+  const [recording, setRecording] = useState(false);
+
   return (
-    <Panel title="Overview">
+    <Panel
+      title="Overview"
+      actions={
+        canRecordPackSize && (
+          <Button variant="ghost" onClick={() => setRecording(true)}>
+            {event.packSizeActual != null ? 'Change pack size' : 'Record actual pack size'}
+          </Button>
+        )
+      }
+    >
       <FieldList>
         <FieldRow label="Client">{event.clientName}</FieldRow>
         <FieldRow label="Venue">{event.venueName ?? 'Not chosen yet'}</FieldRow>
@@ -191,6 +203,7 @@ function OverviewPanel({ event }: { event: EventDetail }) {
         <FieldRow label="Infrastructure">{infrastructureLabels[event.infrastructureMode]}</FieldRow>
         <FieldRow label="Staff required">{formatCount(event.staffRequired)}</FieldRow>
       </FieldList>
+      {recording && <PackSizeDialog event={event} onClose={() => setRecording(false)} />}
     </Panel>
   );
 }

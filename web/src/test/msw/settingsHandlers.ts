@@ -149,6 +149,31 @@ export const settingsHandlers = [
     return HttpResponse.json(updated);
   }),
 
+  //a single-use token for 60 minutes. a director's only comes from a director, and a switched-off
+  //account has to be switched back on first
+  http.post('/api/users/:userId/password-reset', async ({ request, params }) => {
+    await delay();
+    const who = caller(request);
+    if (!who) return unauthorised();
+    if (!who.can('user.manage')) return forbidden();
+    const user = mock.users.find((candidate) => candidate.userId === params.userId);
+    if (!user) return notFound('That user was not found.');
+    if (user.roles.includes('Director') && !isDirector(who)) {
+      return forbidden("Only the Director can reset a Director's password.");
+    }
+    if (!user.isActive) return businessRule('That account is deactivated. Reactivate it first.');
+
+    mock.passwordResets = mock.passwordResets.map((reset) =>
+      reset.userId === user.userId ? { ...reset, used: true } : reset,
+    );
+    const issued = {
+      token: `mock-reset-${crypto.randomUUID()}`,
+      expiresAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+    };
+    mock.passwordResets = [...mock.passwordResets, { ...issued, userId: user.userId, used: false }];
+    return HttpResponse.json(issued, { status: 201 });
+  }),
+
   //newest first. from and to are whole days, so the end of the range is included
   http.get('/api/audit', async ({ request }) => {
     await delay();

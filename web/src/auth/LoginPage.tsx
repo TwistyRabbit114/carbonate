@@ -105,7 +105,9 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      <p className={styles.help}>Can't log in? Your Director or Operations Manager can check your account.</p>
+      <p className={styles.help}>
+        Forgotten your password? Your Director or Operations Manager can give you a link to set a new one.
+      </p>
     </>
   );
 }

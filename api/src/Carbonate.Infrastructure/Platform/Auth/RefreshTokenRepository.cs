@@ -44,5 +44,12 @@ internal sealed class RefreshTokenRepository(CemDbContext db) : IRefreshTokenRep
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now), ct);
     }
 
+    public async Task RevokeOthersForUserAsync(Guid userId, Guid keepTokenId, DateTime now, CancellationToken ct)
+    {
+        await db.RefreshTokens
+            .Where(t => t.UserId == userId && t.RevokedAt == null && t.TokenId != keepTokenId)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now), ct);
+    }
+
     public Task SaveChangesAsync(CancellationToken ct) => db.SaveChangesAsync(ct);
 }

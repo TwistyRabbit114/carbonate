@@ -6,19 +6,20 @@ import { Button } from '@/components/Button';
 import { ErrorState } from '@/components/ErrorState';
 import { Panel } from '@/components/Panel';
 import { Table } from '@/components/Table';
-import { formatDateTime } from '@/lib/format';
+import { formatDate, formatDateTime } from '@/lib/format';
 import { useUsers } from './api';
+import { ResetLinkDialog } from './ResetLinkDialog';
 import { EditUserDialog, NewUserDialog } from './UserDialog';
 import styles from './SettingsPage.module.scss';
 
 //who can sign in and what they can do (FR-38), for the director and ops. the api refuses
-//anything that would leave no active director, and says so
-//TODO(plan): casual crew rows should show the date their access runs out (FR-36), but the user
-//list doesn't send one. ask C to add it to UserListItem
+//anything that would leave no active director, and says so. a casual crew account closes itself 7 days
+//after its last debrief (FR-36), and the list says when once every event they worked is debriefed
 export function UsersPanel() {
   const users = useUsers();
   //undefined is closed, null is a new user
   const [editing, setEditing] = useState<UserListItem | null | undefined>(undefined);
+  const [resetting, setResetting] = useState<UserListItem | null>(null);
 
   return (
     <Panel
@@ -56,12 +57,16 @@ export function UsersPanel() {
                 <td>{describeRoles(user.roles)}</td>
                 <td>
                   {user.isActive ? 'Active' : <Badge>Switched off</Badge>}
-                  {user.employmentType === 'Casual' && (
-                    <span className={styles.sub}>Casual: ends 7 days after their last debrief</span>
+                  {user.isActive && user.crewAccessEndsAt ? (
+                    <span className={styles.sub}>Access ends {formatDate(user.crewAccessEndsAt)}</span>
+                  ) : (
+                    user.employmentType === 'Casual' && (
+                      <span className={styles.sub}>Casual: ends 7 days after their last debrief</span>
+                    )
                   )}
                 </td>
                 <td>{user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never'}</td>
-                <td>
+                <td className={styles.nowrap}>
                   <Button
                     variant="ghost"
                     onClick={() => setEditing(user)}
@@ -69,6 +74,15 @@ export function UsersPanel() {
                   >
                     Edit
                   </Button>
+                  {user.isActive && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => setResetting(user)}
+                      aria-label={`Reset ${user.fullName}'s password`}
+                    >
+                      Reset password
+                    </Button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -78,6 +92,7 @@ export function UsersPanel() {
 
       {editing === null && <NewUserDialog onClose={() => setEditing(undefined)} />}
       {editing && <EditUserDialog user={editing} onClose={() => setEditing(undefined)} />}
+      {resetting && <ResetLinkDialog user={resetting} onClose={() => setResetting(null)} />}
     </Panel>
   );
 }

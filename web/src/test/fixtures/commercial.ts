@@ -7,6 +7,7 @@ import type {
   QuoteLine,
   QuoteLineCategory,
   QuoteStatus,
+  UninvoicedEvent,
 } from '@/api/types';
 import { users } from './users';
 
@@ -180,6 +181,42 @@ export function demoInvoices(events: EventListItem[]): Invoice[] {
       paidDate: null,
     },
   ].filter((invoice) => invoice !== undefined);
+}
+
+//two events that finished before the board's window and still have no invoice (FR-16). one has a
+//po and an accepted costing, the other never had its confirmation recorded. acceptedTotal stands in
+//for the costing the api would fall back on, and never leaves the mock
+export type MockUninvoiced = UninvoicedEvent & { acceptedTotal: number | null };
+
+export function demoUninvoiced(): MockUninvoiced[] {
+  const sastDate = (instant: number) =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg' }).format(new Date(instant));
+  const now = Date.now();
+
+  return [
+    {
+      eventId: 'e0000000-0000-0000-0000-000000000091',
+      eventCode: 'HAR-GALA-26',
+      name: 'Harbour Charity Gala',
+      clientName: 'Harbour Trust',
+      eventDate: sastDate(now - 9 * day),
+      daysSinceEvent: 9,
+      confirmationId: 'cf000000-0000-0000-0000-000000000091',
+      confirmationReference: 'PO 5520-HT',
+      acceptedTotal: 61_525,
+    },
+    {
+      eventId: 'e0000000-0000-0000-0000-000000000092',
+      eventCode: 'KLO-BDAY-26',
+      name: 'Kloof Street 40th',
+      clientName: 'Anele Dube',
+      eventDate: sastDate(now - 4 * day),
+      daysSinceEvent: 4,
+      confirmationId: null,
+      confirmationReference: null,
+      acceptedTotal: null,
+    },
+  ];
 }
 
 //each event's budget, a $price field. the mock adds it to the event only for roles that may see it

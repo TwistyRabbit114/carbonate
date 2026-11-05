@@ -147,8 +147,10 @@ export const users = {
   casualCrew: account(6, 'Priya R.', 'priya@example.com', 'CasualCrew', casualCrew),
 };
 
-//the same accounts as rows of GET /api/users. director and accounts sign in with a code (FR-34)
+//the same accounts as rows of GET /api/users. director and accounts sign in with a code (FR-34).
+//priya's last event is debriefed, so her access runs out in five days (FR-36)
 export function userList(): UserListItem[] {
+  const crewAccessEndsAt = new Date(Date.now() + 5 * 24 * 3_600_000).toISOString();
   return Object.values(users).map(({ user, roles }, index) => ({
     ...user,
     employeeNumber: `CB-${String(index + 1).padStart(3, '0')}`,
@@ -156,5 +158,6 @@ export function userList(): UserListItem[] {
     isActive: true,
     mfaEnabled: roles.some((role) => role === 'Director' || role === 'Accounts'),
     lastLoginAt: null,
+    crewAccessEndsAt: roles.some((role) => role === 'CasualCrew') ? crewAccessEndsAt : null,
   }));
 }

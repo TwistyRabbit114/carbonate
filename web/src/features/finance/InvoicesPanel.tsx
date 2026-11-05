@@ -14,9 +14,8 @@ import styles from './FinancePage.module.scss';
 
 const statuses: InvoiceStatus[] = ['Issued', 'Paid', 'Draft', 'Void'];
 
-//every invoice with the PO or deposit it was raised against (FR-13). invoice.manage marks them paid
-//TODO(plan): raising an invoice needs the event's confirmation id, and nothing the spa can read
-//gives it. ask C to put the confirmation on the event detail, or to finish uninvoiced-events (FR-16)
+//every invoice with the PO or deposit it was raised against (FR-13). invoice.manage marks them paid.
+//new ones are raised from the delivered, not invoiced panel above
 export function InvoicesPanel() {
   const [status, setStatus] = useState<InvoiceStatus | ''>('');
   const invoices = useInvoices(status);

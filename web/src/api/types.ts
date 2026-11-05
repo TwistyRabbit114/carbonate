@@ -47,6 +47,13 @@ export type SessionResponse = MfaStep | SignedInSession;
 //POST /api/auth/mfa/enrol
 export type MfaEnrolResponse = Schemas['MfaEnrolResponse'];
 
+//POST /api/auth/password, your own password from the account page
+export type ChangePasswordRequest = Schemas['ChangePasswordRequest'];
+
+//POST /api/users/{id}/password-reset hands back a single-use token, POST /api/auth/password/reset spends it
+export type PasswordResetIssued = Schemas['PasswordResetIssued'];
+export type ResetPasswordRequest = Schemas['ResetPasswordRequest'];
+
 //----------------------------------------------------------\\
 //                              LISTS
 //----------------------------------------------------------\\
@@ -142,6 +149,9 @@ export type InfrastructureMode = Schemas['InfrastructureMode'];
 
 //POST /api/events. budgetAmount is $price: only someone who can see it may set it
 export type SaveEventRequest = Schemas['SaveEventRequest'];
+
+//PATCH /api/events/{id}/pack-size, either number on its own (FR-08)
+export type PackSizeRequest = Schemas['PackSizeRequest'];
 
 //PUT /api/events/{id}, the same fields plus the version they started from
 export type UpdateEventRequest = Schemas['UpdateEventRequest'];
@@ -245,3 +255,9 @@ export type RecordConfirmationRequest = Schemas['RecordConfirmationRequest'];
 export type Invoice = Schemas['InvoiceDto'];
 export type InvoiceStatus = Schemas['InvoiceStatus'];
 export type UpdateInvoiceRequest = Schemas['UpdateInvoiceRequest'];
+
+//POST /api/events/{id}/invoices. leave the amount out and the api takes the accepted costing's total
+export type CreateInvoiceRequest = Schemas['CreateInvoiceRequest'];
+
+//GET /api/invoices/uninvoiced-events: finished, nothing raised yet, oldest first (FR-16)
+export type UninvoicedEvent = Schemas['UninvoicedEventDto'];

@@ -30,6 +30,7 @@ export const queryKeys = {
   quote: (quoteId: string) => ['quotes', quoteId] as const,
   costHistory: (eventId: string) => ['events', eventId, 'cost-history'] as const,
   invoices: ['invoices'] as const,
+  uninvoiced: ['invoices', 'uninvoiced'] as const,
   users: ['users', 'all'] as const,
   audit: (filters: object) => ['audit', filters] as const,
   calendarConnection: ['calendar', 'connection'] as const,

@@ -119,17 +119,6 @@ describe('AccountPage change password', () => {
     expect(within(form).getByLabelText(/^New password/)).toHaveAttribute('aria-invalid', 'true');
   });
 
-  it('says plainly when the server has no such endpoint yet', async () => {
-    renderMockedApp('crewLead', '/account');
-    server.use(http.post('/api/auth/password', () => new HttpResponse(null, { status: 404 })));
-
-    const form = await fillIn(demoPassword, newPassword);
-
-    expect(
-      await within(form).findByText("Changing your password isn't switched on yet."),
-    ).toBeInTheDocument();
-  });
-
   //the access token lasts 15 minutes, so someone who signed in a while ago still gets through
   it('refreshes a lapsed sign-in and tries again', async () => {
     let calls = 0;

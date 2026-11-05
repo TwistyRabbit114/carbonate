@@ -3,6 +3,7 @@ import { apiFetch } from '@/api/client';
 import { queryKeys } from '@/api/queryKeys';
 import type {
   CostHistoryItem,
+  CreateInvoiceRequest,
   EventListItem,
   Invoice,
   InvoiceStatus,
@@ -10,6 +11,7 @@ import type {
   Quote,
   RecordConfirmationRequest,
   SaveQuoteRequest,
+  UninvoicedEvent,
   UpdateInvoiceRequest,
 } from '@/api/types';
 
@@ -153,6 +155,25 @@ export function useInvoices(status: InvoiceStatus | '') {
     queryFn: () =>
       apiFetch<PagedResult<Invoice>>(`/invoices?pageSize=200${status ? `&status=${status}` : ''}`),
     select: (page) => page.items,
+  });
+}
+
+//finished events with nothing raised yet, oldest first, so none is forgotten (FR-16)
+export function useUninvoicedEvents() {
+  return useQuery({
+    queryKey: queryKeys.uninvoiced,
+    queryFn: () => apiFetch<UninvoicedEvent[]>('/invoices/uninvoiced-events'),
+  });
+}
+
+//raised against the event's po or deposit. refreshing invoices takes the event off the list too
+export function useRaiseInvoice(eventId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (invoice: CreateInvoiceRequest) =>
+      apiFetch<Invoice>(`/events/${eventId}/invoices`, { method: 'POST', json: invoice }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.invoices }),
   });
 }
 

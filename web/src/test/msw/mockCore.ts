@@ -22,7 +22,7 @@ import type {
 } from '@/api/types';
 import { permissionCheck, type Permission } from '@/auth/permissions';
 import { demoAdminBoard } from '../fixtures/adminTasks';
-import { demoBudgets, demoInvoices, demoQuotes } from '../fixtures/commercial';
+import { demoBudgets, demoInvoices, demoQuotes, demoUninvoiced } from '../fixtures/commercial';
 import { demoEventBoard } from '../fixtures/eventBoards';
 import { demoCrew, demoMilestones, eventDetailFor } from '../fixtures/eventDetails';
 import { demoEvents } from '../fixtures/events';
@@ -105,7 +105,10 @@ function freshState() {
     orderLists: demoOrderLists() as OrderList[],
     quotes: events.flatMap(demoQuotes) as Quote[],
     invoices: demoInvoices(events) as Invoice[],
+    uninvoiced: demoUninvoiced(),
     users: userList() as UserListItem[],
+    //reset tokens an administrator has handed out, spent once
+    passwordResets: [] as { token: string; userId: string; expiresAt: string; used: boolean }[],
     audit: demoAudit() as AuditEntry[],
     calendar: demoCalendarConnection() as CalendarConnection,
   };

@@ -73,4 +73,38 @@ public class CrewExpiryTests
 
         CrewExpiry.ShouldDeactivate(true, [endsNow], Now, Grace).ShouldBeTrue();
     }
+
+    [Fact]
+    public void Access_ends_a_grace_period_after_the_last_debrief()
+    {
+        var last = Now.AddDays(-2);
+
+        CrewExpiry.AccessEndsAt(true, [Worked(30), new(Now.AddDays(-3), last)], Grace).ShouldBe(last + Grace);
+    }
+
+    [Fact]
+    public void A_shift_that_runs_past_the_grace_period_sets_the_end_instead()
+    {
+        var shiftEnd = Now.AddDays(20);
+
+        CrewExpiry.AccessEndsAt(true, [new(shiftEnd, Now.AddDays(1))], Grace).ShouldBe(shiftEnd);
+    }
+
+    [Fact]
+    public void The_end_is_unknown_without_a_debrief_or_any_assignment_or_for_other_roles()
+    {
+        CrewExpiry.AccessEndsAt(true, [Worked(10), new(Now.AddDays(-1), null)], Grace).ShouldBeNull();
+        CrewExpiry.AccessEndsAt(true, [], Grace).ShouldBeNull();
+        CrewExpiry.AccessEndsAt(false, [Worked(10)], Grace).ShouldBeNull();
+    }
+
+    [Fact]
+    public void The_end_agrees_with_the_deactivation_rule()
+    {
+        var assignments = new[] { Worked(3), Worked(12) };
+        var end = CrewExpiry.AccessEndsAt(true, assignments, Grace)!.Value;
+
+        CrewExpiry.ShouldDeactivate(true, assignments, end.AddMinutes(-1), Grace).ShouldBeFalse();
+        CrewExpiry.ShouldDeactivate(true, assignments, end.AddMinutes(1), Grace).ShouldBeTrue();
+    }
 }

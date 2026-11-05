@@ -432,6 +432,41 @@ public class CommercialEndpointTests(DatabaseApiFixture fixture)
         Assert.Contains(await ListUninvoicedAsync(accounts), e => e.GetProperty("eventId").GetGuid() == newer);
     }
 
+    [Fact]
+    public async Task The_uninvoiced_list_carries_the_confirmation_an_invoice_is_raised_against()
+    {
+        var (_, manager) = await _scenario.SignedInAsync(RoleNames.EventManager);
+        var (_, accounts) = await _scenario.SignedInAsync(RoleNames.Accounts);
+        var confirmed = await NewEventAsync(manager);
+        var unconfirmed = await NewEventAsync(manager);
+
+        var recorded = await (await manager.PostAsJsonAsync($"/api/events/{confirmed}/confirmation", PoBody("PO-8080")))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        await _scenario.WithDbAsync(async db =>
+        {
+            var events = await db.Events.Where(e => e.EventId == confirmed || e.EventId == unconfirmed).ToListAsync();
+            events.ForEach(e => e.Status = EventStatus.Finished);
+            await db.SaveChangesAsync();
+        });
+
+        var listed = await ListUninvoicedAsync(accounts);
+        var withPo = listed.Single(e => e.GetProperty("eventId").GetGuid() == confirmed);
+        var without = listed.Single(e => e.GetProperty("eventId").GetGuid() == unconfirmed);
+
+        Assert.Equal(recorded.GetProperty("confirmationId").GetGuid(), withPo.GetProperty("confirmationId").GetGuid());
+        Assert.Equal("PO-8080", withPo.GetProperty("confirmationReference").GetString());
+        Assert.Equal(JsonValueKind.Null, without.GetProperty("confirmationId").ValueKind);
+
+        // Accounts can raise the invoice straight from the list.
+        var invoice = await accounts.PostAsJsonAsync($"/api/events/{confirmed}/invoices", new
+        {
+            confirmationId = withPo.GetProperty("confirmationId").GetGuid(),
+            issuedDate = DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd"),
+            amountIncVat = 1000m,
+        });
+        Assert.Equal(HttpStatusCode.Created, invoice.StatusCode);
+    }
+
     [Theory]
     [InlineData(RoleNames.CasualCrew)]
     [InlineData(RoleNames.CrewLead)]

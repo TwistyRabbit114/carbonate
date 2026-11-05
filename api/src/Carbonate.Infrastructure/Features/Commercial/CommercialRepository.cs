@@ -207,7 +207,19 @@ internal sealed class CommercialRepository(CemDbContext db) : ICommercialReposit
         var rows = await events
             .Where(e => !db.Invoices.Any(i => i.EventId == e.EventId && i.Status != InvoiceStatus.Void))
             .Join(db.Clients, e => e.ClientId, c => c.ClientId,
-                (e, c) => new { e.EventId, e.EventCode, e.Name, ClientName = c.Name, e.EventDate })
+                (e, c) => new
+                {
+                    e.EventId,
+                    e.EventCode,
+                    e.Name,
+                    ClientName = c.Name,
+                    e.EventDate,
+                    Confirmation = db.EventConfirmations
+                        .Where(x => x.EventId == e.EventId)
+                        .OrderByDescending(x => x.ConfirmedAt)
+                        .Select(x => new { x.ConfirmationId, Reference = x.ClientPoNumber ?? x.DepositReference })
+                        .FirstOrDefault(),
+                })
             .OrderBy(r => r.EventDate).ThenBy(r => r.EventCode)
             .ToListAsync(ct);
 
@@ -221,6 +233,8 @@ internal sealed class CommercialRepository(CemDbContext db) : ICommercialReposit
                 ClientName = r.ClientName,
                 EventDate = r.EventDate,
                 DaysSinceEvent = Math.Max(today.DayNumber - r.EventDate.DayNumber, 0),
+                ConfirmationId = r.Confirmation?.ConfirmationId,
+                ConfirmationReference = r.Confirmation?.Reference,
             }),
         ];
     }

@@ -1,14 +1,16 @@
 using Carbonate.Application.Common;
 using Carbonate.Application.Platform.Auth;
 using Carbonate.Application.Platform.Users;
+using Carbonate.Domain.Common;
 using Carbonate.Domain.Platform;
 using Carbonate.Infrastructure.Persistence;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Carbonate.Infrastructure.Platform.Users;
 
-internal sealed class UserAdminRepository(CemDbContext db) : IUserAdminRepository
+internal sealed class UserAdminRepository(CemDbContext db, IOptions<CrewOptions> crewOptions) : IUserAdminRepository
 {
     private const int UniqueIndexViolation = 2601;
     private const int UniqueConstraintViolation = 2627;
@@ -42,9 +44,12 @@ internal sealed class UserAdminRepository(CemDbContext db) : IUserAdminRepositor
             .Select(Projection)
             .ToListAsync(ct);
 
+        var items = rows.Select(ToItem).ToList();
+        await AddCrewAccessEndAsync(items, ct);
+
         return new PagedResult<UserListItem>
         {
-            Items = [.. rows.Select(ToItem)],
+            Items = items,
             Page = query.Page,
             PageSize = query.PageSize,
             Total = total,
@@ -54,7 +59,14 @@ internal sealed class UserAdminRepository(CemDbContext db) : IUserAdminRepositor
     public async Task<UserListItem?> GetAsync(Guid userId, CancellationToken ct)
     {
         var row = await db.Users.AsNoTracking().Where(u => u.UserId == userId).Select(Projection).FirstOrDefaultAsync(ct);
-        return row is null ? null : ToItem(row);
+        if (row is null)
+        {
+            return null;
+        }
+
+        var item = ToItem(row);
+        await AddCrewAccessEndAsync([item], ct);
+        return item;
     }
 
     public Task<AppUser?> FindForUpdateAsync(Guid userId, CancellationToken ct) =>
@@ -107,6 +119,39 @@ internal sealed class UserAdminRepository(CemDbContext db) : IUserAdminRepositor
             // Two administrators created the same person at once.
             var field = sql.Message.Contains("EmployeeNumber", StringComparison.OrdinalIgnoreCase) ? "employeeNumber" : "email";
             throw ProblemException.Validation(new Dictionary<string, string[]> { [field] = ["Someone already has that value."] });
+        }
+    }
+
+    // Same facts the expiry worker reads, for the casual crew on this page only.
+    private async Task AddCrewAccessEndAsync(List<UserListItem> items, CancellationToken ct)
+    {
+        var crew = items.Where(i => i.IsActive && i.Roles.Count > 0 && i.Roles.All(r => r == RoleNames.CasualCrew)).ToList();
+        if (crew.Count == 0)
+        {
+            return;
+        }
+
+        var ids = crew.Select(i => i.UserId).ToList();
+        var facts = await (
+                from c in db.CrewAssignments.AsNoTracking()
+                where ids.Contains(c.UserId)
+                join m in db.EventMilestones.Where(m => m.MilestoneType == MilestoneType.Debrief)
+                    on c.EventId equals m.EventId into debriefs
+                from debrief in debriefs.DefaultIfEmpty()
+                select new
+                {
+                    c.UserId,
+                    c.ShiftEnd,
+                    DebriefEnd = debrief == null ? (DateTime?)null : debrief.ActualEnd ?? debrief.ScheduledEnd,
+                })
+            .ToListAsync(ct);
+
+        var byUser = facts.ToLookup(f => f.UserId);
+        var grace = TimeSpan.FromDays(crewOptions.Value.DeactivateAfterDays);
+        foreach (var item in crew)
+        {
+            var assignments = byUser[item.UserId].Select(f => new CrewAssignmentFact(f.ShiftEnd, f.DebriefEnd)).ToList();
+            item.CrewAccessEndsAt = CrewExpiry.AccessEndsAt(true, assignments, grace);
         }
     }
 
